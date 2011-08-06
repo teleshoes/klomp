@@ -4,7 +4,7 @@ use warnings;
 use POSIX 'setsid';
 use Term::ReadKey;
 
-my $QEXEC = '~/q/q';
+my $QDBEXEC = '~/q/qdb';
 my $QDB = '~/.qdb';
 
 sub key(){
@@ -91,7 +91,7 @@ sub showQuery(){
   my $limit = $lines-2;
   my $q = $query;
   $q =~ s/'/'\\''/g;
-  my @songs = `$QEXEC $QDB -s '$q' -l $limit`;
+  my @songs = `$QDBEXEC $QDB -s '$q' -l $limit`;
   my $overlength = 0;
   for my $song(@songs){
     chomp $song;
