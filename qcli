@@ -4,8 +4,8 @@ use warnings;
 use POSIX 'setsid';
 use Term::ReadKey;
 
-my $PDB = '~/.pdb';
-my $PDB_EXEC = '~/pawsome/p-db';
+my $QEXEC = '~/q/q';
+my $QDB = '~/.qdb';
 
 sub key(){
   my $BSD = -f '/vmunix';
@@ -91,7 +91,7 @@ sub showQuery(){
   my $limit = $lines-2;
   my $q = $query;
   $q =~ s/'/'\\''/g;
-  my @songs = `$PDB_EXEC $PDB -s '$q' -l $limit`;
+  my @songs = `$QEXEC $QDB -s '$q' -l $limit`;
   my $overlength = 0;
   for my $song(@songs){
     chomp $song;
