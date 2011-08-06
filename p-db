@@ -419,9 +419,12 @@ sub transliterateJapanese($){
       push @parts, $jap;
     }
   }
+  utf8::encode($arg);
   if(@parts > 0){
     push @parts, $theRest;
-    return join '', @parts;
+    my $res = join '', @parts;
+    utf8::encode($res);
+    return $res;
   }
   return undef;
 }
@@ -489,7 +492,7 @@ sub addSongs($$$){
     $artist =~ s/'/''/g;
     $album =~ s/'/''/g;
     $number =~ s/'/''/g;
-    $date = "0" if $date eq '';
+    $date =~ s/'/''/g;
     $genre =~ s/'/''/g;
 
     my ($title_guess, $artist_guess, $album_guess,
@@ -501,7 +504,7 @@ sub addSongs($$$){
     $artist_guess =~ s/'/''/g;
     $album_guess =~ s/'/''/g;
     $number_guess =~ s/'/''/g;
-    $date_guess = "0" if $date_guess eq '';
+    $date_guess =~ s/'/''/g;
     $genre_guess =~ s/'/''/g;
    
     print "$sqlPath\n";
@@ -514,18 +517,19 @@ sub addSongs($$$){
         "date_guess, genre_guess) ".
       "values".
       "('$sqlPath', $filesize, $modified, '$md5sum', ".
-        "'$title', '$artist', '$album', '$number', $date, '$genre', ".
+        "'$title', '$artist', '$album', '$number', '$date', '$genre', ".
         "'$title_guess', '$artist_guess', '$album_guess', '$number_guess', ".
-        "$date_guess, '$genre_guess');";
+        "'$date_guess', '$genre_guess');";
     $count++;
     if($count == $limit){
-      print "Running last $limit\n";
+      print "  running last $limit\n";
       runSql($sql.'END;');
       $sql = 'BEGIN;';
       $count = 0;
     }
   }
   if($count > 0){
+    print "  running remaining $count\n";
     runSql($sql.'END;');
   }
 }
@@ -553,7 +557,7 @@ sub readTags($){
   my $number='';
   my $date='';
   my $genre='';
-  if($file =~ /.(mp3|ogg|flac)/i){
+  if($file =~ /.(mp3|ogg|flac)$/i){
     my $lltag = `lltag -S '$file'`;
     if($lltag =~ m/^\s*TITLE=(.*)$/mix){
       $title = $1;
@@ -573,7 +577,7 @@ sub readTags($){
     if($lltag =~ m/^\s*GENRE=(.*)$/mix){
       $genre = $1;
     }
-  }elsif($file =~ /.(mp4|m4a|m4p|m4v|m4b)/i){
+  }elsif($file =~ /.(mp4|m4a|m4p|m4v|m4b)$/i){
     my $atomic = `AtomicParsley '$file' -t`;
     if($atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix){
       $title = $1;
@@ -594,9 +598,9 @@ sub readTags($){
       $genre = $1;
     }
   }else{
-    print STDERR "Could not find file: $path";
+    print STDERR "Not a filetype we know how to read tags from: $path";
     return [];
   }
 
-  return [$path, $title, $artist, $album, $number, $date, $genre];
+  return ($path, $title, $artist, $album, $number, $date, $genre);
 }
