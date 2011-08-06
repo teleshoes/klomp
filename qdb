@@ -1,0 +1,606 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+sub shell(@);
+sub shellQuiet(@);
+sub runSql($;@);
+sub cols($);
+sub guess($$$$$$$$);
+sub transliterateJapanese($);
+sub addSongs($$$);
+sub wrapGuessCol($);
+sub create();
+sub update($);
+sub add($$);
+sub search($$$);
+sub info($);
+sub readTags($);
+
+my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a');
+                    #aiff wav wma
+
+my $usage = "Usage: 
+ $0 [db-path] -c|--create
+   Make an empty sqlite db
+
+ $0 [db-path] -u|--update library-dir
+   Add or update the info in the db for all the music files in library-dir
+
+ $0 [db-path] -a|--add library-dir song-rel-path
+   Add or update the info in the db for the file at library-dir/song-rel-path
+
+ $0 [db-path] -s|--search query [OPTS]
+   Query for relative paths to songs, or more information
+   optional OPTS:
+   -l|--limit LIMIT  integer to limit the number of rows returned
+   -m|--mode  MODE   possible values include:
+                     playlist    return just the relative path [DEFAULT]
+                     awesomebar  return artist/album/title/track information
+                                 for organizing the search results
+ $0 [db-path] -i|--info song-rel-path
+   Query for the info for a song, given the relative path of the song
+";
+
+die $usage if @ARGV < 2 or $ARGV[0] eq '-h' or $ARGV[0] eq '--help';
+
+my $db = shift;
+my $cmd = shift;
+
+if($cmd eq '-c' or $cmd eq '--create' and @ARGV == 0){
+  create();
+}elsif($cmd eq '-u' or $cmd eq '--update' and @ARGV == 1){
+  my $libDir = shift();
+  update($libDir);
+}elsif($cmd eq '-a' or $cmd eq '--add' and @ARGV == 2){
+  my $libDir = shift();
+  my $songRelPath = shift();
+  add($libDir, $songRelPath);
+}elsif($cmd eq '-s' or $cmd eq '--search' and @ARGV >= 2){
+  my $query = shift;
+
+  my $limit = 0;
+  my $mode = 'playlist';
+  for(my $i=0; $i<@ARGV; $i++){
+    my $arg = $ARGV[$i];
+    if(($arg eq '-l' or $arg eq '--limit') && $#ARGV>$i){
+      $i++;
+      $limit = $ARGV[$i];
+      if($limit !~ /^\d+$/){
+        die $usage;
+      }
+    }elsif(($arg eq '-m' or $arg eq '--mode') && $#ARGV>$i){
+      $i++;
+      $mode = $ARGV[$i];
+    }else{
+      die $usage;
+    }
+  }
+
+  search($query, $limit, $mode);
+}elsif($cmd eq '-i' or $cmd eq '--info' and @ARGV == 1){
+  my $songRelPath = shift();
+  info($songRelPath);
+}else{
+  die $usage;
+}
+
+
+sub create(){
+  if(-e $db){
+    die "$db exists already\n";
+  }
+  runSql(
+    "create table Songs (".
+      "path varchar(8000) primary key,".
+      "filesize int,".
+      "modified int,".
+      "md5sum varchar(32),".
+      "title varchar(1000),".
+      "artist varchar(1000),".
+      "album varchar(1000),".
+      "number varchar(1000),".
+      "date varchar(1000),".
+      "genre varchar(1000),".
+      "title_guess varchar(1000),".
+      "artist_guess varchar(1000),".
+      "album_guess varchar(1000),".
+      "number_guess varchar(1000),".
+      "date_guess varchar(1000),".
+      "genre_guess varchar(1000)".
+    ");");
+}
+
+sub update($){
+  my $lib = shift;
+  chdir $lib;
+
+  my $suffixPattern;
+  for(my $i=0; $i<@songSuffixes; $i++){
+    $suffixPattern .= ".*\\." . $songSuffixes[$i];
+    if($i < $#songSuffixes){
+      $suffixPattern .= "\\|";
+    }
+  }
+  my @songRelPaths = shell 'find', '.', '-iregex', $suffixPattern;
+  for (my $i=0; $i<@songRelPaths; $i++){
+    my $songRelPath = $songRelPaths[$i];
+    chomp $songRelPath;
+    $songRelPath =~ s/^.\///;
+    $songRelPaths[$i] = $songRelPath;
+  }
+  addSongs($db, $lib, \@songRelPaths);
+}
+
+sub add($$){
+  my $lib = shift;
+  my $songRelPath = shift;
+  
+  my @songRelPaths;
+  push @songRelPaths, $songRelPath;
+  addSongs($db, $lib, \@songRelPaths);
+}
+
+sub unfoldQuery($){
+  my $q = shift;
+}
+
+sub search($$$){
+  my $query = shift;
+  my $limit = shift;
+  my $mode = shift;
+
+  my @cols;
+  if($mode eq 'playlist'){
+    push @cols, 'path';
+  }elsif($mode eq 'awesomebar'){
+    push @cols, 'artist';
+    push @cols, 'album';
+    push @cols, 'title';
+    push @cols, 'number';
+    push @cols, 'path';
+  }else{
+    die $usage;
+  }
+
+  my @guessCols;
+  my @namedCols;
+  for my $col(@cols){
+    my $guessCol;
+    if($col eq 'artist' or $col eq 'album' or $col eq 'title'){
+      $guessCol = wrapGuessCol($col);
+    }else{
+      $guessCol = $col;
+    }
+    push @guessCols, $guessCol;
+    push @namedCols, "$guessCol $col";
+  }
+
+  my $lim;
+  if($limit > 0){
+    my $orderCols = join ",", @guessCols;
+    $lim = " ORDER BY $orderCols LIMIT $limit";
+  }else{
+    $lim = '';
+  }
+
+  $query =~ s/~/~~/g;
+  $query =~ s/""/~quot~/g;
+
+  my %quoteAtoms;
+  my $atomId = 0;
+  while($query =~ s/"([^"]+)"/~$atomId~/){
+    my $atom = $1;
+    #"" inside a quote means literal quote
+    $atom =~ s/~quot~/"/g;
+    $quoteAtoms{$atomId} = $atom;
+    $atomId++;
+  }
+  #"" outside of quotes means TWO literal quotes
+  $query =~ s/~quot~/""/g;
+  $query =~ s/\s*&&\s*/~and~/g;
+  $query =~ s/\s+/~or~/g;
+  
+
+  for my $atomId(keys %quoteAtoms){
+    my $atom = $quoteAtoms{$atomId};
+    $query =~ s/~$atomId~/$atom/;
+  }
+
+  my $selCols = join ",", @namedCols;
+  my $sql = ''
+    . "select $selCols "
+    . "from Songs "
+    . "where (";
+
+  $query .= '~term~';
+  my @subqueries;
+  while($query =~ /(.*?)(~and~|~or~|~term~)/g){
+    push @subqueries, [$1, $2];
+  }
+  for my $sub(@subqueries){
+    my $q = $$sub[0];
+    $q =~ s/~~/~/g;
+    $q =~ s/'/''/g;
+    $q =~ s/%/\\%/g;
+    my $term;
+    $term = " and (" if $$sub[1] eq '~and~';
+    $term = " or (" if $$sub[1] eq '~or~';
+    $term = "" if $$sub[1] eq '~term~';
+    $sql .= ''
+      . "title like '\%$q\%'"
+      . " or title_guess like '\%$q\%'"
+      . " or artist like '\%$q\%'"
+      . " or artist_guess like '\%$q\%'"
+      . " or album like '\%$q\%'"
+      . " or album_guess like '\%$q\%'"
+      . ")$term"
+      ;
+  }
+
+  $sql .= "$lim;";
+  print runSql $sql;
+}
+
+sub info($){
+  my $songRelPath = shift;
+
+  $songRelPath =~ s/'/''/g;
+  my @rows = runSql(
+    "select * ".
+    "from Songs ".
+    "where path = '$songRelPath';",
+    '-csv',  '-header');
+  if(@rows != 2){
+    die "file not found in db: $songRelPath";
+  }
+
+  my @headers = cols $rows[0];
+  my @data = cols $rows[1];
+
+  if(@headers != @data){
+    die "mismatched headers and data\n";
+  }
+  for(my $i=0; $i<@headers; $i++){
+    print $headers[$i] . "=" . $data[$i] . "\n";
+  }
+}
+
+sub wrapTokens(@){
+  my @tokens;
+  for my $token(@_){
+    my $t = $token;
+    $t =~ s/'/'\\''/g;
+    push @tokens, "'$t'";
+  }
+  return @tokens;
+}
+sub shellQuiet(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd 2>/dev/null`;
+}
+sub shell(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd`;
+}
+
+sub runSql($;@){
+  my $sql = shift;
+
+  utf8::decode($sql);
+  my @tokens;
+  push @tokens, 'sqlite3';
+  for my $opt(@_){
+    push @tokens, $opt;
+  }
+  push @tokens, $db;
+  push @tokens, $sql;
+
+  return shell @tokens;
+}
+
+sub cols($){
+  my $csvrow = shift;
+  chomp $csvrow;
+  my @cols;
+  while($csvrow =~ /
+    (?:
+      "()"
+      |
+      "(.*?(?<!"))"
+      |
+      ([^,]+)
+    )
+    (?:,|$)
+  /gsxi){
+    my $col;
+    $col = $1 if defined $1;
+    $col = $2 if defined $2;
+    $col = $3 if defined $3;
+    $col =~ s/""/"/g;
+    push @cols, $col;
+  }
+  return @cols;
+}
+
+sub guess($$$$$$$$){
+  my ($lib, $songRelPath,
+        $title, $artist, $album, $number, $date, $genre) = @_;
+  my ($title_guess, $artist_guess, $album_guess,
+    $number_guess, $date_guess, $genre_guess);
+
+  $title_guess = transliterateJapanese $title;
+  $artist_guess = transliterateJapanese $artist;
+  $album_guess = transliterateJapanese $album;
+  $number_guess = transliterateJapanese $number;
+  $date_guess = transliterateJapanese $date;
+  $genre_guess = transliterateJapanese $genre;
+
+  my ($filename, $innerDir, $outerDir);
+  if($songRelPath =~ /([^\/]*) \/ ([^\/]*) \/ ([^\/]*)$/x){
+    $filename = $3;
+    $innerDir = $2;
+    $outerDir = $1;
+  }elsif($songRelPath =~ /([^\/]*) \/ ([^\/]*)$/x){
+    $filename = $2;
+    $innerDir = '';
+    $outerDir = $1;
+  }elsif($songRelPath =~ /([^\/]*)$/x){
+    $filename = $1;
+    $innerDir = '';
+    $outerDir = '';
+  }
+
+  if(not defined $title or length $title == 0){
+    $title_guess = $filename;
+    my $suffixRegex;
+    for (my $i=0; $i<@songSuffixes; $i++){
+      $suffixRegex .= '.' . $songSuffixes[$i];
+      if($i < $#songSuffixes){
+        $suffixRegex .= '|';
+      }
+    }
+    $title_guess =~ s/($suffixRegex)$//i;
+    $title_guess =~ s/^[0-9 \-_]+//;
+    #$title_guess =~ s/_/ /g;
+  }
+  if(not defined $artist or length $artist == 0){
+    $artist_guess = $outerDir;
+    #$artist_guess =~ s/_/ /g;
+  }
+  if(not defined $album or length $album == 0){
+    $album_guess = $innerDir;
+    #$album_guess =~ s/_/ /g;
+  }
+  if(not defined $number or length $number == 0){
+    if($filename =~ /^\s*(\d+)\s*/){
+      $number_guess = $1;
+    }
+  }
+  if(not defined $date or length $date == 0){
+    if($songRelPath =~ /(19\d\d|20\d\d)/){
+      $date_guess = $1;
+    }
+  }
+
+  $title_guess = '' if not defined $title_guess;
+  $artist_guess = '' if not defined $artist_guess;
+  $album_guess = '' if not defined $album_guess;
+  $number_guess = '' if not defined $number_guess;
+  $date_guess = '' if not defined $date_guess;
+  $genre_guess = '' if not defined $genre_guess;
+
+  return ($title_guess, $artist_guess, $album_guess, $number_guess,
+    $date_guess, $genre_guess);
+}
+
+sub transliterateJapanese($){
+  my $arg = shift;
+  if(not defined $arg or length $arg == 0){
+    return $arg;
+  }
+  utf8::decode($arg);
+  my @parts;
+  my $theRest;
+  while($arg =~/
+      (.*?)
+      ((?:\p{Hiragana}|\p{Katakana}|\p{Han})+)
+      (?=(.*$))
+    /gsxi){
+    my $nonjap = $1;
+    my $jap = $2;
+    $theRest = $3;
+    my $romaji = shell 'jap2romaji', $jap;
+    push @parts, $nonjap;
+    if(not $? and defined $romaji){
+      $romaji =~ s/\s+//g;
+      push @parts, $romaji;
+    }else{
+      push @parts, $jap;
+    }
+  }
+  utf8::encode($arg);
+  if(@parts > 0){
+    push @parts, $theRest;
+    my $res = join '', @parts;
+    utf8::encode($res);
+    return $res;
+  }
+  return undef;
+}
+
+sub addSongs($$$){
+  my $db = shift;
+  my $lib = shift;
+  my @songRelPaths = @{scalar shift};
+
+  print "loading filesize and modified into memory from db\n";
+  my %dbInfo;
+  for my $line(runSql('select filesize, modified, path from Songs')){
+    $line =~ /(\d+)\|(\d+)\|(.*)\n/;
+    my @fs_mod = ($1, $2);
+    $dbInfo{$3} = \@fs_mod;
+  }
+
+  my $count = 0;
+  my $limit = 30;
+  my $sql = 'BEGIN;';
+  for my $songRelPath(@songRelPaths){
+    my $sqlPath = $songRelPath;
+    $sqlPath =~ s/'/''/g;
+
+    my ($dbSize, $dbMod);
+    
+    my $info = $dbInfo{$songRelPath};
+    my $dbExists = defined $info;
+    if($dbExists){
+      my @infoArr = @{$info};
+      $dbSize = $infoArr[0];
+      $dbMod = $infoArr[1];
+    }
+  
+    my $stat = shellQuiet 'stat', '--format', '%s:%Y', "$lib/$songRelPath";
+    if($? or $stat !~ /(\d+):(\d+)/){
+      print STDERR "file not found: $lib/$songRelPath\n";
+      next;
+    }
+    my $filesize = $1;
+    my $modified = $2;
+
+    if($dbExists and $dbSize == $filesize and $dbMod == $modified){
+      print "Same size and modified date, skipping $lib/$songRelPath\n";
+      next;
+    }
+    
+    my $md5sum = '';
+    #my $md5sum = shell 'md5sum', "$lib/$songRelPath";
+    #$md5sum = substr $md5sum, 0, 32;
+
+    #if($dbExists and $dbMd5 eq $md5sum){
+    #  print "Same md5sum, skipping $songRelPath, but setting new modified\n";
+    #  runSql(
+    #    "update Songs ".
+    #    "set modified=$modified ".
+    #    "where path='$sqlPath'");
+    #  exit 0;
+    #}
+
+    my ($path, $title, $artist, $album, $number, $date, $genre) =
+      readTags("$lib/$songRelPath");
+
+    $title =~ s/'/''/g;
+    $artist =~ s/'/''/g;
+    $album =~ s/'/''/g;
+    $number =~ s/'/''/g;
+    $date =~ s/'/''/g;
+    $genre =~ s/'/''/g;
+
+    my ($title_guess, $artist_guess, $album_guess,
+        $number_guess, $date_guess, $genre_guess) = guess(
+          $lib, $songRelPath,
+          $title, $artist, $album, $number, $date, $genre);
+
+    $title_guess =~ s/'/''/g;
+    $artist_guess =~ s/'/''/g;
+    $album_guess =~ s/'/''/g;
+    $number_guess =~ s/'/''/g;
+    $date_guess =~ s/'/''/g;
+    $genre_guess =~ s/'/''/g;
+   
+    print "$sqlPath\n";
+    $sql .= "delete from Songs where path='$sqlPath';";
+    $sql .= 
+      "insert into Songs ".
+      "(path, filesize, modified, md5sum, ".
+        "title, artist, album, number, date, genre, ".
+        "title_guess, artist_guess, album_guess, number_guess, ".
+        "date_guess, genre_guess) ".
+      "values".
+      "('$sqlPath', $filesize, $modified, '$md5sum', ".
+        "'$title', '$artist', '$album', '$number', '$date', '$genre', ".
+        "'$title_guess', '$artist_guess', '$album_guess', '$number_guess', ".
+        "'$date_guess', '$genre_guess');";
+    $count++;
+    if($count == $limit){
+      print "  running last $limit\n";
+      runSql($sql.'END;');
+      $sql = 'BEGIN;';
+      $count = 0;
+    }
+  }
+  if($count > 0){
+    print "  running remaining $count\n";
+    runSql($sql.'END;');
+  }
+}
+
+sub wrapGuessCol($){
+  my $col = shift;
+  my $colGuess = $col . '_guess';
+  return
+    "IFNULL(".
+      "NULLIF(".
+        "$col,".
+        "''".
+      "),".
+      "$colGuess)";
+}
+
+sub readTags($){
+  my $file = shift;
+  my $path = $file;
+  $file =~ s/'/'\\''/g;
+
+  my $title='';
+  my $artist='';
+  my $album='';
+  my $number='';
+  my $date='';
+  my $genre='';
+  if($file =~ /.(mp3|ogg|flac)$/i){
+    my $lltag = `lltag -S '$file'`;
+    if($lltag =~ m/^\s*TITLE=(.*)$/mix){
+      $title = $1;
+    }
+    if($lltag =~ m/^\s*ARTIST=(.*)$/mix){
+      $artist = $1;
+    }
+    if($lltag =~ m/^\s*ALBUM=(.*)$/mix){
+      $album = $1;
+    }
+    if($lltag =~ m/^\s*NUMBER=(.*)$/mix){
+      $number = $1;
+    }
+    if($lltag =~ m/^\s*DATE=(.*)$/mix){
+      $date = $1;
+    }
+    if($lltag =~ m/^\s*GENRE=(.*)$/mix){
+      $genre = $1;
+    }
+  }elsif($file =~ /.(mp4|m4a|m4p|m4v|m4b)$/i){
+    my $atomic = `AtomicParsley '$file' -t`;
+    if($atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix){
+      $title = $1;
+    }
+    if($atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix){
+      $artist = $1;
+    }
+    if($atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix){
+      $album = $1;
+    }
+    if($atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix){
+      $number = $1;
+    }
+    if($atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix){
+      $date = $1;
+    }
+    if($atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix){
+      $genre = $1;
+    }
+  }else{
+    print STDERR "Not a filetype we know how to read tags from: $path";
+    return [];
+  }
+
+  return ($path, $title, $artist, $album, $number, $date, $genre);
+}
