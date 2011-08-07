@@ -91,7 +91,7 @@ sub showQuery(){
   my $limit = $lines-2;
   my $q = $query;
   $q =~ s/'/'\\''/g;
-  my @songs = `$QDBEXEC $QDB -s '$q' -l $limit`;
+  my @songs = `$QDBEXEC $QDB -s '$q' -l $limit -m awesomebar`;
   my $overlength = 0;
   for my $song(@songs){
     chomp $song;
@@ -148,18 +148,27 @@ while(1){
       $pos = 0;
     }elsif($cmd eq 'END'){
       $pos = length $query;
-    }elsif($cmd eq 'ENTER' or defined $selections{lc chr $cmd}){
-      if($cmd eq 'ENTER'){
-        print "  selection: (enter again for all)";
-        $cmd = ord key;
+    }elsif($cmd eq 'ENTER'){
+      print "  selection: (enter again for all, space to toggle shuffle)\n";
+      my $key = ord key;
+      my $shuffle = 'off';
+      while($key == 32){
+        $shuffle = $shuffle eq 'on' ? 'off' : 'on';
+        print "shuffle is $shuffle\n";
+        $key = ord key;
       }
-      if($cmd == 10){
+      if($key == 10){
         chdir '/home/wolke/Desktop/Music/Library';
+        if($shuffle eq 'on'){
+          use List::Util 'shuffle'; 
+          @all_songs = shuffle @all_songs;
+        }
         system 'mplayer', @all_songs;
+      }else{
+        my $path = $selections{lc chr $key};
+        chdir '/home/wolke/Desktop/Music/Library';
+        system 'mplayer', $path;
       }
-      my $path = $selections{lc chr $cmd};
-      chdir '/home/wolke/Desktop/Music/Library';
-      system 'mplayer', $path;
     }
   }else{
     my $prefix = substr $query, 0, $pos;
