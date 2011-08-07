@@ -201,8 +201,9 @@ sub search($$$){
   }
   #"" outside of quotes means TWO literal quotes
   $query =~ s/~quot~/""/g;
-  $query =~ s/\s*&&\s*/~and~/g;
-  $query =~ s/\s+/~or~/g;
+  $query =~ s/\s*\&\&\s*/~and~/g;
+  $query =~ s/\s*\|\|\s*/~or~/g;
+  $query =~ s/\s+/~and~/g;
   
 
   for my $atomId(keys %quoteAtoms){
@@ -223,6 +224,31 @@ sub search($$$){
   }
   for my $sub(@subqueries){
     my $q = $$sub[0];
+
+    my $neg = '';
+    my $negAndOr = 'or';
+    if($q =~ /^!/){
+      $q =~ s/^!//;
+      $neg = 'not';
+      $negAndOr = 'and';
+    }
+    
+    my $default = 1;
+    my $title = 0;
+    my $album = 0;
+    my $artist = 0;
+    my $genre = 0;
+    my $path = 0;
+    while($q =~ /^\^[tlagp]/){
+      $default = 0;
+      $q =~ s/^\^([tlagp])//;
+      $title = 1 if $1 eq 't';
+      $album = 1 if $1 eq 'l';
+      $artist = 1 if $1 eq 'a';
+      $genre = 1 if $1 eq 'g';
+      $path = 1 if $1 eq 'p';
+    }
+
     $q =~ s/~~/~/g;
     $q =~ s/'/''/g;
     $q =~ s/%/\\%/g;
@@ -230,17 +256,27 @@ sub search($$$){
     $term = " and (" if $$sub[1] eq '~and~';
     $term = " or (" if $$sub[1] eq '~or~';
     $term = "" if $$sub[1] eq '~term~';
-    $sql .= ''
-      . "title like '\%$q\%'"
-      . " or title_guess like '\%$q\%'"
-      . " or artist like '\%$q\%'"
-      . " or artist_guess like '\%$q\%'"
-      . " or album like '\%$q\%'"
-      . " or album_guess like '\%$q\%'"
-      . ")$term"
-      ;
+    my @wheres;
+    if($default or $title){
+      push @wheres, "title $neg like '\%$q\%'"
+                    . " $negAndOr title_guess $neg like '\%$q\%'";
+    }
+    if($default or $album){
+      push @wheres, "album $neg like '\%$q\%'"
+                    . " $negAndOr album_guess $neg like '\%$q\%'";
+    }
+    if($default or $artist){
+      push @wheres, "artist $neg like '\%$q\%'"
+                    . " $negAndOr artist_guess $neg like '\%$q\%'";
+    }
+    if($genre){
+      push @wheres, "genre $neg like '\%$q\%'";
+    }
+    if($path){
+      push @wheres, "path $neg like '\%$q\%'";
+    }
+    $sql .= join(" $negAndOr ", @wheres) . ")$term"
   }
-
   $sql .= "$lim;";
   print runSql $sql;
 }
