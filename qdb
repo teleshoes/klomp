@@ -20,6 +20,11 @@ sub search($$$);
 sub info($);
 sub readTags($);
 
+my $useAudioWma;
+BEGIN{
+  $useAudioWma = eval{require Audio::WMA;};
+};
+
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
 
@@ -605,18 +610,22 @@ sub readTags($){
     $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
     $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
   }elsif($file =~ /\.(wma)$/i){
-    use Audio::WMA;
-    my $wma  = Audio::WMA->new($path);
-    my $tags = $wma->tags();
+    my %tags;
+    if($useAudioWma){
+      my $wma  = Audio::WMA->new($path);
+      %tags = %{$wma->tags()};
+    }else{
+      print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
+    }
 
-    for my $tag(keys %$tags) {
-      $title  = $tags->{$tag} if $tag =~ m/^TITLE$/mix;
-      $artist = $tags->{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
-      $artist = $tags->{$tag} if $tag =~ m/^AUTHOR$/mix;
-      $album  = $tags->{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
-      $number = $tags->{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
-      $date   = $tags->{$tag} if $tag =~ m/^YEAR$/mix;
-      $genre  = $tags->{$tag} if $tag =~ m/^GENRE$/mix;
+    for my $tag(keys %tags) {
+      $title  = $tags{$tag} if $tag =~ m/^TITLE$/mix;
+      $artist = $tags{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
+      $artist = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
+      $album  = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
+      $number = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
+      $date   = $tags{$tag} if $tag =~ m/^YEAR$/mix;
+      $genre  = $tags{$tag} if $tag =~ m/^GENRE$/mix;
     }
   }elsif($file =~ /\.(mp4|m4a|m4p|m4v|m4b)$/i){
     my $atomic = `AtomicParsley '$file' -t`;
