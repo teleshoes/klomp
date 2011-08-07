@@ -2,6 +2,9 @@
 use strict;
 use warnings;
 
+#sudo apt-get install libaudio-wma-perl lltag
+#sudo cpan Lingua::JA::Romanize::Japanese
+
 sub shell(@);
 sub shellQuiet(@);
 sub runSql($;@);
@@ -17,8 +20,8 @@ sub search($$$);
 sub info($);
 sub readTags($);
 
-my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a');
-                    #aiff wav wma
+my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
+                    #aiff
 
 my $usage = "Usage: 
  $0 [db-path] -c|--create
@@ -557,46 +560,38 @@ sub readTags($){
   my $number='';
   my $date='';
   my $genre='';
-  if($file =~ /.(mp3|ogg|flac)$/i){
+  if($file =~ /\.(mp3|ogg|flac)$/i){
     my $lltag = `lltag -S '$file'`;
-    if($lltag =~ m/^\s*TITLE=(.*)$/mix){
-      $title = $1;
+    $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
+    $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
+    $album  = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
+    $number = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
+    $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
+    $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
+  }elsif($file =~ /\.(wma)$/i){
+    use Audio::WMA;
+    my $wma  = Audio::WMA->new($path);
+    my $tags = $wma->tags();
+
+    for my $tag(keys %$tags) {
+      $title  = $tags->{$tag} if $tag =~ m/^TITLE$/mix;
+      $artist = $tags->{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
+      $artist = $tags->{$tag} if $tag =~ m/^AUTHOR$/mix;
+      $album  = $tags->{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
+      $number = $tags->{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
+      $date   = $tags->{$tag} if $tag =~ m/^YEAR$/mix;
+      $genre  = $tags->{$tag} if $tag =~ m/^GENRE$/mix;
     }
-    if($lltag =~ m/^\s*ARTIST=(.*)$/mix){
-      $artist = $1;
-    }
-    if($lltag =~ m/^\s*ALBUM=(.*)$/mix){
-      $album = $1;
-    }
-    if($lltag =~ m/^\s*NUMBER=(.*)$/mix){
-      $number = $1;
-    }
-    if($lltag =~ m/^\s*DATE=(.*)$/mix){
-      $date = $1;
-    }
-    if($lltag =~ m/^\s*GENRE=(.*)$/mix){
-      $genre = $1;
-    }
-  }elsif($file =~ /.(mp4|m4a|m4p|m4v|m4b)$/i){
+  }elsif($file =~ /\.(mp4|m4a|m4p|m4v|m4b)$/i){
     my $atomic = `AtomicParsley '$file' -t`;
-    if($atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix){
-      $title = $1;
-    }
-    if($atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix){
-      $artist = $1;
-    }
-    if($atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix){
-      $album = $1;
-    }
-    if($atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix){
-      $number = $1;
-    }
-    if($atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix){
-      $date = $1;
-    }
-    if($atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix){
-      $genre = $1;
-    }
+    $title  = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
+    $artist = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
+    $album  = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
+    $number = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
+    $date   = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
+    $genre  = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
+  }elsif($file =~ /\.wav$/i){
+    #so wavs apparently have RIFF tags, but ive never seen em
   }else{
     print STDERR "Not a filetype we know how to read tags from: $path";
     return [];
