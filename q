@@ -40,10 +40,14 @@ sub cmd($){
         return 'UP';
       }elsif($key3 == 66){
         return 'DOWN';
-      }elsif($key3 == 67){
-        return 'RIGHT';
       }elsif($key3 == 68){
         return 'LEFT';
+      }elsif($key3 == 67){
+        return 'RIGHT';
+      }elsif($key3 == 53){
+        return 'PGUP';
+      }elsif($key3 == 54){
+        return 'PGDN';
       }elsif($key3 == 51){
         my $key4 = ord key;
         if($key4 == 126){
@@ -72,6 +76,7 @@ sub putCursor($$){
 
 my $pos = 0;
 my $query = join ' ', @ARGV;
+my $offset = 0;
 my @all_songs;
 my %selections;
 my @sels = qw(
@@ -81,33 +86,122 @@ my @sels = qw(
   z x c v b n m
   );
 
+sub parseCsv($){
+  my $csv = shift;
+  my @cols;
+  while($csv ne ''){
+    if($csv =~ /^".*"/){
+      my $len = length $csv;
+      for(my $i=1; $i<$len; $i++){
+        my $c = substr $csv, $i, 1;
+        if($c eq '"'){
+          $i++;
+          my $cNext = '';
+          $cNext = substr $csv, $i, 1 if $i < $len;
+          if($cNext ne '"'){
+            my $col = substr $csv, 1, $i-2;
+            $col =~ s/""/"/g;
+            push @cols, $col;
+
+            if($i < $len){
+              $csv = substr $csv, $i+1, $len-$i-1;
+            }else{
+              $csv = '';
+            }
+            last;
+          }
+        }
+      }
+    }elsif($csv =~ s/^([^,]*),//){
+      push @cols, $1;
+    }else{
+      push @cols, $csv;
+      $csv = '';
+    }
+  }
+  return @cols;
+}
+sub formatSong(\@){
+  my @cols = @{shift()};
+  return "$cols[0] - $cols[2]";
+}
+
 sub showQuery(){
   system "clear";
   my @size = Term::ReadKey::GetTerminalSize;
   my $width = $size[0];
   my $lines = $size[1];
-  
+ 
+  my $columns = 1;#1 + int($width / 100);
 
-  my $limit = $lines-2;
+  my $limit = ($lines-5)*$columns + $offset;
   my $q = $query;
   $q =~ s/'/'\\''/g;
+  
+  my $colWidth = $width / $columns - 1;
+  
   my @songs = `$QDBEXEC $QDB -s '$q' -l $limit -m awesomebar`;
-  my $overlength = 0;
-  for my $song(@songs){
+  @songs = @songs[$offset .. $#songs];
+  my $len = @songs + 0;
+  for(my $i=0; $i<$len; $i++){
+    my $song = $songs[$i];
     chomp $song;
-    $overlength++ if (length $song) + 3 > $width;
+    my @cols = parseCsv($song);
+    $song = formatSong @cols;
+    $songs[$i] = $song;
+    $len -= int((length $song) / $colWidth)*$columns;
   }
   %selections = ();
   @all_songs = ();
-  for(my $i=0; $i<@songs-$overlength; $i++){
-    if($i < @sels){
-      print " $sels[$i]:";
-      $selections{$sels[$i]} = $songs[$i];
+
+  my $maxColLen = $len/$columns;
+  $maxColLen += 1 if $len % $columns > 0;
+
+  my @cols;
+  for(my $col=0; $col<$columns; $col++){
+    push @cols, ();
+    my $start = $col*$maxColLen;
+    my $end = ($col+1)*$maxColLen;
+    $end = $len if $end +1 > $len;
+    for(my $s=$start; $s<$end; $s++){
+      my $song = $songs[$s];
+      if($s < @sels){
+        $selections{$sels[$s]} = $songs[$s];
+      }
+      push @all_songs, $song;
+      push @{$cols[$col]}, $song;
     }
-    print $songs[$i] . "\n";
-    push @all_songs, $songs[$i];
   }
 
+  for(my $i=0; $i<$maxColLen; $i++){
+    for(my $col=0; $col<$columns; $col++){
+      my @curCol = @{$cols[$col]};
+      my $disp = '';
+      if($i <= $#curCol){
+        $disp = $curCol[$i];
+      }
+
+      my @lines;
+      for(my $i=0; $i<length $disp; $i+=$colWidth ){
+        push @lines, substr $disp, $i, $colWidth;
+      }
+      
+      $disp = '';
+      for(my $i=0; $i<@lines; $i++){
+        $disp .= $lines[$i];
+        if($i == $#lines){
+          $disp .= ' ' x ($colWidth - length $lines[$i]);
+        }else{
+          $disp .= "\n" . ' 'x(($colWidth+1)*$col);
+        }
+      }
+      
+      $disp .= '|' if $columns > 1;
+      print $disp;
+    }
+    print "\n";
+  }
+  
 
 
   putCursor $lines-2, $pos+1;
@@ -136,6 +230,11 @@ while(1){
         my $suffix = substr $query, $pos+1;
         $query = "$prefix$suffix";
       }
+    }elsif($cmd eq 'UP'){
+      $offset--;
+      $offset = 0 if $offset < 0;
+    }elsif($cmd eq 'DOWN'){
+      $offset++;
     }elsif($cmd eq 'LEFT'){
       if($pos > 0){
         $pos--;
@@ -144,6 +243,8 @@ while(1){
       if($pos < length $query){
         $pos++;
       }
+    }elsif($cmd eq 'PGUP'){
+      $offset = 0;
     }elsif($cmd eq 'HOME'){
       $pos = 0;
     }elsif($cmd eq 'END'){
@@ -160,8 +261,12 @@ while(1){
       if($key == 10){
         chdir '/home/wolke/Desktop/Music/Library';
         if($shuffle eq 'on'){
-          use List::Util 'shuffle'; 
-          @all_songs = shuffle @all_songs;
+          BEGIN {
+            eval {
+              use List::Util 'shuffle'; 
+            };
+          };
+          @all_songs = List::Util::shuffle(@all_songs);
         }
         system 'mplayer', @all_songs;
       }else{
