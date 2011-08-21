@@ -153,6 +153,50 @@ sub unfoldQuery($){
   my $q = shift;
 }
 
+sub parseQuotes($){
+  my $query = shift;
+
+  my $newQuery = '';
+  my $endOfLastQuote = 0;
+
+  my %quoteAtoms;
+  my $atomId = 0;
+
+  my $startQuote=0;
+  my $endQuote;
+ 
+  my $offset=0;
+
+  my $len = length $query;
+  while($offset >= 0 and $offset<$len){
+    last if ($offset = index $query, '"', $offset) < 0;
+    $startQuote = $offset;
+    $offset++;
+    while($offset >= 0 and $offset<$len){
+      last if ($offset = index $query, '"', $offset) < 0;
+      $endQuote = $offset;
+      $offset++;
+      my $nextChar = substr $query, $endQuote+1, 1;
+      if($nextChar eq '"'){
+        $offset++;
+      }else{
+        my $quoteAtom = substr $query, $startQuote+1, $endQuote-$startQuote-1;
+        $quoteAtom =~ s/""/"/g;
+        $quoteAtom =~ s/@/~at~/g;
+        $quoteAtom =~ s/!/~bang~/g;
+        $newQuery .= substr $query, $endOfLastQuote, $startQuote-$endOfLastQuote;
+        $endOfLastQuote = $endQuote+1;
+        $newQuery .= "~$atomId~";
+        $quoteAtoms{$atomId++} = $quoteAtom;
+        last;
+      }
+    }
+  }
+  $newQuery .= substr $query, $endOfLastQuote, $len-$endOfLastQuote;
+
+  return ($newQuery, %quoteAtoms);
+}
+
 sub search($$$){
   my $query = shift;
   my $limit = shift;
@@ -186,28 +230,20 @@ sub search($$$){
 
   my $lim;
   if($limit > 0){
-    my $orderCols = join ",", @guessCols;
-    $lim = " ORDER BY $orderCols LIMIT $limit";
+    my $orderCols = join ",\n      ", @guessCols;
+    $lim = "ORDER BY\n      $orderCols\nLIMIT $limit";
   }else{
     $lim = '';
   }
 
   $query =~ s/~/~~/g;
-  $query =~ s/""/~quot~/g;
-
+  
   my %quoteAtoms;
-  my $atomId = 0;
-  while($query =~ s/"([^"]+)"/~$atomId~/){
-    my $atom = $1;
-    #"" inside a quote means literal quote
-    $atom =~ s/~quot~/"/g;
-    $quoteAtoms{$atomId} = $atom;
-    $atomId++;
-  }
-  #"" outside of quotes means TWO literal quotes
-  $query =~ s/~quot~/""/g;
+  ($query, %quoteAtoms) = parseQuotes $query;
+  
   $query =~ s/\s*\&\&\s*/~and~/g;
   $query =~ s/\s*\|\|\s*/~or~/g;
+  $query =~ s/\s*€\s*/~or~/g;  #euro symbol is synonym for ||
   $query =~ s/\s+/~and~/g;
   
 
@@ -216,11 +252,11 @@ sub search($$$){
     $query =~ s/~$atomId~/$atom/;
   }
 
-  my $selCols = join ",", @namedCols;
+  my $selCols = join "\n       ,", @namedCols;
   my $sql = ''
-    . "select $selCols "
-    . "from Songs "
-    . "where (";
+    . "select $selCols \n"
+    . "from Songs \n"
+    . "where (\n  ";
 
   $query .= '~term~';
   my @subqueries;
@@ -244,9 +280,9 @@ sub search($$$){
     my $artist = 0;
     my $genre = 0;
     my $path = 0;
-    while($q =~ /^\^[tlagp]/){
+    while($q =~ /^@[tlagp]/){
       $default = 0;
-      $q =~ s/^\^([tlagp])//;
+      $q =~ s/^@([tlagp])//;
       $title = 1 if $1 eq 't';
       $album = 1 if $1 eq 'l';
       $artist = 1 if $1 eq 'a';
@@ -254,6 +290,9 @@ sub search($$$){
       $path = 1 if $1 eq 'p';
     }
 
+    $q =~ s/~bang~/!/g;
+    $q =~ s/~at~/@/g;
+    
     $q =~ s/~~/~/g;
     $q =~ s/'/''/g;
     $q =~ s/%/\\%/g;
@@ -264,26 +303,31 @@ sub search($$$){
     my @wheres;
     if($default or $title){
       push @wheres, "title $neg like '\%$q\%'"
-                    . " $negAndOr title_guess $neg like '\%$q\%'";
+                    . " $negAndOr title_guess $neg like '\%$q\%'\n  ";
     }
     if($default or $album){
       push @wheres, "album $neg like '\%$q\%'"
-                    . " $negAndOr album_guess $neg like '\%$q\%'";
+                    . " $negAndOr album_guess $neg like '\%$q\%'\n  ";
     }
     if($default or $artist){
       push @wheres, "artist $neg like '\%$q\%'"
-                    . " $negAndOr artist_guess $neg like '\%$q\%'";
+                    . " $negAndOr artist_guess $neg like '\%$q\%'\n  ";
     }
     if($genre){
-      push @wheres, "genre $neg like '\%$q\%'";
+      push @wheres, "genre $neg like '\%$q\%'\n  ";
     }
     if($path){
-      push @wheres, "path $neg like '\%$q\%'";
+      push @wheres, "path $neg like '\%$q\%'\n  ";
     }
-    $sql .= join(" $negAndOr ", @wheres) . ")$term"
+    $sql .= join(" $negAndOr ", @wheres) . ")$term\n  "
   }
-  $sql .= "$lim;";
-  print runSql $sql;
+  $sql .= "\n$lim;";
+  print STDERR $sql;
+  if(@cols > 1){
+    #print runSql $sql, '-csv';
+  }else{
+    #print runSql $sql;
+  }
 }
 
 sub info($){
