@@ -100,22 +100,24 @@ sub create(){
   }
   runSql(
     "create table Songs (".
-      "path varchar(8000) primary key,".
+      "libpath varchar,".
+      "relpath varchar,".
       "filesize int,".
       "modified int,".
-      "md5sum varchar(32),".
-      "title varchar(1000),".
-      "artist varchar(1000),".
-      "album varchar(1000),".
-      "number varchar(1000),".
-      "date varchar(1000),".
-      "genre varchar(1000),".
-      "title_guess varchar(1000),".
-      "artist_guess varchar(1000),".
-      "album_guess varchar(1000),".
-      "number_guess varchar(1000),".
-      "date_guess varchar(1000),".
-      "genre_guess varchar(1000)".
+      "md5sum varchar,".
+      "title varchar,".
+      "artist varchar,".
+      "album varchar,".
+      "number varchar,".
+      "date varchar,".
+      "genre varchar,".
+      "title_guess varchar,".
+      "artist_guess varchar,".
+      "album_guess varchar,".
+      "number_guess varchar,".
+      "date_guess varchar,".
+      "genre_guess varchar,".
+      "PRIMARY KEY (libpath, relpath)".
     ");");
 }
 
@@ -123,6 +125,7 @@ sub update($){
   my $lib = shift;
   chdir $lib;
 
+  checkMissing($db, $lib);
   my $suffixPattern;
   for(my $i=0; $i<@songSuffixes; $i++){
     $suffixPattern .= ".*\\." . $songSuffixes[$i];
@@ -204,13 +207,13 @@ sub search($$$){
 
   my @cols;
   if($mode eq 'playlist'){
-    push @cols, 'path';
+    push @cols, 'relpath';
   }elsif($mode eq 'awesomebar'){
     push @cols, 'artist';
     push @cols, 'album';
     push @cols, 'title';
     push @cols, 'number';
-    push @cols, 'path';
+    push @cols, 'relpath';
   }else{
     die $usage;
   }
@@ -317,16 +320,18 @@ sub search($$$){
       push @wheres, "genre $neg like '\%$q\%'\n  ";
     }
     if($path){
-      push @wheres, "path $neg like '\%$q\%'\n  ";
+      push @wheres, "relpath $neg like '\%$q\%'\n  ";
     }
     $sql .= join(" $negAndOr ", @wheres) . ")$term\n  "
   }
   $sql .= "\n$lim;";
-  print STDERR $sql;
+  
+  #print STDERR $sql;
+  
   if(@cols > 1){
-    #print runSql $sql, '-csv';
+    print runSql $sql, '-csv';
   }else{
-    #print runSql $sql;
+    print runSql $sql;
   }
 }
 
@@ -337,7 +342,7 @@ sub info($){
   my @rows = runSql(
     "select * ".
     "from Songs ".
-    "where path = '$songRelPath';",
+    "where relpath = '$songRelPath';",
     '-csv',  '-header');
   if(@rows != 2){
     die "file not found in db: $songRelPath";
@@ -517,14 +522,54 @@ sub transliterateJapanese($){
   return undef;
 }
 
+sub checkMissing($$){
+  my $db = shift;
+  my $lib = shift;
+  $lib =~ s/\/$//;
+  $lib =~ s/'/''/g;
+  print "checking for missing songs, fetching from db\n";
+  my @songRelPaths = runSql "select relpath from songs where libpath = '$lib'";
+  my $len = @songRelPaths;
+  my $piece = 1+$len / 10;
+  print "checking $len songs\n";
+  my $count = 0;
+  my @missing;
+  my $deleteSql = '';
+  for my $songRelPath(@songRelPaths){
+    chomp $songRelPath;
+    if(not -e "$lib/$songRelPath"){
+      print "$songRelPath\n";
+      push @missing, $songRelPath;
+      $songRelPath =~ s/'/''/g;
+      $deleteSql .= ''
+          . "delete from Songs "
+          . "where relpath = '$songRelPath' "
+          . "  and libpath = '$lib';\n"
+          ;
+    }
+    if($count++ % $piece == 0){
+      print "  checked $count / $len songs\n";
+    }
+  }
+  my $missingCount = scalar @missing;
+  print "finished, $missingCount missing\n";
+  if($missingCount > 0){
+    print "Remove above missing files from lib? (y/N) ";
+    if(<STDIN> =~ /^y$/i){
+      runSql($deleteSql);
+    }
+  }
+}
+
 sub addSongs($$$){
   my $db = shift;
   my $lib = shift;
+  $lib =~ s/\/$//;
   my @songRelPaths = @{scalar shift};
 
   print "loading filesize and modified into memory from db\n";
   my %dbInfo;
-  for my $line(runSql('select filesize, modified, path from Songs')){
+  for my $line(runSql('select filesize, modified, relpath from Songs')){
     $line =~ /(\d+)\|(\d+)\|(.*)\n/;
     my @fs_mod = ($1, $2);
     $dbInfo{$3} = \@fs_mod;
@@ -596,15 +641,15 @@ sub addSongs($$$){
     $genre_guess =~ s/'/''/g;
    
     print "$sqlPath\n";
-    $sql .= "delete from Songs where path='$sqlPath';";
+    $sql .= "delete from Songs where relpath='$sqlPath';";
     $sql .= 
       "insert into Songs ".
-      "(path, filesize, modified, md5sum, ".
+      "(libpath, relpath, filesize, modified, md5sum, ".
         "title, artist, album, number, date, genre, ".
         "title_guess, artist_guess, album_guess, number_guess, ".
         "date_guess, genre_guess) ".
       "values".
-      "('$sqlPath', $filesize, $modified, '$md5sum', ".
+      "('$lib', '$sqlPath', $filesize, $modified, '$md5sum', ".
         "'$title', '$artist', '$album', '$number', '$date', '$genre', ".
         "'$title_guess', '$artist_guess', '$album_guess', '$number_guess', ".
         "'$date_guess', '$genre_guess');";
