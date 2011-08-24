@@ -1,0 +1,113 @@
+#!/usr/bin/perl
+#Copyright 2011 by Elliot Wolk
+#This is free software, released under the GPLv3
+use strict;
+use warnings;
+
+sub shellQuiet(@);
+
+my $srcDir = shift;
+my $destDir = shift;
+
+die "Usage: $0 src dest" if not defined $srcDir or not defined $destDir;
+die "src '$srcDir' is not a directory" if !-d $srcDir;
+die "dest '$destDir' is not a directory" if !-d $destDir;
+
+system "dir2ogg --help > /dev/null";
+if($?){
+  die "could not exec dir2ogg";
+}
+
+my @flacs = `cd $srcDir; find -iname '*.flac'`;
+@flacs = sort @flacs;
+
+my %flacInfos;
+for my $flac(@flacs){
+  chomp $flac;
+  $flac =~ /^(.*)\.flac$/i;
+  my $baseName = $1;
+
+  my $stat = shellQuiet 'stat', '--format', '%s:%Y', "$srcDir/$flac";
+  if($? or $stat !~ /(\d+):(\d+)/){
+    die "file not found: $srcDir/$flac\n";
+  }
+  my $filesize = $1;
+  my $modified = $2;
+  $flacInfos{$baseName} = "$filesize|$modified\n";
+}
+
+my @oggs = `cd $destDir; find -iname '*.ogg'`;
+@oggs = sort @oggs;
+
+my %unmodifiedBasenames;
+my %ogginfos;
+for my $ogg(@oggs){
+  chomp $ogg;
+  $ogg =~ /^(.*)\.ogg/i;
+  my $baseName = $1;
+
+  my $info = shellQuiet 'cat', "$destDir/$baseName.info";
+  my $flacInfo = $flacInfos{$baseName};
+  if(not defined $flacInfo or $info ne $flacInfo){
+    print "removing $destDir/$ogg and $destDir/$baseName.info\n";
+    system "rm", "$destDir/$ogg";
+    system "rm", "$destDir/$baseName.info";
+  }else{
+    $unmodifiedBasenames{$baseName} = 1;
+  }
+}
+
+my $len = length @flacs;
+my $i=0;
+my @failures;
+for my $flac(@flacs){
+  my $dirName = shellQuiet 'dirname', $flac;
+  chomp $dirName;
+  $flac =~ /^(.*)\.flac$/i;
+  my $baseName = $1;
+
+  if(defined $unmodifiedBasenames{$baseName}){
+    print "skipping $srcDir/$flac\n";
+    next;
+  }
+  system 'mkdir', '-p', "$destDir/$dirName";
+
+  print "Converting # $i/$len\n";
+  system 'dir2ogg', "$srcDir/$flac";
+  if($?){
+    push @failures, "$srcDir/$flac\n";
+    print STDERR "failed to convert $srcDir/$flac!\n";
+    next;
+  }
+  open FH, "> $destDir/$baseName.info";
+  print FH $flacInfos{$baseName};
+  close FH;
+  system 'mv', "$srcDir/$baseName.ogg", "$destDir/$baseName.ogg";
+}
+
+system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
+mkdir $destDir;
+
+if(@failures > 0){
+  die "Failed to convert some files:\n @failures\n";
+}
+
+sub wrapTokens(@){
+  my @tokens;
+  for my $token(@_){
+    my $t = $token;
+    $t =~ s/'/'\\''/g;
+    push @tokens, "'$t'";
+  }
+  return @tokens;
+}
+sub shellQuiet(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd 2>/dev/null`;
+}
+sub shell(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd`;
+}
+
+
