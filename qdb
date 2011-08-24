@@ -16,7 +16,7 @@ sub wrapGuessCol($);
 sub create();
 sub update($);
 sub add($$);
-sub search($$$);
+sub search($$\@);
 sub info($);
 sub readTags($);
 
@@ -27,6 +27,9 @@ BEGIN{
 
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
+
+my @allowedCols = qw(libpath relpath filesize modified md5sum
+                     title artist album number date genre);
 
 my $usage = "Usage: 
  $0 [db-path] -c|--create
@@ -41,11 +44,11 @@ my $usage = "Usage:
  $0 [db-path] -s|--search query [OPTS]
    Query for relative paths to songs, or more information
    optional OPTS:
-   -l|--limit LIMIT  integer to limit the number of rows returned
-   -m|--mode  MODE   possible values include:
-                     playlist    return just the relative path [DEFAULT]
-                     awesomebar  return artist/album/title/track information
-                                 for organizing the search results
+   -l|--limit LIMIT        optional limit on the number of rows returned
+   --columns  COL COL ...  optional columns to return as csv.
+     by default, just relpath is returned. possible values include:
+     @allowedCols
+
  $0 [db-path] -i|--info song-rel-path
    Query for the info for a song, given the relative path of the song
 ";
@@ -68,24 +71,33 @@ if($cmd eq '-c' or $cmd eq '--create' and @ARGV == 0){
   my $query = shift;
 
   my $limit = 0;
+  my @cols;
   my $mode = 'playlist';
-  for(my $i=0; $i<@ARGV; $i++){
-    my $arg = $ARGV[$i];
-    if(($arg eq '-l' or $arg eq '--limit') && $#ARGV>$i){
-      $i++;
-      $limit = $ARGV[$i];
-      if($limit !~ /^\d+$/){
+  while(@ARGV){
+    my $arg = shift();
+    if(($arg eq '-l' or $arg eq '--limit') && @ARGV>0){
+      $limit = shift();
+      if(not defined $limit or $limit !~ /^\d+$/){
         die $usage;
       }
-    }elsif(($arg eq '-m' or $arg eq '--mode') && $#ARGV>$i){
-      $i++;
-      $mode = $ARGV[$i];
+    }elsif(($arg eq '--columns') && @ARGV>0){
+      my %allowed;
+      for my $allow(@allowedCols){
+        $allowed{$allow} = 1;
+      }
+      while(@ARGV){
+        my $arg = shift;
+        if(not defined $allowed{$arg}){
+          die $usage;
+        }
+        push @cols, $arg;
+      }
     }else{
       die $usage;
     }
   }
 
-  search($query, $limit, $mode);
+  search($query, $limit, @cols);
 }elsif($cmd eq '-i' or $cmd eq '--info' and @ARGV == 1){
   my $songRelPath = shift();
   info($songRelPath);
@@ -200,29 +212,20 @@ sub parseQuotes($){
   return ($newQuery, %quoteAtoms);
 }
 
-sub search($$$){
+sub search($$\@){
   my $query = shift;
   my $limit = shift;
-  my $mode = shift;
+  my @cols = @{shift()};
 
-  my @cols;
-  if($mode eq 'playlist'){
-    push @cols, 'relpath';
-  }elsif($mode eq 'awesomebar'){
-    push @cols, 'artist';
-    push @cols, 'album';
-    push @cols, 'title';
-    push @cols, 'number';
-    push @cols, 'relpath';
-  }else{
-    die $usage;
+  if(not @cols){
+    @cols = ('relpath');
   }
 
   my @guessCols;
   my @namedCols;
   for my $col(@cols){
     my $guessCol;
-    if($col eq 'artist' or $col eq 'album' or $col eq 'title'){
+    if($col eq 'artist' or $col eq 'album' or $col eq 'title' or $col eq 'number'){
       $guessCol = wrapGuessCol($col);
     }else{
       $guessCol = $col;
@@ -234,6 +237,7 @@ sub search($$$){
   my $lim;
   if($limit > 0){
     my $orderCols = join ",\n      ", @guessCols;
+    $orderCols = 'artist, album, number';
     $lim = "ORDER BY\n      $orderCols\nLIMIT $limit";
   }else{
     $lim = '';
@@ -690,6 +694,31 @@ sub readTags($){
   my $number='';
   my $date='';
   my $genre='';
+  if($file =~ /\.mp3$/i){
+    my $format = ''
+                 . 'SUCCESS\n'
+                 . 'TITLE=%t\n'
+                 . 'ARTIST=%a\n'
+                 . 'ALBUM=%l\n'
+                 . 'NUMBER=%n'
+                 . 'DATE=%y'
+                 . 'GENRE=%g'
+                 ;
+
+    #ID3v2
+    my $mp3info = `mp3info2 -p"$format" '$file' 2>/dev/null`;
+    if($mp3info !~ /^SUCCESS/){
+      #ID3v1
+      $mp3info = `mp3info -p"$format" '$file'`;
+    }
+    $title  = $1 if $mp3info =~ m/^\s*TITLE=(.*)$/mix;
+    $artist = $1 if $mp3info =~ m/^\s*ARTIST=(.*)$/mix;
+    $album  = $1 if $mp3info =~ m/^\s*ALBUM=(.*)$/mix;
+    $number = $1 if $mp3info =~ m/^\s*NUMBER=(.*)$/mix;
+    $date   = $1 if $mp3info =~ m/^\s*DATE=(.*)$/mix;
+    $genre  = $1 if $mp3info =~ m/^\s*GENRE=(.*)$/mix;
+
+  }
   if($file =~ /\.(mp3|ogg|flac)$/i){
     my $lltag = `lltag -S '$file'`;
     $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
