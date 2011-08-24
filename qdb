@@ -15,6 +15,7 @@ sub addSongs($$$);
 sub wrapGuessCol($);
 sub create();
 sub update($);
+sub missing($);
 sub add($$);
 sub search($$\@);
 sub info($);
@@ -37,6 +38,9 @@ my $usage = "Usage:
 
  $0 [db-path] -u|--update library-dir
    Add or update the info in the db for all the music files in library-dir
+
+ $0 [db-path] -m|--missing library-dir
+   Check for missing files, and prompt for removal.
 
  $0 [db-path] -a|--add library-dir song-rel-path
    Add or update the info in the db for the file at library-dir/song-rel-path
@@ -63,6 +67,9 @@ if($cmd eq '-c' or $cmd eq '--create' and @ARGV == 0){
 }elsif($cmd eq '-u' or $cmd eq '--update' and @ARGV == 1){
   my $libDir = shift();
   update($libDir);
+}elsif($cmd eq '-m' or $cmd eq '--missing' and @ARGV == 1){
+  my $libDir = shift();
+  missing($libDir);
 }elsif($cmd eq '-a' or $cmd eq '--add' and @ARGV == 2){
   my $libDir = shift();
   my $songRelPath = shift();
@@ -137,7 +144,6 @@ sub update($){
   my $lib = shift;
   chdir $lib;
 
-  checkMissing($db, $lib);
   my $suffixPattern;
   for(my $i=0; $i<@songSuffixes; $i++){
     $suffixPattern .= ".*\\." . $songSuffixes[$i];
@@ -153,6 +159,12 @@ sub update($){
     $songRelPaths[$i] = $songRelPath;
   }
   addSongs($db, $lib, \@songRelPaths);
+}
+
+sub missing($){
+  my $lib = shift;
+  chdir $lib;
+  checkMissing($db, $lib);
 }
 
 sub add($$){
