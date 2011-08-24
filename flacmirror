@@ -76,37 +76,42 @@ for my $flac(@flacs){
 }
 
 
-
-for my $flac(@flacsToTranscode){
-  my $dirName = shellQuiet 'dirname', $flac;
-  chomp $dirName;
-  $flac =~ /^(.*)\.flac$/i;
-  my $baseName = $1;
-
-  system 'mkdir', '-p', "$destDir/$dirName";
-  print "Converting # $i/$len\n";
-  convert $flac, $srcDir, $destDir, $baseName;
+my $cores ;
+$cores = `cat /proc/cpuinfo | grep ^processor | wc -l`;
+chomp $cores;
+if($cores !~ /^\d+$/){
+  $cores = 2;
 }
 
-sub convert($$$$){
-  my $flac = shift;
-  my $srcDir = shift;
-  my $destDir = shift;
-  my $baseName = shift;
+my @workers;
+my $numWorkers = 2*$cores;
+my $flacsPerWorker = int(@flacsToTranscode / $numWorkers);
+for(my $w=0; $w<$numWorkers; $w++){
+  my @job = @flacsToTranscode[$w*$flacsPerWorker .. ($w+1)*$flacsPerWorker];
+  push @workers, \@job;
+}
 
-  system 'dir2ogg', "$srcDir/$flac";
-  if($?){
-    print STDERR "failed to convert $srcDir/$flac!\n";
-    return;
+for(my $w=0; $w<@workers; $w++){
+  if(fork){
+    my @flacsJob = @{$workers[$i]};
+    my $len = 0+@flacsJob;
+    print "worker#$w starting $len flacs\n";
+    for my $flac(@flacsToTranscode){
+      my $dirName = shellQuiet 'dirname', $flac;
+      chomp $dirName;
+      $flac =~ /^(.*)\.flac$/i;
+      my $baseName = $1;
+
+      system 'mkdir', '-p', "$destDir/$dirName";
+      print "Converting # $i/$len\n";
+      convert $flac, $srcDir, $destDir, $baseName;
+    }
+    exit 0;
   }
-  system 'mv', "$srcDir/$baseName.ogg", "$destDir/$baseName.ogg";
-  open FH, "> $destDir/$baseName.info";
-  print FH $flacInfos{$baseName};
-  close FH;
 }
 
-system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
-mkdir $destDir;
+#system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
+#mkdir $destDir;
 
 if(@failures > 0){
   die "Failed to convert some files:\n @failures\n";
@@ -128,6 +133,23 @@ sub shellQuiet(@){
 sub shell(@){
   my $cmd = join ' ', wrapTokens(@_);
   return `$cmd`;
+}
+
+sub convert($$$$){
+  my $flac = shift;
+  my $srcDir = shift;
+  my $destDir = shift;
+  my $baseName = shift;
+
+  system 'dir2ogg', "$srcDir/$flac";
+  if($?){
+    print STDERR "failed to convert $srcDir/$flac!\n";
+    return;
+  }
+  system 'mv', "$srcDir/$baseName.ogg", "$destDir/$baseName.ogg";
+  open FH, "> $destDir/$baseName.info";
+  print FH $flacInfos{$baseName};
+  close FH;
 }
 
 
