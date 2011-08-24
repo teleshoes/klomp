@@ -5,6 +5,7 @@ use strict;
 use warnings;
 
 sub shellQuiet(@);
+sub convert($$$$);
 
 my $srcDir = shift;
 my $destDir = shift;
@@ -60,6 +61,7 @@ for my $ogg(@oggs){
 my $len = length @flacs;
 my $i=0;
 my @failures;
+my @flacsToTranscode;
 for my $flac(@flacs){
   my $dirName = shellQuiet 'dirname', $flac;
   chomp $dirName;
@@ -68,21 +70,39 @@ for my $flac(@flacs){
 
   if(defined $unmodifiedBasenames{$baseName}){
     print "skipping $srcDir/$flac\n";
-    next;
+  }else{
+    push @flacsToTranscode, $flac;
   }
-  system 'mkdir', '-p', "$destDir/$dirName";
+}
 
+
+
+for my $flac(@flacsToTranscode){
+  my $dirName = shellQuiet 'dirname', $flac;
+  chomp $dirName;
+  $flac =~ /^(.*)\.flac$/i;
+  my $baseName = $1;
+
+  system 'mkdir', '-p', "$destDir/$dirName";
   print "Converting # $i/$len\n";
+  convert $flac, $srcDir, $destDir, $baseName;
+}
+
+sub convert($$$$){
+  my $flac = shift;
+  my $srcDir = shift;
+  my $destDir = shift;
+  my $baseName = shift;
+
   system 'dir2ogg', "$srcDir/$flac";
   if($?){
-    push @failures, "$srcDir/$flac\n";
     print STDERR "failed to convert $srcDir/$flac!\n";
-    next;
+    return;
   }
+  system 'mv', "$srcDir/$baseName.ogg", "$destDir/$baseName.ogg";
   open FH, "> $destDir/$baseName.info";
   print FH $flacInfos{$baseName};
   close FH;
-  system 'mv', "$srcDir/$baseName.ogg", "$destDir/$baseName.ogg";
 }
 
 system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
