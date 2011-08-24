@@ -4,8 +4,25 @@ use warnings;
 use POSIX 'setsid';
 use Term::ReadKey;
 
-my $QDBEXEC = '~/q/qdb';
-my $QDB = '~/.qdb';
+my $qdb = `echo -n \$HOME/.qdb`;
+my $qdbExec = 'qdb';
+my $flacmirrorExec = 'flacmirror';
+my $lib = `echo -n \$HOME/Desktop/Music/Library`;
+my $flacmirrorLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
+
+for my $line(`cat ~/.qprefs`){
+  if($line =~ /^QDB=\s*(.*)/i){
+    $qdb = `echo -n $1`;
+  }elsif($line =~ /^QDB_EXEC=\s*(.*)/i){
+    $qdbExec = `echo -n $1`;
+  }elsif($line =~ /^FLACMIRROR_EXEC=\s*(.*)/i){
+    $flacmirrorExec = `echo -n $1`;
+  }elsif($line =~ /^LIB=\s*(.*)/i){
+    $lib = `echo -n $1`;
+  }elsif($line =~ /^FLACMIRROR_LIB=\s*(.*)/i){
+    $flacmirrorLib = `echo -n $1`;
+  }
+}
 
 sub key(){
   my $BSD = -f '/vmunix';
@@ -45,10 +62,10 @@ sub cmd($){
       }elsif($key3 == 67){
         return 'RIGHT';
       }elsif($key3 == 53){
-        ord key;
+        key; #generates a ~
         return 'PGUP';
       }elsif($key3 == 54){
-        ord key;
+        key; #generates a ~
         return 'PGDN';
       }elsif($key3 == 51){
         my $key4 = ord key;
@@ -171,7 +188,7 @@ sub showQuery(){
   $q =~ s/'/'\\''/g;
   
   my $columns = "artist album title number relpath";
-  my @songRows = `$QDBEXEC $QDB -s '$q' -l $limit --columns $columns`;
+  my @songRows = `$qdbExec $qdb -s '$q' -l $limit --columns $columns`;
 
   my %artists;
   for my $songRow(@songRows){
@@ -274,7 +291,7 @@ while(1){
     }elsif($cmd eq 'ENTER'){
       system "clear";
       print "fetching\n";
-      my @songRows = `$QDBEXEC $QDB -s '$query' --columns libpath relpath`;
+      my @songRows = `$qdbExec $qdb -s '$query' --columns libpath relpath`;
       my $len = scalar @songRows;
       my $shuffle = 'on';
       
