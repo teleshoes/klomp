@@ -1,0 +1,25 @@
+Copyright 2011 by Elliot Wolk
+This is free software, released under the GPLv3
+
+CLI music player
+qdb is a perl script that creates, updates, and queries a sqlite database.
+q is a cli frontend for qdb.
+flacmirror maintains a parallel directory full of oggs that
+ correspond to the flacs in your library
+
+qdb handles: mp3, flac, ogg, m4a, wma, wav
+
+you dont need to be able to update the db to use the music player;
+ you can update the database on one computer,
+ sync your music library to another computer,
+ and merely copy the db file over
+
+to update the library and read tags from files, you need:
+mp3info and mp3info2 {mp3}
+  sudo apt-get install mp3info
+lltag {ogg and flac}
+  sudo apt-get install lltag
+perl module Audio::WMA {wma}
+  cpan Audio::WMA
+AtomicParsley {mp4, m4a, m4p, m4v, m4b}
+  sudo apt-get install atomicparsley
