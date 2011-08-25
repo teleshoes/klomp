@@ -173,8 +173,6 @@ for my $flac(@flacsToTranscode){
   }
 }
 
-shellQuiet 'rm', "$baseLog-*.log";
-
 print "successfully converted " . scalar(@successes) . " flacs\n";
 
 if(@failures > 0){
