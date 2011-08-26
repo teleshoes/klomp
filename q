@@ -187,14 +187,14 @@ sub showQuery(){
   my $q = $query;
   $q =~ s/'/'\\''/g;
   
-  my $columns = "artist album title number relpath";
+  my $columns = "artist album number title relpath";
   my @songRows = `$qdbExec $qdb -s '$q' -l $limit --columns $columns`;
 
   my %artists;
   for my $songRow(@songRows){
     chomp $songRow;
     my @cols = parseCsv($songRow);
-    my ($artist, $album, $title, $number, $relpath, $libpath) = @cols;
+    my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
     my $albums;
     if(not defined $artists{$artist}){
       my %hash;
@@ -291,44 +291,51 @@ while(1){
     }elsif($cmd eq 'ENTER'){
       system "clear";
       print "fetching\n";
-      my $columns = "artist album title number relpath libpath";
+      my $columns = "artist album number title relpath libpath";
       my @songRows = `$qdbExec $qdb -s '$query' --columns $columns`;
       my $len = scalar @songRows;
       my $shuffle = 'on';
       
       print "  play $len songs? space to toggle shuffle (shuffle is $shuffle):\n";
-      my $key = ord key;
-      while($key == 32){
+      my $key = key;
+      while($key eq ' '){
         $shuffle = $shuffle eq 'on' ? 'off' : 'on';
         print " (shuffle is $shuffle)\n";
-        $key = ord key;
+        $key = key;
       }
 
-      if($key == 10){
-        my @files;
-        for my $songRow(@songRows){
-          chomp $songRow;
+      my @files;
+      for my $songRow(@songRows){
+        chomp $songRow;
 
-          my @cols = parseCsv($songRow);
-          my ($artist, $album, $title, $number, $relpath, $libpath) = @cols;
-          #replace last path item in lib with 'flacmirror', if flac file absent
-          if(!-e "$libpath/$relpath" and $relpath =~ /\.flac$/i){
-            $relpath =~ s/\.flac$/\.ogg/i;
-            $libpath =~ s/\/[^\/]+$/\/flacmirror/;
-          }
-          push @files, "$libpath/$relpath";
+        my @cols = parseCsv($songRow);
+        my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
+        #replace last path item in lib with 'flacmirror', if flac file absent
+        if(!-e "$libpath/$relpath" and $relpath =~ /\.flac$/i){
+          $relpath =~ s/\.flac$/\.ogg/i;
+          $libpath =~ s/\/[^\/]+$/\/flacmirror/;
         }
+        push @files, "$libpath/$relpath";
+      }
 
-        if($shuffle eq 'on'){
-          print @files;
-          BEGIN {
-            eval {
-              use List::Util 'shuffle'; 
-            };
+      if($shuffle eq 'on'){
+        BEGIN {
+          eval {
+            use List::Util 'shuffle'; 
           };
-          @files = List::Util::shuffle(@files);
-        }
-        
+        };
+        @files = List::Util::shuffle(@files);
+      }
+      
+      if($key eq 'p'){
+        print "\n\nplaylist file: ";
+        my $f = <STDIN>;
+        open FH, "> $f";
+        print FH join "\n", @files;
+        print FH "\n";
+        close FH;
+      }
+      if($key eq "\n"){
         system 'mplayer', @files;
       }
       system "clear";
