@@ -194,7 +194,7 @@ sub showQuery(){
   for my $songRow(@songRows){
     chomp $songRow;
     my @cols = parseCsv($songRow);
-    my ($artist, $album, $title, $number, $relpath) = @cols;
+    my ($artist, $album, $title, $number, $relpath, $libpath) = @cols;
     my $albums;
     if(not defined $artists{$artist}){
       my %hash;
@@ -291,14 +291,16 @@ while(1){
     }elsif($cmd eq 'ENTER'){
       system "clear";
       print "fetching\n";
-      my @songRows = `$qdbExec $qdb -s '$query' --columns libpath relpath`;
+      my $columns = "artist album title number relpath libpath";
+      my @songRows = `$qdbExec $qdb -s '$query' --columns $columns`;
       my $len = scalar @songRows;
       my $shuffle = 'on';
       
-      my $key = 32;
+      print "  play $len songs? space to toggle shuffle (shuffle is $shuffle):\n";
+      my $key = ord key;
       while($key == 32){
-        print "  play $len songs? space to toggle shuffle ($shuffle):\n";
         $shuffle = $shuffle eq 'on' ? 'off' : 'on';
+        print " (shuffle is $shuffle)\n";
         $key = ord key;
       }
 
@@ -306,16 +308,21 @@ while(1){
         my @files;
         for my $songRow(@songRows){
           chomp $songRow;
-          my ($libPath, $relPath) = parseCsv $songRow;
+
+          my @cols = parseCsv($songRow);
+          my ($artist, $album, $title, $number, $relpath, $libpath) = @cols;
           #replace last path item in lib with 'flacmirror', if flac file absent
-          if(!-e "$libPath/$relPath" and $relPath =~ /\.flac$/i){
-            $relPath =~ s/\.flac$/\.ogg/i;
-            $libPath =~ s/\/[^\/]+$/\/flacmirror/;
+          if(!-e "$libpath/$relpath" and $relpath =~ /\.flac$/i){
+            $relpath =~ s/\.flac$/\.ogg/i;
+            $libpath =~ s/\/[^\/]+$/\/flacmirror/;
           }
-          push @files, "$libPath/$relPath";
+          push @files, "$libpath/$relpath";
         }
 
         if($shuffle eq 'on'){
+          print "shuffling, was:\n";
+          $, = "\n";
+          print @files;
           BEGIN {
             eval {
               use List::Util 'shuffle'; 
@@ -323,6 +330,11 @@ while(1){
           };
           @files = List::Util::shuffle(@files);
         }
+        print "\n\n";
+        $, = "\n";
+        print @files;
+        print "\n\n";
+        <STDIN>;
         system 'mplayer', @files;
       }
       system "clear";
