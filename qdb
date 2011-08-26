@@ -246,14 +246,10 @@ sub search($$\@){
     push @namedCols, "$guessCol $col";
   }
 
-  my $lim;
-  if($limit > 0){
-    my $orderCols = join ",\n      ", @guessCols;
-    $lim = "ORDER BY\n      $orderCols\nLIMIT $limit";
-  }else{
-    my $orderCols = 'artist, album, number';
-    $lim = "ORDER BY $orderCols";
-  }
+  my $orderCols = join ",\n      ", @guessCols;
+  my $orderBy = "ORDER BY\n      $orderCols";
+
+  my $lim = $limit > 0 ? "LIMIT $limit" : '';
 
   $query =~ s/~/~~/g;
   
@@ -340,7 +336,7 @@ sub search($$\@){
     }
     $sql .= join(" $negAndOr ", @wheres) . ")$term\n  "
   }
-  $sql .= "\n$lim;";
+  $sql .= "\n$orderBy\n$lim;";
   
   #print STDERR $sql;
   
