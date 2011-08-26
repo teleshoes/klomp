@@ -249,10 +249,10 @@ sub search($$\@){
   my $lim;
   if($limit > 0){
     my $orderCols = join ",\n      ", @guessCols;
-    $orderCols = 'artist, album, number';
     $lim = "ORDER BY\n      $orderCols\nLIMIT $limit";
   }else{
-    $lim = '';
+    my $orderCols = 'artist, album, number';
+    $lim = "ORDER BY $orderCols";
   }
 
   $query =~ s/~/~~/g;
