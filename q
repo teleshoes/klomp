@@ -320,8 +320,6 @@ while(1){
         }
 
         if($shuffle eq 'on'){
-          print "shuffling, was:\n";
-          $, = "\n";
           print @files;
           BEGIN {
             eval {
@@ -330,11 +328,7 @@ while(1){
           };
           @files = List::Util::shuffle(@files);
         }
-        print "\n\n";
-        $, = "\n";
-        print @files;
-        print "\n\n";
-        <STDIN>;
+        
         system 'mplayer', @files;
       }
       system "clear";
