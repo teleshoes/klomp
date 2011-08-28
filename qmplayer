@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $CUR_FILE = `echo -n \$HOME/.qcur`;
+if(not -e $CUR_FILE){
+  die "$CUR_FILE does not exist\n";
+}
+my $cur = `cat $CUR_FILE`;
+my $initPos;
+my $file;
+if($cur !~ /^([0-9\.]+) (.*)/){
+  die "Current file $CUR_FILE malformed";
+}
+$initPos = $1;
+$file = $2;
+
+my $PID_FILE = '/tmp/qmplayer_pid';
+system "kill -9 `cat $PID_FILE` 2>/dev/null";
+
+my $FIFO = '/tmp/qmplayer_fifo';
+system "mkfifo -m 0666 $FIFO 2>/dev/null";
+
+my $pid = open FH, '-|',
+  'mplayer',
+  '-quiet',
+  '-input', "file=$FIFO",
+  '-ss', $initPos,
+  $file;
+
+system "echo $pid > $PID_FILE";
+
+my $line = '';
+while($line !~ /^Starting playback.../){
+  $line = <FH>;
+  if(not defined $line){
+    die "Error starting mplayer\n";
+  }
+}
+
+my $posLine;
+my $lenLine;
+
+sub update($$){
+  my $pos = shift;
+  my $len = shift;
+  $pos =~ s/.*=([^\n]+)\n/$1/s;
+  $len =~ s/.*=([^\n]+)\n/$1/s;
+  system "echo $pos $file > $CUR_FILE";
+}
+
+while(1){
+  my $newPid = `cat $PID_FILE`;
+  chomp $newPid;
+  if($newPid ne $pid){
+    die "new $0 is running\n";
+  }
+  if(not -p $FIFO){
+    die "fifo $FIFO is broken\n";
+  }
+  system "echo get_time_length > $FIFO";
+  system "echo get_time_pos > $FIFO";
+  my $line = '';
+  while($line !~ /^ANS_TIME_POSITION=/){
+    $line = <FH>;
+    if(not defined $line){
+      die "i guess its dead...\n";
+    }
+    if($line =~ /^ANS_LENGTH/){
+      $lenLine = $line;
+    }elsif($line =~ /^ANS_TIME_POSITION/){
+      $posLine = $line;
+    }
+  }
+  update $posLine, $lenLine;
+  sleep 1;
+}
