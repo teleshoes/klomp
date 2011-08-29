@@ -6,11 +6,9 @@ my $QLIST = `echo -n \$HOME/.qlist`;
 my $QHIST = `echo -n \$HOME/.qlist`;
 
 my $cmd = shift;
-if($cmd eq 'start'){
-  system "kill -0 `cat /tmp/qmplayer_pid`";
-  if($? != 0){
-    system "qmplayer";
-  }
+if($cmd eq 'start' or $cmd eq 'restart'){
+  system "kill -9 `cat /tmp/qmplayer_pid`";
+  system "qmplayer";
 }elsif($cmd eq 'stop'){
   system "kill -9 `cat /tmp/qmplayer_pid`";
 }elsif($cmd eq 'pause'){
