@@ -1,3 +1,4 @@
 #!/bin/bash
 gnome-terminal -e 'qviewer' -t 'QMPLAYER' &
+sleep 1
 gnome-terminal -e 'q' -t 'QMPLAYER' &
