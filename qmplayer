@@ -96,7 +96,6 @@ while(1){
   my $line = '';
   while($line !~ /^ANS_TIME_POSITION=/){
     $line = <FH>;
-    print "$line";
     if(not defined $line){
       die "i guess its dead...\n";
     }
