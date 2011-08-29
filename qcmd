@@ -2,23 +2,32 @@
 use strict;
 use warnings;
 
+my $QCUR = `echo -n \$HOME/.qcur`;
 my $QLIST = `echo -n \$HOME/.qlist`;
-my $QHIST = `echo -n \$HOME/.qlist`;
+my $QHIST = `echo -n \$HOME/.qhistory`;
+
+sub ensureRunning(){
+  my @qlist = -e $QLIST ? `cat $QLIST` : ();
+  if(@qlist == 0){
+    system "q -a";
+  }
+  my $qcur = -e $QCUR ? `cat $QCUR` : '';
+  if($qcur !~ /(^prev)|(^next)|(^[0-9\-\.]+ [0-9\-\.]+)/){
+    system "echo next > $QCUR";
+  }
+  system "qmplayer";
+}
 
 my $cmd = shift;
 if($cmd eq 'start' or $cmd eq 'restart'){
   system "kill -9 `cat /tmp/qmplayer_pid`";
-  system "qmplayer";
+  ensureRunning;
 }elsif($cmd eq 'stop'){
   system "kill -9 `cat /tmp/qmplayer_pid`";
 }elsif($cmd eq 'pause'){
   system "kill -0 `cat /tmp/qmplayer_pid`";
   if($? != 0){
-    my @qlist = -e $QLIST ? `cat $QLIST` : ();
-    if(@qlist == 0){
-      system "~/q -s";
-    }
-    system "qmplayer";
+    ensureRunning();
   }else{
     system "echo pause > /tmp/qmplayer_fifo";
   }
@@ -27,6 +36,8 @@ if($cmd eq 'start' or $cmd eq 'restart'){
 }elsif($cmd eq 'prev'){
   system "echo prev > ~/.qcur";
 }elsif($cmd eq 'reset'){
+  system "kill -9 `cat /tmp/qmplayer_pid`";
+  system "echo -n > $QCUR";
   system "echo -n > $QLIST";
   system "echo -n > $QHIST";
 }else{
