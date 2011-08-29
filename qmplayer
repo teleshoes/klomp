@@ -2,24 +2,46 @@
 use strict;
 use warnings;
 
-my $CUR_FILE = `echo -n \$HOME/.qcur`;
-if(not -e $CUR_FILE){
-  die "$CUR_FILE does not exist\n";
+sub qNext($);
+sub qPrev($);
+
+if(not fork){
+  exec "~/q/qupdater &";
 }
-my $cur = `cat $CUR_FILE`;
+
+my $QCUR = `echo -n \$HOME/.qcur`;
+my $QLIST = `echo -n \$HOME/.qlist`;
+my $QHIST = `echo -n \$HOME/.qhistory`;
+
+if(not -e $QCUR){
+  die "$QCUR does not exist\n";
+}
+
+my $cur = `cat $QCUR`;
 my $initPos;
+my $len;
 my $file;
-if($cur !~ /^([0-9\.]+) (.*)/){
-  die "Current file $CUR_FILE malformed";
+if($cur =~ /^prev/){
+  qPrev(undef);
+  exec $0;
+}
+if($cur =~ /^next/){
+  qNext(undef);
+  exec $0;
+}
+if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (.*)/){
+  die "Current file $QCUR malformed";
 }
 $initPos = $1;
-$file = $2;
+$len = $2;
+$file = $3;
 
 my $PID_FILE = '/tmp/qmplayer_pid';
 system "kill -9 `cat $PID_FILE` 2>/dev/null";
 
 my $FIFO = '/tmp/qmplayer_fifo';
-system "mkfifo -m 0666 $FIFO 2>/dev/null";
+system "rm -f $FIFO";
+system "mkfifo $FIFO";
 
 my $pid = open FH, '-|',
   'mplayer',
@@ -46,7 +68,19 @@ sub update($$){
   my $len = shift;
   $pos =~ s/.*=([^\n]+)\n/$1/s;
   $len =~ s/.*=([^\n]+)\n/$1/s;
-  system "echo $pos $file > $CUR_FILE";
+  my $cur = `cat $QCUR`;
+  if($cur =~ /^next/){
+    print "next signalled\n";
+    qNext($file);
+    exec $0;
+  }elsif($cur =~ /^prev/){
+    print "prev signalled\n";
+    qPrev($file);
+    exec $0;
+  }
+  open CURFILE, "> $QCUR";
+  print CURFILE "$pos $len $file\n";
+  close CURFILE;
 }
 
 while(1){
@@ -58,13 +92,17 @@ while(1){
   if(not -p $FIFO){
     die "fifo $FIFO is broken\n";
   }
-  system "echo get_time_length > $FIFO";
-  system "echo get_time_pos > $FIFO";
+
   my $line = '';
   while($line !~ /^ANS_TIME_POSITION=/){
     $line = <FH>;
+    print "$line";
     if(not defined $line){
       die "i guess its dead...\n";
+    }
+    if($line =~ /^Exiting... \(End of file\)/){
+      qNext($file);
+      exec $0;
     }
     if($line =~ /^ANS_LENGTH/){
       $lenLine = $line;
@@ -75,3 +113,64 @@ while(1){
   update $posLine, $lenLine;
   sleep 1;
 }
+
+sub popFile($){
+  my $file = shift;
+  if(not -e $file){
+   return undef;
+  }
+  my @items = `cat $file`;
+  if(@items == 0){
+    return undef;
+  }
+  my $item = shift @items;
+
+  open FH, "> $file";
+  print FH @items;
+  close FH;
+
+  return $item;
+}
+
+sub pushFile($$){
+  my $file = shift;
+  my $item = shift;
+  $item =~ s/\n*$/\n/;
+  my @items = -e $file ? `cat $file` : ();
+  @items = ($item, @items);
+  open FH, "> $file";
+  print FH @items;
+  close FH;
+}
+
+sub setCur($){
+  my $item = shift;
+  open FH, "> $QCUR";
+  print FH "0.0 0.0 $item";
+  close FH;
+}
+
+sub prevnext($$$){
+  my $srcFile = shift;
+  my $destFile = shift;
+  my $oldCur = shift;
+
+  my $cur = popFile $srcFile;
+  if(defined $cur){
+    if(defined $oldCur and $oldCur !~ /^(next|prev)$/){
+      pushFile $destFile, $oldCur;
+    }
+    setCur $cur;
+  }
+}
+
+sub qNext($){
+  my $oldCur = shift;
+  prevnext $QLIST, $QHIST, $oldCur;
+}
+
+sub qPrev($){
+  my $oldCur = shift;
+  prevnext $QHIST, $QLIST, $oldCur;
+}
+
