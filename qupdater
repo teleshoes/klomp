@@ -1,0 +1,15 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use Time::HiRes qw(sleep);
+
+my $FIFO = '/tmp/qmplayer_fifo';
+my $PID_FILE = '/tmp/qmplayer_updater_pid';
+system "kill -9 `cat $PID_FILE`";
+system "echo $$ > $PID_FILE";
+
+while(1){
+  sleep 0.5;
+  system "echo pausing_keep_force get_time_length >> $FIFO";
+  system "echo pausing_keep_force get_time_pos >> $FIFO";
+}
