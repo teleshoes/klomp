@@ -1,0 +1,3 @@
+#!/bin/bash
+gnome-terminal -e 'qviewer' -t 'QMPLAYER'
+gnome-terminal -e 'q' -t 'QMPLAYER'
