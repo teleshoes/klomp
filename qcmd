@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $QLIST = `echo -n \$HOME/.qlist`;
+my $QHIST = `echo -n \$HOME/.qlist`;
+
+my $cmd = shift;
+if($cmd eq 'start'){
+  system "kill -0 `cat /tmp/qmplayer_pid`";
+  if($? != 0){
+    system "qmplayer";
+  }
+}elsif($cmd eq 'stop'){
+  system "kill -9 `cat /tmp/qmplayer_pid`";
+}elsif($cmd eq 'pause'){
+  system "kill -0 `cat /tmp/qmplayer_pid`";
+  if($? != 0){
+    my @qlist = -e $QLIST ? `cat $QLIST` : ();
+    if(@qlist == 0){
+      system "~/q -s";
+    }
+    system "qmplayer";
+  }else{
+    system "echo pause > /tmp/qmplayer_fifo";
+  }
+}elsif($cmd eq 'next'){
+  system "echo next > ~/.qcur";
+}elsif($cmd eq 'prev'){
+  system "echo prev > ~/.qcur";
+}elsif($cmd eq 'reset'){
+  system "echo -n > $QLIST";
+  system "echo -n > $QHIST";
+}else{
+  system "echo $cmd @ARGV > /tmp/qmplayer_fifo";
+}
