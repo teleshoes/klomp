@@ -1,26 +1,66 @@
 #! /usr/bin/perl
 use strict;
 use warnings;
-use POSIX 'setsid';
+
 use Term::ReadKey;
+use List::Util 'shuffle'; 
 
-my $qdb = `echo -n \$HOME/.qdb`;
-my $qdbExec = 'qdb';
-my $flacmirrorExec = 'flacmirror';
-my $lib = `echo -n \$HOME/Desktop/Music/Library`;
-my $flacmirrorLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
+sub fetch($);
+sub loadPrefs();
+sub key();
+sub interpretKey($);
+sub putCursor($$);
+sub parseCsv($);
+sub formatClear($$);
+sub formatLines(\@$$);
+sub showQuery();
+sub gui();
 
-for my $line(`cat ~/.qprefs`){
-  if($line =~ /^QDB=\s*(.*)/i){
-    $qdb = `echo -n $1`;
-  }elsif($line =~ /^QDB_EXEC=\s*(.*)/i){
-    $qdbExec = `echo -n $1`;
-  }elsif($line =~ /^FLACMIRROR_EXEC=\s*(.*)/i){
-    $flacmirrorExec = `echo -n $1`;
-  }elsif($line =~ /^LIB=\s*(.*)/i){
-    $lib = `echo -n $1`;
-  }elsif($line =~ /^FLACMIRROR_LIB=\s*(.*)/i){
-    $flacmirrorLib = `echo -n $1`;
+#prefs
+our $qdb = `echo -n \$HOME/.qdb`;
+our $qdbExec = 'qdb';
+our $flacmirrorExec = 'flacmirror';
+our $lib = `echo -n \$HOME/Desktop/Music/Library`;
+our $flacmirrorLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
+our $QLIST = `echo -n \$HOME/.qlist`;
+
+#global state
+our $pos = 0;
+our $query = '';
+our $offset = 0;
+
+
+sub main(){
+  loadPrefs;
+
+  if($ARGV[0] eq '-a'){
+    shift;
+    my $query = join ' ', @ARGV;
+    fetch $query, 'on';
+    exit 0;
+  }
+
+  system "clear";
+  showQuery;
+  
+  while(1){
+    gui();
+  }
+}
+
+sub loadPrefs(){
+  for my $line(`cat ~/.qprefs`){
+    if($line =~ /^QDB=\s*(.*)/i){
+      $qdb = `echo -n $1`;
+    }elsif($line =~ /^QDB_EXEC=\s*(.*)/i){
+      $qdbExec = `echo -n $1`;
+    }elsif($line =~ /^FLACMIRROR_EXEC=\s*(.*)/i){
+      $flacmirrorExec = `echo -n $1`;
+    }elsif($line =~ /^LIB=\s*(.*)/i){
+      $lib = `echo -n $1`;
+    }elsif($line =~ /^FLACMIRROR_LIB=\s*(.*)/i){
+      $flacmirrorLib = `echo -n $1`;
+    }
   }
 }
 
@@ -42,7 +82,7 @@ sub key(){
   return $key;
 }
 
-sub cmd($){
+sub interpretKey($){
   my $key = shift;
   $key = ord $key;
   if($key == 127){
@@ -92,18 +132,6 @@ sub putCursor($$){
   my $column = shift;
   system "echo", "-e", "\\033[$line;${column}H"
 }
-
-my $pos = 0;
-my $query = join ' ', @ARGV;
-my $offset = 0;
-my @all_songs;
-my %selections;
-my @sels = qw(
-  1 2 3 4 5 6 7 8 9 0
-  q w e r t y u i o p
-  a s d f g h j k l
-  z x c v b n m
-  );
 
 sub parseCsv($){
   my $csv = shift;
@@ -245,12 +273,81 @@ sub showQuery(){
   system 'echo', '-ne', $out;
 }
 
-system "clear";
-showQuery;
+sub appendQlist(\@){
+  my @files = @{shift()};
 
-while(1){
+  open FH, ">> $QLIST" or die "Could not append to $QLIST";
+  print FH join "\n", @files;
+  print FH "\n" if @files > 0;
+  close FH;
+}
+
+sub flacmirror($$){
+  my $libpath = shift;
+  my $relpath = shift;
+  #replace last path entry with 'flacmirror'
+  $libpath =~ s/\/[^\/]+$/\/flacmirror/;
+  #replace .flac with .ogg, case insensitive on the 'flac'
+  $relpath =~ s/\.flac$/\.ogg/i;
+  return $relpath;
+}
+
+sub fetch($){
+  my $query = shift;
+
+  my $columns = "artist album number title relpath libpath";
+  my @songRows = `$qdbExec $qdb -s '$query' --columns $columns`;
+  
+  my @files;
+  for my $songRow(@songRows){
+    chomp $songRow;
+
+    my @cols = parseCsv($songRow);
+    my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
+    
+    my $fullPath = "$libpath/$relpath";
+    my $flacmirrorPath = flacmirror $libpath, $relpath;
+    if(not -e $fullPath and -e $flacmirrorPath){
+      push @files, $flacmirrorPath;
+    }else{
+      push @files, $fullPath;
+    }
+  }
+
+  return @files;
+}
+
+sub prompt(\@){
+  my @files = @{shift()};
+  my $shuffle = 'on';
+
+  print scalar(@files) . " files\n"
+    . "space - toggle shuffle (currently $shuffle)\n"
+    . "enter - append files to $QLIST and ensure playing\n"
+    . "a     - append files to $QLIST\n"
+    . "o     - overwrite $QLIST with files\n"
+    . "w     - write to a file you specify\n";
+
+  my $key = key;
+  while($key eq ' '){
+    $shuffle = $shuffle eq 'on' ? 'off' : 'on';
+    print "shuffle is now $shuffle\n";
+    $key = key;
+  }
+
+  if($shuffle eq 'on'){
+    @files = List::Util::shuffle(@files);
+  }
+
+  if($key eq "\n"){
+    appendQlist(@files);
+    system "qcmd start";
+  }
+}
+
+sub gui(){
   my $choice = key; #blocks
-  my $cmd = cmd $choice;
+  my $cmd = interpretKey $choice;
   if(defined $cmd){
     if($cmd eq 'BACKSPACE'){
       if($pos > 0){
@@ -290,54 +387,8 @@ while(1){
       $pos = length $query;
     }elsif($cmd eq 'ENTER'){
       system "clear";
-      print "fetching\n";
-      my $columns = "artist album number title relpath libpath";
-      my @songRows = `$qdbExec $qdb -s '$query' --columns $columns`;
-      my $len = scalar @songRows;
-      my $shuffle = 'on';
-      
-      print "  play $len songs? space to toggle shuffle (shuffle is $shuffle):\n";
-      my $key = key;
-      while($key eq ' '){
-        $shuffle = $shuffle eq 'on' ? 'off' : 'on';
-        print " (shuffle is $shuffle)\n";
-        $key = key;
-      }
-
-      my @files;
-      for my $songRow(@songRows){
-        chomp $songRow;
-
-        my @cols = parseCsv($songRow);
-        my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
-        #replace last path item in lib with 'flacmirror', if flac file absent
-        if(!-e "$libpath/$relpath" and $relpath =~ /\.flac$/i){
-          $relpath =~ s/\.flac$/\.ogg/i;
-          $libpath =~ s/\/[^\/]+$/\/flacmirror/;
-        }
-        push @files, "$libpath/$relpath";
-      }
-
-      if($shuffle eq 'on'){
-        BEGIN {
-          eval {
-            use List::Util 'shuffle'; 
-          };
-        };
-        @files = List::Util::shuffle(@files);
-      }
-      
-      if($key eq 'p'){
-        print "\n\nplaylist file: ";
-        my $f = <STDIN>;
-        open FH, "> $f";
-        print FH join "\n", @files;
-        print FH "\n";
-        close FH;
-      }
-      if($key eq "\n"){
-        system 'mplayer', @files;
-      }
+      my @files = fetch $query, 'on';
+      prompt @files;
       system "clear";
     }
   }else{
@@ -349,4 +400,4 @@ while(1){
   showQuery;
 }
 
-
+&main;
