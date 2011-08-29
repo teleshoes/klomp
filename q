@@ -30,24 +30,54 @@ our $pos = 0;
 our $query = '';
 our $offset = 0;
 
-
 sub main(){
   loadPrefs;
-  
-  if($ARGV[0] eq '-a'){
-    shift @ARGV;
+ 
+  my $cmd = $ARGV[0];
+  if($cmd !~ /^-(a|p|o|w|r)$/i){
     my $query = join ' ', @ARGV;
-    my @files = fetch $query;
-    @files = List::Util::shuffle(@files);
-    appendQlist(\@files);
+    system "clear";
+    showQuery;
+    while(1){
+      gui();
+    }
     exit 0;
   }
 
-  system "clear";
-  showQuery;
+  shift @ARGV;
+
+  my $query = join ' ', @ARGV;
+  print "fetching query: $query\n";
+  my @files = fetch $query;
+  print scalar(@files) . " files\n";
   
-  while(1){
-    gui();
+  if($cmd eq lc $cmd){
+    @files = List::Util::shuffle @files;
+  }
+  $cmd = lc $cmd;
+
+  if($cmd eq '-a'){
+    print "appending\n";
+    appendQlist(\@files);
+  }elsif($cmd eq '-p'){
+    print "prepending\n";
+    prependQlist(\@files, 'off');
+  }elsif($cmd eq '-o'){
+    print "overwriting\n";
+    overwriteQlist(\@files);
+  }elsif($cmd eq '-w'){
+    print 
+    print "making playlist with " . scalar(@files) . " files\n";
+    print "write to file: ";
+    my $file = <STDIN>;
+    $file = `echo -n $file`; #is there a better way to do a shell interpret?
+    open FH, "> $file" or die "could not open file $file\n";
+    print FH join "\n", @files;
+    print FH "\n" if @files > 0;
+    close FH;
+  }elsif($cmd eq '-r'){
+    print "appending " . scalar(@files) . " files and reshuffling\n";
+    prependQlist(\@files, 'on');
   }
 }
 
@@ -276,8 +306,10 @@ sub showQuery(){
   system 'echo', '-ne', $out;
 }
 
-sub prependQlist($){
+sub prependQlist($$){
   my @files = @{shift()};
+  my $shuffle = shift;
+
   for my $file(@files){
     $file =~ s/\n*$/\n/;
   }
@@ -285,8 +317,19 @@ sub prependQlist($){
   my @existingFiles = -e $QLIST ? `cat $QLIST` : ();
   @files = (@files, @existingFiles);
 
+  @files = List::Util::shuffle(@files) if $shuffle eq 'on';
+
   open FH, "> $QLIST" or die "Could not write to $QLIST";
   print FH @files;
+  close FH;
+}
+
+sub overwriteQlist($){
+  my @files = @{shift()};
+
+  open FH, "> $QLIST" or die "Could not write to $QLIST";
+  print FH join "\n", @files;
+  print FH "\n" if @files > 0;
   close FH;
 }
 
@@ -344,7 +387,9 @@ sub prompt(\@){
     . "a     - append files to $QLIST\n"
     . "p     - prepend files to $QLIST 'Add to play queue'\n"
     . "o     - overwrite $QLIST with files\n"
-    . "w     - write to a file you specify\n";
+    . "w     - write to a file you specify\n"
+    . "r     - append files to $QLIST and (re)shuffle the whole thing\n"
+    ;
 
   my $key = key;
   while($key eq ' '){
@@ -363,7 +408,19 @@ sub prompt(\@){
   }elsif($key eq "a"){
     appendQlist(\@files);
   }elsif($key eq "p"){
-    prependQlist(\@files);
+    prependQlist(\@files, 'off');
+  }elsif($key eq "o"){
+    overwriteQlist(\@files);
+  }elsif($key eq "w"){
+    print "write to file: ";
+    my $file = <STDIN>;
+    $file = `echo -n $file`; #is there a better way to do a shell interpret?
+    open FH, "> $file" or die "could not open file $file\n";
+    print FH join "\n", @files;
+    print FH "\n" if @files > 0;
+    close FH;
+  }elsif($key eq "r"){
+    prependQlist(\@files, 'on');
   }
 }
 
@@ -408,8 +465,8 @@ sub gui(){
     }elsif($cmd eq 'END'){
       $pos = length $query;
     }elsif($cmd eq 'ENTER'){
-      system "clear";
       my @files = fetch $query;
+      system "clear";
       prompt @files;
       system "clear";
     }
