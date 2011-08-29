@@ -17,6 +17,7 @@ sub showQuery();
 sub gui();
 
 #prefs
+our $QPREFS = `echo -n \$HOME/.qprefs`;
 our $qdb = `echo -n \$HOME/.qdb`;
 our $qdbExec = 'qdb';
 our $flacmirrorExec = 'flacmirror';
@@ -32,11 +33,13 @@ our $offset = 0;
 
 sub main(){
   loadPrefs;
-
+  
   if($ARGV[0] eq '-a'){
-    shift;
+    shift @ARGV;
     my $query = join ' ', @ARGV;
-    fetch $query, 'on';
+    my @files = fetch $query;
+    @files = List::Util::shuffle(@files);
+    appendQlist(\@files);
     exit 0;
   }
 
@@ -49,7 +52,7 @@ sub main(){
 }
 
 sub loadPrefs(){
-  for my $line(`cat ~/.qprefs`){
+  for my $line(-e $QPREFS ? `cat ~/.qprefs` : ()){
     if($line =~ /^QDB=\s*(.*)/i){
       $qdb = `echo -n $1`;
     }elsif($line =~ /^QDB_EXEC=\s*(.*)/i){
@@ -273,7 +276,21 @@ sub showQuery(){
   system 'echo', '-ne', $out;
 }
 
-sub appendQlist(\@){
+sub prependQlist($){
+  my @files = @{shift()};
+  for my $file(@files){
+    $file =~ s/\n*$/\n/;
+  }
+  
+  my @existingFiles = -e $QLIST ? `cat $QLIST` : ();
+  @files = (@files, @existingFiles);
+
+  open FH, "> $QLIST" or die "Could not write to $QLIST";
+  print FH @files;
+  close FH;
+}
+
+sub appendQlist($){
   my @files = @{shift()};
 
   open FH, ">> $QLIST" or die "Could not append to $QLIST";
@@ -325,6 +342,7 @@ sub prompt(\@){
     . "space - toggle shuffle (currently $shuffle)\n"
     . "enter - append files to $QLIST and ensure playing\n"
     . "a     - append files to $QLIST\n"
+    . "p     - prepend files to $QLIST 'Add to play queue'\n"
     . "o     - overwrite $QLIST with files\n"
     . "w     - write to a file you specify\n";
 
@@ -340,8 +358,12 @@ sub prompt(\@){
   }
 
   if($key eq "\n"){
-    appendQlist(@files);
-    system "qcmd start";
+    appendQlist(\@files);
+    system "qcmd start > /dev/null 2>/dev/null &";
+  }elsif($key eq "a"){
+    appendQlist(\@files);
+  }elsif($key eq "p"){
+    prependQlist(\@files);
   }
 }
 
@@ -387,7 +409,7 @@ sub gui(){
       $pos = length $query;
     }elsif($cmd eq 'ENTER'){
       system "clear";
-      my @files = fetch $query, 'on';
+      my @files = fetch $query;
       prompt @files;
       system "clear";
     }
