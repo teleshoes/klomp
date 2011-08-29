@@ -1,0 +1,40 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use Time::HiRes qw(sleep);
+use Term::ReadKey;
+
+my $QLIST = `echo -n \$HOME/.qlist`;
+my $QCUR = `echo -n \$HOME/.qcur`;
+
+my $lib = `echo -n \$HOME/Desktop/Music/Library`;
+my $flacLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
+
+while(1){
+  sleep 0.5;
+  system "clear";
+  my ($width, $height) = Term::ReadKey::GetTerminalSize;
+ 
+  my $cur = 'not playing';
+  if(-e $QCUR){
+    $cur = `cat $QCUR`;
+  }
+  my @list;
+  if(-e $QLIST){
+    @list = `cat $QLIST`;
+  }
+  chomp $cur;
+  print scalar(@list) . " files\n";
+  print substr($cur, 0, $width-2) . "\n";
+
+  my $max = $height - 3;
+  for(my $i=0; $i<@list and $i<$max; $i++){
+    my $file = $list[$i];
+    chomp $file;
+    $file =~ s/^$lib//;
+    $file =~ s/^$flacLib//;
+    my $line = "$i: $file";
+    $line = substr $line, 0, $width-2;
+    print "$line\n";
+  }
+}
