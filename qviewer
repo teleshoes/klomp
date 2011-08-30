@@ -4,17 +4,32 @@ use warnings;
 use Time::HiRes qw(sleep);
 use Term::ReadKey;
 
-my $QLIST = `echo -n \$HOME/.qlist`;
-my $QCUR = `echo -n \$HOME/.qcur`;
+sub printQcur();
+sub formatClear($$);
+sub formatLines(\@$$);
+sub doQcmd();
+sub key();
+sub interpretKey($);
 
-my $lib = `echo -n \$HOME/Desktop/Music/Library`;
-my $flacLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
-my $n900lib = `echo -n /home/wolke/Desktop/Music/Library`;
-my $n900flacLib = `echo -n /home/wolke/Desktop/Music/flacmirror`;
+our $QLIST = `echo -n \$HOME/.qlist`;
+our $QCUR = `echo -n \$HOME/.qcur`;
 
-while(1){
-  sleep 0.5;
+our $lib = `echo -n \$HOME/Desktop/Music/Library`;
+our $flacLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
+our $n900lib = `echo -n /home/wolke/Desktop/Music/Library`;
+our $n900flacLib = `echo -n /home/wolke/Desktop/Music/flacmirror`;
+
+sub main(){
   system "clear";
+  if(fork){
+    doQcmd while 1;
+  }else{
+    printQcur while 1;
+  }
+}
+
+sub printQcur(){
+  sleep 0.5;
   my ($width, $height) = Term::ReadKey::GetTerminalSize;
  
   my $cur = 'not playing';
@@ -26,19 +41,150 @@ while(1){
     @list = `cat $QLIST`;
   }
   chomp $cur;
-  print scalar(@list) . " files\n";
-  print substr($cur, 0, $width-2) . "\n";
+  my @lines;
+  push @lines, scalar(@list) . " files";
+  push @lines, $cur;
 
-  my $max = $height - 3;
-  for(my $i=0; $i<@list and $i<$max; $i++){
+  my $max = @list;
+  $max = $height-2 if $height-2 < $max;
+
+  @list = @list[0 .. $max-1];
+
+  for(my $i=0; $i<@list; $i++){
     my $file = $list[$i];
     chomp $file;
     $file =~ s/^$lib//;
     $file =~ s/^$flacLib//;
     $file =~ s/^$n900lib//;
     $file =~ s/^$n900flacLib//;
-    my $line = "$i: $file";
-    $line = substr $line, 0, $width-2;
-    print "$line\n";
+    push @lines, "$i: $file";
+  }
+
+  my $out = ''
+    . formatClear($width, $height)
+    . formatLines(@lines, $width, $height)
+    ;
+  system 'echo', '-ne', $out;
+}
+
+sub formatClear($$){
+  my $width = shift;
+  my $height = shift;
+  my $out = '';
+  for(my $i=1; $i<=$height+1; $i++){
+    $out .= "\\033[$i;0H" . ' 'x$width;
+  }
+  return $out;
+}
+
+sub formatLines(\@$$){
+  my @lines = @{shift()};
+  my $width = shift;
+  my $height = shift;
+ 
+  my $topLimit = $height-2;
+  $topLimit = $#lines if $topLimit > $#lines;
+
+  my $out = '';
+  my $curLine = 2;
+  for my $line(@lines[0 .. $topLimit]){
+    if(length $line > $width){
+      $line = substr $line, 0, $width;
+    }
+    $out .= "\\033[$curLine;0H$line";
+    $curLine++;
+  }
+  return $out;
+}
+
+sub doQcmd(){
+  my $key = key;
+  my $cmd = interpretKey $key;
+  $cmd = $key if not defined $cmd;
+  if($cmd eq 'UP'){
+    system "qcmd seek 60 &";
+  }elsif($cmd eq 'DOWN'){
+    system "qcmd seek -60";
+  }elsif($cmd eq 'LEFT'){
+    system "qcmd seek -10 &";
+  }elsif($cmd eq 'RIGHT'){
+    system "qcmd seek 10 &";
+  }elsif($cmd eq 'ENTER'){
+    system "qcmd next &";
+  }elsif($cmd eq '<'){
+    system "qcmd prev &";
+  }elsif($cmd eq '>'){
+    system "qcmd next &";
+  }elsif($cmd eq 'ESCAPE' or $cmd eq 'q'){
+    system "qcmd stop &";
+  }elsif($cmd eq ' ' or $cmd eq 'p'){
+    system "qcmd pause &";
   }
 }
+
+sub key(){
+  my $BSD = -f '/vmunix';
+  if ($BSD) {
+    system "stty cbreak /dev/tty 2>&1";
+  }else {
+    system "stty", '-icanon', 'eol', "\001";
+  }
+  my $key = getc(STDIN);
+  if ($BSD) {
+    system "stty -cbreak /dev/tty 2>&1";
+  }
+  else {
+    system "stty", 'icanon';
+    system "stty", 'eol', '^@'; # ascii null
+  }
+  return $key;
+}
+
+sub interpretKey($){
+  my $key = shift;
+  $key = ord $key;
+  if($key == 127){
+    return 'BACKSPACE';
+  }elsif($key == 10){
+    return 'ENTER';
+  }elsif($key == 27){
+    my $key2 = ord key;
+    if($key2 == 91){
+      my $key3 = ord key;
+      if($key3 == 65){
+        return 'UP';
+      }elsif($key3 == 66){
+        return 'DOWN';
+      }elsif($key3 == 68){
+        return 'LEFT';
+      }elsif($key3 == 67){
+        return 'RIGHT';
+      }elsif($key3 == 53){
+        key; #generates a ~
+        return 'PGUP';
+      }elsif($key3 == 54){
+        key; #generates a ~
+        return 'PGDN';
+      }elsif($key3 == 51){
+        my $key4 = ord key;
+        if($key4 == 126){
+          return 'DELETE';
+        }
+      }
+    }elsif($key2 == 27){
+      return 'ESCAPE';
+    }elsif($key2 == 79){
+      my $key3 = ord key;
+      if($key3 == 72){
+        return 'HOME';
+      }elsif($key3 == 70){
+        return 'END';
+      }
+    }else{
+      return $key2;
+    }
+  }
+  return undef;
+}
+
+&main;
