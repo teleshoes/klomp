@@ -29,7 +29,8 @@ if($cmd eq 'start' or $cmd eq 'restart'){
   if($? != 0){
     ensureRunning();
   }else{
-    system "echo pause > /tmp/qmplayer_fifo";
+    system "kill -9 `cat /tmp/qmplayer_pid`";
+    #system "echo pause > /tmp/qmplayer_fifo";
   }
 }elsif($cmd eq 'next'){
   system "echo next > ~/.qcur";
