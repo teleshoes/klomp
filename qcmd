@@ -30,6 +30,7 @@ if($cmd eq 'start' or $cmd eq 'restart'){
     ensureRunning();
   }else{
     system "kill -9 `cat /tmp/qmplayer_pid`";
+    system "killall mplayer";
     #system "echo pause > /tmp/qmplayer_fifo";
   }
 }elsif($cmd eq 'next'){
