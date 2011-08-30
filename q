@@ -349,7 +349,7 @@ sub flacmirror($$){
   $libpath =~ s/\/[^\/]+$/\/flacmirror/;
   #replace .flac with .ogg, case insensitive on the 'flac'
   $relpath =~ s/\.flac$/\.ogg/i;
-  return $relpath;
+  return "$libpath/$relpath";
 }
 
 sub fetch($){
