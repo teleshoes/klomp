@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Term::ReadKey;
+use Time::HiRes qw(time);
 use List::Util 'shuffle'; 
 
 sub fetch($);
@@ -15,8 +16,10 @@ sub formatClear($$);
 sub formatLines(\@$$);
 sub showQuery();
 sub gui();
+sub getSomeKeys();
 
 #prefs
+our $keyDelay = 0.4;
 our $QPREFS = `echo -n \$HOME/.qprefs`;
 our $qdb = `echo -n \$HOME/.qdb`;
 our $qdbExec = 'qdb';
@@ -34,6 +37,7 @@ sub main(){
   loadPrefs;
  
   my $cmd = $ARGV[0];
+  $cmd = '' if not defined $cmd;
   if($cmd !~ /^-(a|p|o|w|r)$/i){
     my $query = join ' ', @ARGV;
     system "clear";
@@ -97,68 +101,6 @@ sub loadPrefs(){
   }
 }
 
-sub key(){
-  my $BSD = -f '/vmunix';
-  if ($BSD) {
-    system "stty cbreak /dev/tty 2>&1";
-  }else {
-    system "stty", '-icanon', 'eol', "\001";
-  }
-  my $key = getc(STDIN);
-  if ($BSD) {
-    system "stty -cbreak /dev/tty 2>&1";
-  }
-  else {
-    system "stty", 'icanon';
-    system "stty", 'eol', '^@'; # ascii null
-  }
-  return $key;
-}
-
-sub interpretKey($){
-  my $key = shift;
-  $key = ord $key;
-  if($key == 127){
-    return 'BACKSPACE';
-  }elsif($key == 10){
-    return 'ENTER';
-  }elsif($key == 27){
-    my $key2 = ord key;
-    if($key2 == 91){
-      my $key3 = ord key;
-      if($key3 == 65){
-        return 'UP';
-      }elsif($key3 == 66){
-        return 'DOWN';
-      }elsif($key3 == 68){
-        return 'LEFT';
-      }elsif($key3 == 67){
-        return 'RIGHT';
-      }elsif($key3 == 53){
-        key; #generates a ~
-        return 'PGUP';
-      }elsif($key3 == 54){
-        key; #generates a ~
-        return 'PGDN';
-      }elsif($key3 == 51){
-        my $key4 = ord key;
-        if($key4 == 126){
-          return 'DELETE';
-        }
-      }
-    }elsif($key2 == 79){
-      my $key3 = ord key;
-      if($key3 == 72){
-        return 'HOME';
-      }elsif($key3 == 70){
-        return 'END';
-      }
-    }else{
-      return $key2;
-    }
-  }
-  return undef;
-}
 
 sub putCursor($$){
   my $line = shift;
@@ -253,6 +195,7 @@ sub showQuery(){
 
   my %artists;
   for my $songRow(@songRows){
+    utf8::decode($songRow);
     chomp $songRow;
     my @cols = parseCsv($songRow);
     my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
@@ -391,11 +334,11 @@ sub prompt(\@){
     . "r     - append files to $QLIST and (re)shuffle the whole thing\n"
     ;
 
-  my $key = key;
+  my $key = ReadKey 0;
   while($key eq ' '){
     $shuffle = $shuffle eq 'on' ? 'off' : 'on';
     print "shuffle is now $shuffle\n";
-    $key = key;
+    $key = ReadKey 0;
   }
 
   if($shuffle eq 'on'){
@@ -424,59 +367,140 @@ sub prompt(\@){
   }
 }
 
-sub gui(){
-  my $choice = key; #blocks
-  my $cmd = interpretKey $choice;
-  if(defined $cmd){
-    if($cmd eq 'BACKSPACE'){
-      if($pos > 0){
-        my $prefix = substr $query, 0, $pos-1;
-        my $suffix = substr $query, $pos;
-        $query = "$prefix$suffix";
-        $pos--;
-      } 
-    }elsif($cmd eq 'DELETE'){
-      if($pos < length $query){
-        my $prefix = substr $query, 0, $pos;
-        my $suffix = substr $query, $pos+1;
-        $query = "$prefix$suffix";
-      }
-    }elsif($cmd eq 'UP'){
-      $offset--;
-      $offset = 0 if $offset < 0;
-    }elsif($cmd eq 'DOWN'){
-      $offset++;
-    }elsif($cmd eq 'LEFT'){
-      if($pos > 0){
-        $pos--;
-      }
-    }elsif($cmd eq 'RIGHT'){
-      if($pos < length $query){
-        $pos++;
-      }
-    }elsif($cmd eq 'PGUP'){
-      my ($width, $height) = Term::ReadKey::GetTerminalSize;
-      $offset -= $height;
-    }elsif($cmd eq 'PGDN'){
-      my ($width, $height) = Term::ReadKey::GetTerminalSize;
-      $offset += $height;
-    }elsif($cmd eq 'HOME'){
-      $pos = 0;
-    }elsif($cmd eq 'END'){
-      $pos = length $query;
-    }elsif($cmd eq 'ENTER'){
-      my @files = fetch $query;
-      system "clear";
-      prompt @files;
-      system "clear";
+sub modifyQuery($){
+  my $key = shift;
+  if($key eq 'BACKSPACE'){
+    if($pos > 0){
+      my $prefix = substr $query, 0, $pos-1;
+      my $suffix = substr $query, $pos;
+      $query = "$prefix$suffix";
+      $pos--;
+    } 
+  }elsif($key eq 'DELETE'){
+    if($pos < length $query){
+      my $prefix = substr $query, 0, $pos;
+      my $suffix = substr $query, $pos+1;
+      $query = "$prefix$suffix";
     }
+  }elsif($key eq 'UP'){
+    $offset--;
+    $offset = 0 if $offset < 0;
+  }elsif($key eq 'DOWN'){
+    $offset++;
+  }elsif($key eq 'LEFT'){
+    if($pos > 0){
+      $pos--;
+    }
+  }elsif($key eq 'RIGHT'){
+    if($pos < length $query){
+      $pos++;
+    }
+  }elsif($key eq 'PGUP'){
+    my ($width, $height) = Term::ReadKey::GetTerminalSize;
+    $offset -= $height;
+  }elsif($key eq 'PGDN'){
+    my ($width, $height) = Term::ReadKey::GetTerminalSize;
+    $offset += $height;
+  }elsif($key eq 'HOME'){
+    $pos = 0;
+  }elsif($key eq 'END'){
+    $pos = length $query;
+  }elsif($key eq 'ENTER'){
+    my @files = fetch $query;
+    system "clear";
+    prompt @files;
+    system "clear";
   }else{
     my $prefix = substr $query, 0, $pos;
     my $suffix = substr $query, $pos;
-    $query = "$prefix$choice$suffix";
-    $pos += length $choice;
+    $query = "$prefix$key$suffix";
+    $pos += length $key;
+  }
+}
+
+sub gui(){
+  for my $key(@{getSomeKeys()}){
+    modifyQuery $key;
   }
   showQuery;
+}
+
+sub getSomeInput(){
+  ReadMode 3;
+  my @bytes;
+  my $start = time;
+  while(1){
+    my $byte = ReadKey(-1);
+    last if not defined $byte and time - $start > $keyDelay;
+    push @bytes, $byte if defined $byte;
+  }
+  return \@bytes;
+}
+
+#assumes utf8
+sub getSomeKeys(){
+  my $enter = 'ENTER';
+  my $bkspc = 'BACKSPACE';
+  my @cmds = (
+    ['[', 'A'], 'UP',
+    ['[', 'B'], 'DOWN',
+    ['[', 'C'], 'RIGHT',
+    ['[', 'D'], 'LEFT',
+    ['O', 'H'], 'HOME',
+    ['O', 'F'], 'END',
+    ['[', '2', '~'], 'INSERT',
+    ['[', '3', '~'], 'DELETE',
+    ['[', '5', '~'], 'PGUP',
+    ['[', '6', '~'], 'PGDN',
+  );
+
+  my @keys;
+  my @bytes = @{getSomeInput()};
+  for(my $i=0; $i<@bytes; $i++){
+    if(ord $bytes[$i] == 0x1b){
+      my $k1 = $i+1<=$#bytes ? $bytes[$i+1] : '';
+      my $k2 = $i+2<=$#bytes ? $bytes[$i+2] : '';
+      my $k3 = $i+3<=$#bytes ? $bytes[$i+3] : '';
+      for(my $c=0; $c<@cmds; $c+=2){
+        my @cmdArr= @{$cmds[$c]};
+        my $cmd= $cmds[$c+1];
+        if(@cmdArr == 2 and $cmdArr[0] eq $k1 and $cmdArr[1] eq $k2){
+          push @keys, $cmd;
+          $i+=2;
+          last;
+        }elsif(@cmdArr == 3 and
+               $cmdArr[0] eq $k1 and
+               $cmdArr[1] eq $k2 and
+               $cmdArr[2] eq $k3){
+          push @keys, $cmd;
+          $i+=3;
+          last;
+        }
+      }
+    }elsif($bytes[$i] eq "\n"){
+      push @keys, $enter;
+    }elsif(ord $bytes[$i] == 0x7f){
+      push @keys, $bkspc;
+    }elsif(ord $bytes[$i] >= 0xc2 and ord $bytes[$i] <= 0xdf){
+      my $b1 = $bytes[$i];
+      my $b2 = $i+1<=$#bytes ? $bytes[$i+1] : '';
+      my $key = "$b1$b2";
+      $i+=1;
+      utf8::decode($key);
+      push @keys, $key; 
+    }elsif(ord $bytes[$i] >= 0xe0 and ord $bytes[$i] <= 0xef){
+      my $b1 = $bytes[$i];
+      my $b2 = $i+1<=$#bytes ? $bytes[$i+1] : '';
+      my $b3 = $i+2<=$#bytes ? $bytes[$i+2] : '';
+      my $key = "$b1$b2$b3";
+      $i+=2;
+      utf8::decode($key);
+      push @keys, $key;
+    }else{
+      push @keys, $bytes[$i];
+    }
+  }
+  return \@keys;
 }
 
 &main;
