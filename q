@@ -429,6 +429,10 @@ sub getSomeInput(){
   ReadMode 3;
   my @bytes;
   my $start = time;
+
+  my $blockedByte = ReadKey(0);
+  push @bytes, $blockedByte if defined $blockedByte;
+  
   while(1){
     my $byte = ReadKey(-1);
     last if not defined $byte and time - $start > $keyDelay;
