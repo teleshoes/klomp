@@ -9,6 +9,8 @@ my $QCUR = `echo -n \$HOME/.qcur`;
 
 my $lib = `echo -n \$HOME/Desktop/Music/Library`;
 my $flacLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
+my $n900lib = `echo -n /home/wolke/Desktop/Music/Library`;
+my $n900flacLib = `echo -n /home/wolke/Desktop/Music/flacmirror`;
 
 while(1){
   sleep 0.5;
@@ -33,6 +35,8 @@ while(1){
     chomp $file;
     $file =~ s/^$lib//;
     $file =~ s/^$flacLib//;
+    $file =~ s/^$n900lib//;
+    $file =~ s/^$n900flacLib//;
     my $line = "$i: $file";
     $line = substr $line, 0, $width-2;
     print "$line\n";
