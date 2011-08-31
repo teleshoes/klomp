@@ -27,23 +27,68 @@ sub main(){
     printQcur while 1;
   }
 }
+sub hms($){
+  my $sex = shift;
+  my $h = int($sex / (60*60));
+  my $m = int($sex / (60));
+  my $s = int($sex % (60));
+  return ($h, $m, $s);
+}
+sub parseTime($$){
+  my $pos = shift;
+  my $len = shift;
+  my ($pH, $pM, $pS) = hms $pos;
+  my ($lH, $lM, $lS) = hms $len;
+  my ($newPos, $newLen) = ('', '');
+  if($pH > 0 or $lH > 0){
+    my $hlen = length $pH;
+    $hlen = length $lH if length $lH > $hlen;
+    $newPos .= '0' x ($hlen - length $pH) . $pH . ':';
+    $newLen .= '0' x ($hlen - length $lH) . $lH . ':';
+  }
+  $newPos .= '0' x (2 - length $pM) . $pM . ':';
+  $newLen .= '0' x (2 - length $lM) . $lM . ':';
+
+  $newPos .= '0' x (2 - length $pS) . $pS;
+  $newLen .= '0' x (2 - length $lS) . $lS;
+
+  return ($newPos, $newLen);
+}
+
+sub parseCur($){
+  my $cur = shift;
+  if($cur =~ /^([0-9\-\.]+) ([0-9\-\.]+) (.*)/){
+    my $pos = $1;
+    my $length = $2;
+    my $path = $3;
+
+    ($pos, $length) = parseTime $pos, $length;
+  
+    my @lines = split /\n/, $cur;
+    my $artist = $lines[0];
+    my $title = $lines[1];
+    for my $line(@lines){
+      if($line =~ /^artist(?:_guess)?=(.*)/){
+        $artist = $1 if ($1 ne '');
+      }elsif($line =~ /^title(?:_guess)?=(.*)/){
+        $title = $1 if ($1 ne '');
+      }
+    }
+    return "$pos/$length $artist - $title\n";
+  }
+  return "no current song\n";
+}
 
 sub printQcur(){
   sleep 0.5;
   my ($width, $height) = Term::ReadKey::GetTerminalSize;
  
-  my $cur = 'not playing';
-  if(-e $QCUR){
-    $cur = `cat $QCUR`;
-  }
-  my @list;
-  if(-e $QLIST){
-    @list = `cat $QLIST`;
-  }
-  chomp $cur;
+  my $cur = -e $QCUR ? `cat $QCUR` : '';
+  my @list = -e $QLIST ? `cat $QLIST` : ();
+  
   my @lines;
+  push @lines, parseCur $cur;
   push @lines, scalar(@list) . " files";
-  push @lines, $cur;
 
   my $max = @list;
   $max = $height-2 if $height-2 < $max;
@@ -86,7 +131,7 @@ sub formatLines(\@$$){
   $topLimit = $#lines if $topLimit > $#lines;
 
   my $out = '';
-  my $curLine = 2;
+  my $curLine = 1;
   for my $line(@lines[0 .. $topLimit]){
     if(length $line > $width){
       $line = substr $line, 0, $width;
