@@ -2,36 +2,22 @@
 use strict;
 use warnings;
 
-sub qNext($);
-sub qPrev($);
-
 if(not fork){
+  system "killall qupdater";
   exec "~/q/qupdater &";
 }
 
 my $QCUR = `echo -n \$HOME/.qcur`;
-my $QLIST = `echo -n \$HOME/.qlist`;
-my $QHIST = `echo -n \$HOME/.qhistory`;
 
 if(not -e $QCUR){
   die "$QCUR does not exist\n";
 }
-
 my $cur = `cat $QCUR`;
-my $initPos;
-my $len;
-my $file;
-if($cur =~ /^prev/){
-  qPrev(undef);
-  exec $0;
-}
-if($cur =~ /^next/){
-  qNext(undef);
-  exec $0;
-}
+my ($initPos, $len, $file);
 if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (.*)/){
   die "Current file $QCUR malformed";
 }
+
 $initPos = $1;
 $len = $2;
 $file = $3;
@@ -60,23 +46,18 @@ while($line !~ /^Starting playback.../){
   }
 }
 
-my $posLine;
-my $lenLine;
+my $pos = undef;
+my $len = undef;
 
 sub update($$){
   my $pos = shift;
   my $len = shift;
-  $pos =~ s/.*=([^\n]+)\n/$1/s;
-  $len =~ s/.*=([^\n]+)\n/$1/s;
   my $cur = `cat $QCUR`;
-  if($cur =~ /^next/){
-    print "next signalled\n";
-    qNext($file);
-    exec $0;
-  }elsif($cur =~ /^prev/){
-    print "prev signalled\n";
-    qPrev($file);
-    exec $0;
+  if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (.*)/){
+    die "Current file $QCUR malformed";
+  }
+  if($3 ne $file){
+    die "Qmplayer thinks a different file is playing than whats in $QCUR\n";
   }
   open CURFILE, "> $QCUR";
   print CURFILE "$pos $len $file\n";
@@ -93,82 +74,20 @@ while(1){
     die "fifo $FIFO is broken\n";
   }
 
-  my $line = '';
-  while($line !~ /^ANS_TIME_POSITION=/){
-    $line = <FH>;
-    if(not defined $line){
-      die "i guess its dead...\n";
-    }
-    if($line =~ /^Exiting... \(End of file\)/){
-      qNext($file);
-      exec $0;
-    }
-    if($line =~ /^ANS_LENGTH/){
-      $lenLine = $line;
-    }elsif($line =~ /^ANS_TIME_POSITION/){
-      $posLine = $line;
-    }
+  my $line = <FH>;
+  if(not defined $line){
+    die "i guess its dead...\n";
   }
-  update $posLine, $lenLine;
-}
-
-sub popFile($){
-  my $file = shift;
-  if(not -e $file){
-   return undef;
+  if($line =~ /^Exiting... \(End of file\)/){
+    exec "qcmd next";
   }
-  my @items = `cat $file`;
-  if(@items == 0){
-    return undef;
-  }
-  my $item = shift @items;
-
-  open FH, "> $file";
-  print FH @items;
-  close FH;
-
-  return $item;
-}
-
-sub pushFile($$){
-  my $file = shift;
-  my $item = shift;
-  $item =~ s/\n*$/\n/;
-  my @items = -e $file ? `cat $file` : ();
-  @items = ($item, @items);
-  open FH, "> $file";
-  print FH @items;
-  close FH;
-}
-
-sub setCur($){
-  my $item = shift;
-  open FH, "> $QCUR";
-  print FH "0.0 0.0 $item";
-  close FH;
-}
-
-sub prevnext($$$){
-  my $srcFile = shift;
-  my $destFile = shift;
-  my $oldCur = shift;
-
-  my $cur = popFile $srcFile;
-  if(defined $cur){
-    if(defined $oldCur and $oldCur !~ /^(next|prev)$/){
-      pushFile $destFile, $oldCur;
-    }
-    setCur $cur;
+  if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
+    $len = $1;
+    update $pos, $len if defined $pos and defined $len;
+  }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
+    $pos = $1;
+    update $pos, $len if defined $pos and defined $len;
   }
 }
 
-sub qNext($){
-  my $oldCur = shift;
-  prevnext $QLIST, $QHIST, $oldCur;
-}
-
-sub qPrev($){
-  my $oldCur = shift;
-  prevnext $QHIST, $QLIST, $oldCur;
-}
 
