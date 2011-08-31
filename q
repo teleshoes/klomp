@@ -177,7 +177,12 @@ sub isFullwidth($){
   my $c = shift;
   utf8::decode $c;
   my $p = ord $c;
-  if(($p >= 0x2000 and $p <= 0xff60) or ($p > 0xffa0)){
+  if(0
+     or ($p >= 0x3041 and $p <= 0xfa2d)
+     or ($p >= 0xfe30 and $p <= 0xfe6b)
+     or ($p >= 0xff01 and $p <= 0xff60)
+     or ($p >= 0xffe0 and $p <= 0xffee)
+  ){
     return 1;
   }else{
     return 0;
