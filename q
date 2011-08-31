@@ -194,8 +194,10 @@ sub strwidth($){
   my $len = length $s;
   my $w=0;
   for(my $i=0; $i<$len; $i++){
+    my $c = substr $s, $i, 1;
     $w++;
-    $w++ if isFullwidth substr $s, $i, 1;
+    $w++ if isFullwidth $c;
+    $w += 8-($i % 8)-1 if $c eq "\t";
   }
   return $w;
 }
