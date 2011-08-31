@@ -2,46 +2,143 @@
 use strict;
 use warnings;
 
+sub isN900();
+sub start();
+sub stop();
+sub isRunning();
+sub qNext();
+sub qPrev();
+
 my $QCUR = `echo -n \$HOME/.qcur`;
 my $QLIST = `echo -n \$HOME/.qlist`;
 my $QHIST = `echo -n \$HOME/.qhistory`;
+my $FIFO = '/tmp/qmplayer_fifo';
+my $PID_FILE = '/tmp/qmplayer_pid';
 
-sub ensureRunning(){
+sub main(){
+  my $cmd = $ARGV[0];
+  $cmd = '' if not defined $cmd;
+
+  if($cmd eq 'start'){
+    stop;
+    start;
+  }elsif($cmd eq 'stop'){
+    stop;
+  }elsif($cmd eq 'pause'){
+    if(not isRunning){
+      stop;
+      start;
+    }else{
+      system "echo pause > $FIFO";
+    }
+  }elsif($cmd eq 'next'){
+    stop;
+    start if qNext();
+  }elsif($cmd eq 'prev'){
+    stop;
+    start if qPrev();
+  }elsif($cmd eq 'reset'){
+    system "echo -n > $QLIST";
+    system "echo -n > $QHIST";
+  }elsif(@ARGV > 0){
+    system "echo @ARGV > $FIFO";
+  }else{
+    die "Usage: $0 [start|stop|pause|next|prev|reset]
+    or $0 <mplayer slave input> {e.g.: seek 10}\n";
+  }
+}
+
+sub isN900(){
+  my $hn = `echo \$HOSTNAME`;
+  return $hn =~ /n900/i ? 1 : 0;
+}
+sub defaultPlaylist(){
   my @qlist = -e $QLIST ? `cat $QLIST` : ();
   if(@qlist == 0){
     system "q -a";
   }
-  my $qcur = -e $QCUR ? `cat $QCUR` : '';
-  if($qcur !~ /(^prev)|(^next)|(^[0-9\-\.]+ [0-9\-\.]+)/){
-    system "echo next > $QCUR";
-  }
+}
+sub start(){
   system "qmplayer";
 }
 
-my $cmd = shift;
-if($cmd eq 'start' or $cmd eq 'restart'){
+sub stop(){
   system "kill -9 `cat /tmp/qmplayer_pid`";
-  ensureRunning;
-}elsif($cmd eq 'stop'){
-  system "kill -9 `cat /tmp/qmplayer_pid`";
-}elsif($cmd eq 'pause'){
-  system "kill -0 `cat /tmp/qmplayer_pid`";
-  if($? != 0){
-    ensureRunning();
-  }else{
-    system "kill -9 `cat /tmp/qmplayer_pid`";
-    system "killall mplayer";
-    #system "echo pause > /tmp/qmplayer_fifo";
-  }
-}elsif($cmd eq 'next'){
-  system "echo next > ~/.qcur";
-}elsif($cmd eq 'prev'){
-  system "echo prev > ~/.qcur";
-}elsif($cmd eq 'reset'){
-  system "kill -9 `cat /tmp/qmplayer_pid`";
-  system "echo -n > $QCUR";
-  system "echo -n > $QLIST";
-  system "echo -n > $QHIST";
-}else{
-  system "echo $cmd @ARGV > /tmp/qmplayer_fifo";
+  system "killall mplayer" if isN900;
 }
+sub isRunning(){
+  system "kill -0 `cat /tmp/qmplayer_pid`";
+  return $? == 0 ? 1 : 0;
+}
+
+sub popFile($){
+  my $file = shift;
+  if(not -e $file){
+   return undef;
+  }
+  my @items = `cat $file`;
+  if(@items == 0){
+    return undef;
+  }
+  my $item = shift @items;
+
+  open FH, "> $file";
+  print FH @items;
+  close FH;
+
+  return $item;
+}
+
+sub pushFile($$){
+  my $file = shift;
+  my $item = shift;
+  $item =~ s/\n*$/\n/;
+  my @items = -e $file ? `cat $file` : ();
+  @items = ($item, @items);
+  open FH, "> $file";
+  print FH @items;
+  close FH;
+}
+
+sub getCur(){
+  my $cur = -e $QCUR ? `cat $QCUR` : '';
+  if($cur =~ /^[0-9\-\.]+ [0-9\-\.]+ (.*)$/){
+    return $1;
+  }else{
+    return undef;
+  }
+}
+
+sub setCur($){
+  my $item = shift;
+  open FH, "> $QCUR";
+  print FH "0.0 0.0 $item";
+  close FH;
+}
+
+sub prevnext($$){
+  my $srcFile = shift;
+  my $destFile = shift;
+  
+  my $oldCur = getCur;
+  my $cur = popFile $srcFile;
+  if(defined $cur){
+    if(defined $oldCur){
+      pushFile $destFile, $oldCur;
+    }
+    setCur $cur;
+    return 1;
+  }else{
+    return 0;
+  }
+}
+
+sub qNext(){
+  return prevnext $QLIST, $QHIST;
+}
+
+sub qPrev(){
+  return prevnext $QHIST, $QLIST;
+}
+
+&main;
