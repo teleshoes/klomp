@@ -16,6 +16,7 @@ sub formatLines(\@$$);
 sub showQuery();
 sub gui();
 sub getSomeKeys();
+sub shellQuiet(@);
 
 #prefs
 our $keyDelay = 0.4;
@@ -209,11 +210,12 @@ sub showQuery(){
  
   #limit controls the number of elements returned
   my $limit = 2*$height + $offset;
-  my $q = $query;
-  $q =~ s/'/'\\''/g;
   
-  my $columns = "artist album number title relpath";
-  my @songRows = `$qdbExec $qdb -s '$q' -l $limit --columns $columns`;
+  my @columns = qw(artist album number title relpath);
+  my @songRows = shellQuiet $qdbExec, $qdb,
+    '-s', $query,
+    '-l', $limit,
+    '--columns', @columns;
 
   my %artists;
   for my $songRow(@songRows){
@@ -321,9 +323,8 @@ sub flacmirror($$){
 sub fetch($){
   my $query = shift;
 
-  my $columns = "artist album number title relpath libpath";
-  my @songRows = `$qdbExec $qdb -s '$query' --columns $columns`;
-  
+  my @columns = qw(artist album number title relpath libpath);
+  my @songRows = shellQuiet $qdbExec, $qdb, '-s', $query, '--columns', @columns;
   my @files;
   for my $songRow(@songRows){
     chomp $songRow;
@@ -528,6 +529,21 @@ sub getSomeKeys(){
     }
   }
   return \@keys;
+}
+
+sub wrapTokens(@){
+  my @tokens;
+  for my $token(@_){
+    my $t = $token;
+    $t =~ s/'/'\\''/g;
+    push @tokens, "'$t'";
+  }
+  return @tokens;
+}
+
+sub shellQuiet(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd 2>/dev/null`;
 }
 
 &main;
