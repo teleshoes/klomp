@@ -6,9 +6,11 @@ sub isN900();
 sub start();
 sub stop();
 sub isRunning();
+sub shellQuiet(@);
 sub qNext();
 sub qPrev();
 
+my $QDB = `echo -n \$HOME/.qdb`;
 my $QCUR = `echo -n \$HOME/.qcur`;
 my $QLIST = `echo -n \$HOME/.qlist`;
 my $QHIST = `echo -n \$HOME/.qhistory`;
@@ -71,6 +73,24 @@ sub isRunning(){
   return $? == 0 ? 1 : 0;
 }
 
+sub wrapTokens(@){
+  my @tokens;
+  for my $token(@_){
+    my $t = $token;
+    $t =~ s/'/'\\''/g;
+    push @tokens, "'$t'";
+  }
+  return @tokens;
+}
+sub shellQuiet(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd 2>/dev/null`;
+}
+sub shell(@){
+  my $cmd = join ' ', wrapTokens(@_);
+  return `$cmd`;
+}
+
 sub popFile($){
   my $file = shift;
   if(not -e $file){
@@ -111,8 +131,11 @@ sub getCur(){
 
 sub setCur($){
   my $item = shift;
+  chomp $item;
+  my $info = shellQuiet 'qdb', $QDB, '-i', $item;
   open FH, "> $QCUR";
-  print FH "0.0 0.0 $item";
+  print FH "0.0 0.0 $item\n";
+  print FH $info;
   close FH;
 }
 
