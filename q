@@ -10,7 +10,6 @@ sub fetch($);
 sub loadPrefs();
 sub key();
 sub interpretKey($);
-sub putCursor($$);
 sub parseCsv($);
 sub formatClear($$);
 sub formatLines(\@$$);
@@ -102,12 +101,6 @@ sub loadPrefs(){
 }
 
 
-sub putCursor($$){
-  my $line = shift;
-  my $column = shift;
-  system "echo", "-e", "\\033[$line;${column}H"
-}
-
 sub parseCsv($){
   my $csv = shift;
   my @cols;
@@ -180,6 +173,28 @@ sub formatLines(\@$$){
   return $out;
 }
 
+sub isFullwidth($){
+  my $c = shift;
+  utf8::decode $c;
+  my $p = ord $c;
+  if(($p >= 0x2000 and $p <= 0xff60) or ($p > 0xffa0)){
+    return 1;
+  }else{
+    return 0;
+  }
+}
+
+sub strwidth($){
+  my $s = shift;
+  my $len = length $s;
+  my $w=0;
+  for(my $i=0; $i<$len; $i++){
+    $w++;
+    $w++ if isFullwidth substr $s, $i, 1;
+  }
+  return $w;
+}
+
 sub showQuery(){
   my @size = Term::ReadKey::GetTerminalSize;
   my $width = $size[0];
@@ -236,7 +251,8 @@ sub showQuery(){
   }
   
   my $promptLine = 1;
-  my $promptCol = $pos+1;
+  my $promptCol = strwidth(substr($query, 0, $pos)) + 1;
+
   my $out = ''
     . formatClear($width, $height)
     . "\\033[$promptLine;0H"
