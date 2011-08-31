@@ -10,14 +10,6 @@ system "echo $$ > $PID_FILE";
 
 while(1){
   sleep 0.5;
-  if(not -e $PID_FILE){
-    die "pid file $PID_FILE gone\n";
-  }
-  my $pid = `cat $PID_FILE`;
-  chomp $pid;
-  if($pid != $$){
-    die "new $0 started\n";
-  }
-  system "echo pausing_keep_force get_time_length >> $FIFO";
-  system "echo pausing_keep_force get_time_pos >> $FIFO";
+  system "echo pausing_keep_force get_time_length > $FIFO";
+  system "echo pausing_keep_force get_time_pos > $FIFO";
 }
