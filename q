@@ -39,7 +39,9 @@ sub main(){
   my $cmd = $ARGV[0];
   $cmd = '' if not defined $cmd;
   if($cmd !~ /^-(a|p|o|w|r)$/i){
-    my $query = join ' ', @ARGV;
+    $query = join ' ', @ARGV;
+    utf8::decode $query;
+    $pos = length $query;
     system "clear";
     showQuery;
     while(1){
@@ -219,7 +221,7 @@ sub showQuery(){
 
   my %artists;
   for my $songRow(@songRows){
-    utf8::decode($songRow);
+    utf8::decode $songRow;
     chomp $songRow;
     my @cols = parseCsv($songRow);
     my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
@@ -271,6 +273,8 @@ sub showQuery(){
     . "\\033[$promptLine;${promptCol}H"
     ;
 
+  utf8::decode($out);
+  utf8::encode($out);
   system 'echo', '-ne', $out;
 }
 
@@ -334,11 +338,21 @@ sub fetch($){
     
     my $fullPath = "$libpath/$relpath";
     my $flacmirrorPath = flacmirror $libpath, $relpath;
+    my $path;
     if(not -e $fullPath and -e $flacmirrorPath){
-      push @files, $flacmirrorPath;
+      $path = $flacmirrorPath;
     }else{
-      push @files, $fullPath;
+      $path = $fullPath;
     }
+    my $info = ''
+     . "///\\\\\\artist=$artist"
+     . "///\\\\\\album=$album"
+     . "///\\\\\\number=$number"
+     . "///\\\\\\title=$title"
+     . "///\\\\\\query=$query"
+     ;
+    utf8::encode $info;
+    push @files, "$path$info";
   }
 
   return @files;
