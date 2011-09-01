@@ -170,6 +170,12 @@ sub doQcmd($){
   );
   my $cmd = $qcmdKeys{$key};
   system "qcmd $cmd > /dev/null 2> /dev/null &" if defined $cmd;
+  
+  #additional actions
+  if($key eq 'q'){
+    system "clear";
+    exit 0;
+  }
 }
 
 sub getSomeInput(){
