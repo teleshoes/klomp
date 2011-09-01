@@ -374,7 +374,9 @@ sub prompt(\@){
     . "r     - append files to $QLIST and (re)shuffle the whole thing\n"
     ;
 
+  ReadMode 3;
   my $key = ReadKey 0;
+  ReadMode 0;
   while($key eq ' '){
     $shuffle = $shuffle eq 'on' ? 'off' : 'on';
     print "shuffle is now $shuffle\n";
