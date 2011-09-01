@@ -472,7 +472,7 @@ sub getSomeInput(){
   push @bytes, $blockedByte if defined $blockedByte;
   
   while(1){
-    my $byte = ReadKey(-1);
+    my $byte = ReadKey($keyDelay);
     last if not defined $byte and time - $start > $keyDelay;
     push @bytes, $byte if defined $byte;
   }
