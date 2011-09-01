@@ -4,6 +4,8 @@ use warnings;
 use Time::HiRes qw(sleep);
 use Term::ReadKey;
 
+$SIG{'INT'} = sub{system "clear"; ReadMode 0; exit 0};
+
 sub printQcur();
 sub formatClear($$);
 sub formatLines(\@$$);
@@ -174,6 +176,7 @@ sub doQcmd($){
   #additional actions
   if($key eq 'q'){
     system "clear";
+    ReadMode 0;
     exit 0;
   }
 }

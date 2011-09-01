@@ -6,6 +6,8 @@ use Term::ReadKey;
 use Time::HiRes qw(time);
 use List::Util 'shuffle'; 
 
+$SIG{'INT'} = sub{system "clear"; ReadMode 0; exit 0};
+
 sub fetch($);
 sub loadPrefs();
 sub key();
