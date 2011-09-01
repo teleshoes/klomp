@@ -353,7 +353,8 @@ sub fetch($){
      . "///\\\\\\title=$title"
      . "///\\\\\\query=$query"
      ;
-    utf8::encode $info;
+    utf8::decode($info);
+    utf8::encode($info);
     push @files, "$path$info";
   }
 
