@@ -476,6 +476,7 @@ sub getSomeInput(){
     last if not defined $byte and time - $start > $keyDelay;
     push @bytes, $byte if defined $byte;
   }
+  ReadMode 0;
   return \@bytes;
 }
 
