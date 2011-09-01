@@ -155,23 +155,23 @@ sub doQcmd(){
   my $cmd = interpretKey $key;
   $cmd = $key if not defined $cmd;
   if($cmd eq 'UP'){
-    system "qcmd seek 60 &";
+    system "qcmd seek 60 > /dev/null 2> /dev/null &";
   }elsif($cmd eq 'DOWN'){
-    system "qcmd seek -60";
+    system "qcmd seek -60 > /dev/null 2> /dev/null &";
   }elsif($cmd eq 'LEFT'){
-    system "qcmd seek -10 &";
+    system "qcmd seek -10 > /dev/null 2> /dev/null &";
   }elsif($cmd eq 'RIGHT'){
-    system "qcmd seek 10 &";
+    system "qcmd seek 10 > /dev/null 2> /dev/null &";
   }elsif($cmd eq 'ENTER'){
-    system "qcmd next &";
+    system "qcmd next > /dev/null 2> /dev/null &";
   }elsif($cmd eq '<'){
-    system "qcmd prev &";
+    system "qcmd prev > /dev/null 2> /dev/null &";
   }elsif($cmd eq '>'){
-    system "qcmd next &";
+    system "qcmd next > /dev/null 2> /dev/null &";
   }elsif($cmd eq 'ESCAPE' or $cmd eq 'q'){
-    system "qcmd stop &";
+    system "qcmd stop > /dev/null 2> /dev/null &";
   }elsif($cmd eq ' ' or $cmd eq 'p'){
-    system "qcmd pause &";
+    system "qcmd pause > /dev/null 2> /dev/null &";
   }
 }
 
