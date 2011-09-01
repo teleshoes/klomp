@@ -122,8 +122,11 @@ sub pushFile($$){
 
 sub getCur(){
   my $cur = -e $QCUR ? `cat $QCUR` : '';
-  if($cur =~ /^[0-9\-\.]+ [0-9\-\.]+ (.*)/){
-    return $1;
+  if($cur =~ /^[0-9\-\.]+ [0-9\-\.]+ (.*)$/s){
+    my $item = $1;
+    chomp $item;
+    $item =~ s/\n/\/\/\/\\\\\\/g;
+    return $item;
   }else{
     return undef;
   }
@@ -131,11 +134,9 @@ sub getCur(){
 
 sub setCur($){
   my $item = shift;
-  chomp $item;
-  my $info = shellQuiet 'qdb', $QDB, '-i', $item;
+  $item =~ s/\/\/\/\\\\\\/\n/g;
   open FH, "> $QCUR";
   print FH "0.0 0.0 $item\n";
-  print FH $info;
   close FH;
 }
 
