@@ -31,7 +31,11 @@ sub main(){
       stop;
       start;
     }else{
-      system "echo pause > $FIFO";
+      if(isN900){
+        stop;
+      }else{
+        system "echo pause > $FIFO";
+      }
     }
   }elsif($cmd eq 'next'){
     stop;
