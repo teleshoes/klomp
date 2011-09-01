@@ -4,6 +4,7 @@ use warnings;
 use Sys::Hostname;
 
 sub isN900();
+sub defaultPlaylist();
 sub start();
 sub stop();
 sub isRunning();
@@ -30,6 +31,7 @@ sub main(){
   }elsif($cmd eq 'pause'){
     if(not isRunning){
       stop;
+      defaultPlaylist;
       start;
     }else{
       if(isN900){
