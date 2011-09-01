@@ -97,6 +97,7 @@ sub printQcur(){
 
   for(my $i=0; $i<@list; $i++){
     my $file = $list[$i];
+    $file =~ s/\/\/\/\\\\\\.*//;
     chomp $file;
     $file =~ s/^$lib//;
     $file =~ s/^$flacLib//;
