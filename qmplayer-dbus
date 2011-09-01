@@ -1,0 +1,20 @@
+#! /usr/bin/python
+import os
+import gobject, dbus
+from dbus.mainloop.glib import DBusGMainLoop
+from subprocess import call
+
+def handle_call(obj_path, callernumber):
+  print '`qcmd stop` coz of call from ' + callernumber
+  call(['qcmd', 'stop'])
+
+DBusGMainLoop(set_as_default=True)
+bus = dbus.SystemBus()
+
+bus.add_signal_receiver(
+  handle_call,
+  path='/com/nokia/csd/call',
+  dbus_interface='com.nokia.csd.Call',
+  signal_name='Coming')
+
+gobject.MainLoop().run()
