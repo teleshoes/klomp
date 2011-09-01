@@ -74,9 +74,9 @@ sub parseCur($){
         $title = $1 if ($1 ne '');
       }
     }
-    return "$pos/$length $artist - $title\n";
+    return ($pos, $length, $artist, $title);
   }
-  return "no current song\n";
+  return ('00:00', '00:00', 'none', 'none');
 }
 
 sub printQcur(){
@@ -87,8 +87,15 @@ sub printQcur(){
   my @list = -e $QLIST ? `cat $QLIST` : ();
   
   my @lines;
-  push @lines, parseCur $cur;
-  push @lines, scalar(@list) . " files";
+  my ($pos, $length, $artist, $title) = parseCur $cur;
+  my $size = @list;
+
+  my $headerOne = "$pos $artist";
+  my $headerTwo = "$length $title";
+  my $headerThree = "$size files";
+  push @lines, $headerOne;
+  push @lines, $headerTwo;
+  push @lines, $headerThree;
 
   my $max = @list;
   $max = $height-2 if $height-2 < $max;
