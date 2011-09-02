@@ -13,6 +13,7 @@ sub doQcmd($);
 sub key();
 sub interpretKey($);
 
+our $DEFAULT_EDITOR = 'vim';
 our $QLIST = `echo -n \$HOME/.qlist`;
 our $QCUR = `echo -n \$HOME/.qcur`;
 
@@ -171,13 +172,37 @@ sub doQcmd($){
     'q'    => 'stop',
   );
   my $cmd = $qcmdKeys{$key};
-  system "qcmd $cmd > /dev/null 2> /dev/null &" if defined $cmd;
+  if(defined $cmd){
+    system "qcmd $cmd > /dev/null 2> /dev/null &";
+  }
   
-  #additional actions
+  #non qcmd actions, in addition to any above
   if($key eq 'q'){
     system "clear";
     ReadMode 0;
     exit 0;
+  }elsif($key eq 'e'){
+    my $tmpFile = "/tmp/qlist_" . time . ".tmp";
+    system "cp $QLIST $tmpFile";
+    my $editor = $ENV{EDITOR};
+    $editor = $DEFAULT_EDITOR if $editor eq '';
+    system "$editor $tmpFile";
+    my $editorExit = $?;
+    if($editorExit == 0){
+      print "overwriting $QLIST with $tmpFile\n";
+      system "cp $tmpFile $QLIST";
+    }else{
+       print "discarding edits\n";
+    }
+  }elsif($key eq ':'){
+    print "\nenter qcmd or mplayer -slave input {e.g.: 'reset', 'seek -25'}\n";
+    print "qcmd: ";
+    ReadMode 0;
+    my $qcmd = <STDIN>;
+    chomp $qcmd;
+    if($qcmd ne ''){
+      system "qcmd $qcmd > /dev/null 2> /dev/null &";
+    }
   }
 }
 
