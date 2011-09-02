@@ -17,7 +17,7 @@ our $DEFAULT_EDITOR = 'vim';
 our $QLIST = `echo -n \$HOME/.qlist`;
 our $QCUR = `echo -n \$HOME/.qcur`;
 
-our $keyDelay = 0.5;
+our $keyDelay = 0.3;
 our $lib = `echo -n \$HOME/Desktop/Music/Library`;
 our $flacLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
 our $n900lib = `echo -n /home/wolke/Desktop/Music/Library`;
