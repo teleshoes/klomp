@@ -12,6 +12,11 @@ sub shellQuiet(@);
 sub qNext();
 sub qPrev();
 
+if(isN900 and `whoami` =~ /^root(\n|$)/){
+  print "you are root. rerunning as user\n";
+  exec "udo", $0, @ARGV;
+}
+
 my $QDB = `echo -n \$HOME/.qdb`;
 my $QCUR = `echo -n \$HOME/.qcur`;
 my $QLIST = `echo -n \$HOME/.qlist`;
