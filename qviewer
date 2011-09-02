@@ -181,6 +181,8 @@ sub doQcmd($){
     system "clear";
     ReadMode 0;
     exit 0;
+  }elsif($key eq 'a'){
+    system "q --once";
   }elsif($key eq 'e'){
     my $tmpFile = "/tmp/qlist_" . time . ".tmp";
     system "cp $QLIST $tmpFile";

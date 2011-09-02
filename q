@@ -31,6 +31,7 @@ our $flacmirrorLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
 our $QLIST = `echo -n \$HOME/.qlist`;
 
 #global state
+our $exitAfterFetch = 0;
 our $pos = 0;
 our $query = '';
 our $offset = 0;
@@ -39,6 +40,11 @@ sub main(){
   loadPrefs;
  
   my $cmd = $ARGV[0];
+  if($cmd eq '--once'){
+    $exitAfterFetch = 1;
+    shift @ARGV;
+  }
+
   $cmd = '' if not defined $cmd;
   if($cmd !~ /^-(a|p|o|w|r)$/i){
     $query = join ' ', @ARGV;
@@ -408,6 +414,7 @@ sub prompt(\@){
   }elsif($key eq "r"){
     prependQlist(\@files, 'on');
   }
+  exit 0 if $exitAfterFetch;
 }
 
 sub modifyQuery($){
