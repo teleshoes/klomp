@@ -22,13 +22,12 @@ sub shellQuiet(@);
 
 #prefs
 our $keyDelay = 0.4;
-our $QPREFS = `echo -n \$HOME/.qprefs`;
-our $qdb = `echo -n \$HOME/.qdb`;
-our $qdbExec = 'qdb';
+our $klompdb = `echo -n \$HOME/.klompdb`;
+our $klompdbExec = 'klomp-db';
 our $flacmirrorExec = 'flacmirror';
 our $lib = `echo -n \$HOME/Desktop/Music/Library`;
 our $flacmirrorLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
-our $QLIST = `echo -n \$HOME/.qlist`;
+our $KLOMPLIST = `echo -n \$HOME/.klomplist`;
 
 #global state
 our $exitAfterFetch = 0;
@@ -37,8 +36,6 @@ our $query = '';
 our $offset = 0;
 
 sub main(){
-  loadPrefs;
- 
   my $cmd = $ARGV[0];
   if($cmd eq '--once'){
     $exitAfterFetch = 1;
@@ -72,13 +69,13 @@ sub main(){
 
   if($cmd eq '-a'){
     print "appending\n";
-    appendQlist(\@files);
+    appendList(\@files);
   }elsif($cmd eq '-p'){
     print "prepending\n";
-    prependQlist(\@files, 'off');
+    prependList(\@files, 'off');
   }elsif($cmd eq '-o'){
     print "overwriting\n";
-    overwriteQlist(\@files);
+    overwriteList(\@files);
   }elsif($cmd eq '-w'){
     print 
     print "making playlist with " . scalar(@files) . " files\n";
@@ -91,26 +88,9 @@ sub main(){
     close FH;
   }elsif($cmd eq '-r'){
     print "appending " . scalar(@files) . " files and reshuffling\n";
-    prependQlist(\@files, 'on');
+    prependList(\@files, 'on');
   }
 }
-
-sub loadPrefs(){
-  for my $line(-e $QPREFS ? `cat ~/.qprefs` : ()){
-    if($line =~ /^QDB=\s*(.*)/i){
-      $qdb = `echo -n $1`;
-    }elsif($line =~ /^QDB_EXEC=\s*(.*)/i){
-      $qdbExec = `echo -n $1`;
-    }elsif($line =~ /^FLACMIRROR_EXEC=\s*(.*)/i){
-      $flacmirrorExec = `echo -n $1`;
-    }elsif($line =~ /^LIB=\s*(.*)/i){
-      $lib = `echo -n $1`;
-    }elsif($line =~ /^FLACMIRROR_LIB=\s*(.*)/i){
-      $flacmirrorLib = `echo -n $1`;
-    }
-  }
-}
-
 
 sub parseCsv($){
   my $csv = shift;
@@ -222,7 +202,7 @@ sub showQuery(){
   my $limit = 2*$height + $offset;
   
   my @columns = qw(artist album number title relpath);
-  my @songRows = shellQuiet $qdbExec, $qdb,
+  my @songRows = shellQuiet $klompdbExec, $klompdb,
     '-s', $query,
     '-l', $limit,
     '--columns', @columns;
@@ -286,7 +266,7 @@ sub showQuery(){
   system 'echo', '-ne', $out;
 }
 
-sub prependQlist($$){
+sub prependList($$){
   my @files = @{shift()};
   my $shuffle = shift;
 
@@ -294,29 +274,29 @@ sub prependQlist($$){
     $file =~ s/\n*$/\n/;
   }
   
-  my @existingFiles = -e $QLIST ? `cat $QLIST` : ();
+  my @existingFiles = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
   @files = (@files, @existingFiles);
 
   @files = List::Util::shuffle(@files) if $shuffle eq 'on';
 
-  open FH, "> $QLIST" or die "Could not write to $QLIST";
+  open FH, "> $KLOMPLIST" or die "Could not write to $KLOMPLIST";
   print FH @files;
   close FH;
 }
 
-sub overwriteQlist($){
+sub overwriteList($){
   my @files = @{shift()};
 
-  open FH, "> $QLIST" or die "Could not write to $QLIST";
+  open FH, "> $KLOMPLIST" or die "Could not write to $KLOMPLIST";
   print FH join "\n", @files;
   print FH "\n" if @files > 0;
   close FH;
 }
 
-sub appendQlist($){
+sub appendList($){
   my @files = @{shift()};
 
-  open FH, ">> $QLIST" or die "Could not append to $QLIST";
+  open FH, ">> $KLOMPLIST" or die "Could not append to $KLOMPLIST";
   print FH join "\n", @files;
   print FH "\n" if @files > 0;
   close FH;
@@ -336,7 +316,7 @@ sub fetch($){
   my $query = shift;
 
   my @columns = qw(artist album number title relpath libpath);
-  my @songRows = shellQuiet $qdbExec, $qdb, '-s', $query, '--columns', @columns;
+  my @songRows = shellQuiet $klompdbExec, $klompdb, '-s', $query, '--columns', @columns;
   my @files;
   for my $songRow(@songRows){
     chomp $songRow;
@@ -373,12 +353,12 @@ sub prompt(\@){
 
   print scalar(@files) . " files\n"
     . "space - toggle shuffle (currently $shuffle)\n"
-    . "enter - append files to $QLIST and ensure playing\n"
-    . "a     - append files to $QLIST\n"
-    . "p     - prepend files to $QLIST 'Add to play queue'\n"
-    . "o     - overwrite $QLIST with files\n"
+    . "enter - append files to $KLOMPLIST and ensure playing\n"
+    . "a     - append files to $KLOMPLIST\n"
+    . "p     - prepend files to $KLOMPLIST 'Add to play queue'\n"
+    . "o     - overwrite $KLOMPLIST with files\n"
     . "w     - write to a file you specify\n"
-    . "r     - append files to $QLIST and (re)shuffle the whole thing\n"
+    . "r     - append files to $KLOMPLIST and (re)shuffle the whole thing\n"
     ;
 
   ReadMode 3;
@@ -395,14 +375,14 @@ sub prompt(\@){
   }
 
   if($key eq "\n"){
-    appendQlist(\@files);
+    appendList(\@files);
     system "qcmd start > /dev/null 2>/dev/null &";
   }elsif($key eq "a"){
-    appendQlist(\@files);
+    appendList(\@files);
   }elsif($key eq "p"){
-    prependQlist(\@files, 'off');
+    prependList(\@files, 'off');
   }elsif($key eq "o"){
-    overwriteQlist(\@files);
+    overwriteList(\@files);
   }elsif($key eq "w"){
     print "write to file: ";
     my $file = <STDIN>;
@@ -412,7 +392,7 @@ sub prompt(\@){
     print FH "\n" if @files > 0;
     close FH;
   }elsif($key eq "r"){
-    prependQlist(\@files, 'on');
+    prependList(\@files, 'on');
   }
   exit 0 if $exitAfterFetch;
 }

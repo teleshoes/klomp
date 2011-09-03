@@ -176,10 +176,6 @@ sub add($$){
   addSongs($db, $lib, \@songRelPaths);
 }
 
-sub unfoldQuery($){
-  my $q = shift;
-}
-
 sub parseQuotes($){
   my $query = shift;
 

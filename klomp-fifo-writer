@@ -3,8 +3,8 @@ use strict;
 use warnings;
 use Time::HiRes qw(sleep);
 
-my $FIFO = '/tmp/qmplayer_fifo';
-my $PID_FILE = '/tmp/qmplayer_updater_pid';
+my $FIFO = '/tmp/klomplayer_fifo';
+my $PID_FILE = '/tmp/klomplayer_updater_pid';
 system "kill -9 `cat $PID_FILE`";
 system "echo $$ > $PID_FILE";
 

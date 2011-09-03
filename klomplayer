@@ -3,29 +3,30 @@ use strict;
 use warnings;
 
 if(not fork){
-  system "killall qupdater";
-  exec "~/q/qupdater &";
+  system "killall klomp-fifo-writer";
+  exec "klomp-fifo-writer &";
 }
 
-my $QCUR = `echo -n \$HOME/.qcur`;
+my $klompCmdExec = 'klomp-cmd';
+my $KLOMPCUR = `echo -n \$HOME/.klompcur`;
 
-if(not -e $QCUR){
-  die "$QCUR does not exist\n";
+if(not -e $KLOMPCUR){
+  die "$KLOMPCUR does not exist\n";
 }
-my $cur = `cat $QCUR`;
+my $cur = `cat $KLOMPCUR`;
 my ($initPos, $len, $file);
 if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (.*)/){
-  die "Current file $QCUR malformed";
+  die "Current file $KLOMPCUR malformed";
 }
 
 $initPos = $1;
 $len = $2;
 $file = $3;
 
-my $PID_FILE = '/tmp/qmplayer_pid';
+my $PID_FILE = '/tmp/klomplayer_pid';
 system "kill -9 `cat $PID_FILE` 2>/dev/null";
 
-my $FIFO = '/tmp/qmplayer_fifo';
+my $FIFO = '/tmp/klomplayer_fifo';
 system "rm -f $FIFO";
 system "mkfifo $FIFO";
 
@@ -52,14 +53,15 @@ my $sexLen = undef;
 sub update($$){
   my $pos = shift;
   my $len = shift;
-  my $cur = `cat $QCUR`;
+  my $cur = `cat $KLOMPCUR`;
   if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) (.*)/$pos $len $file/){
-    die "Current file $QCUR malformed";
+    die "Current file $KLOMPCUR malformed";
   }
   if($3 ne $file){
-    die "Qmplayer thinks a different file is playing than whats in $QCUR\n";
+    die "Klomplayer thinks a different file is playing than whats in $KLOMPCUR\n";
   }
-  open CURFILE, "> $QCUR";
+  open CURFILE, "> $KLOMPCUR";
+
   print CURFILE $cur;
   close CURFILE;
 }
@@ -79,7 +81,7 @@ while(1){
     die "i guess its dead...\n";
   }
   if($line =~ /^Exiting... \(End of file\)/){
-    exec "qcmd next";
+    exec "$klompCmdExec next";
   }
   if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
     $sexLen = $1;

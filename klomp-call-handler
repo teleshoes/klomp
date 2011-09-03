@@ -4,9 +4,11 @@ import gobject, dbus
 from dbus.mainloop.glib import DBusGMainLoop
 from subprocess import call
 
+klompCmdExec = 'klomp-cmd'
+
 def handle_call(obj_path, callernumber):
-  print '`qcmd stop` coz of call from ' + callernumber
-  call(['qcmd', 'stop'])
+  print 'calling stop coz of call from ' + callernumber
+  call([klompCmdExec, 'stop'])
 
 DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus()

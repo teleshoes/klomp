@@ -1,6 +1,0 @@
-#!/bin/bash
-gnome-terminal -e 'qviewer' --class 'qmplayer' -t 'QMPLAYER - LIST' &
-sleep 1
-gnome-terminal -e 'q' --class 'qmplayer' -t 'QMPLAYER - SEARCH' &
-sleep 1
-xdotool search --name 'QMPLAYER - ' set_window --classname qmplayer %@

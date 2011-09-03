@@ -9,20 +9,21 @@ sub start();
 sub stop();
 sub isRunning();
 sub shellQuiet(@);
-sub qNext();
-sub qPrev();
+sub nextItem();
+sub prevItem();
 
 if(isN900 and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
   exec "udo", $0, @ARGV;
 }
 
-my $QDB = `echo -n \$HOME/.qdb`;
-my $QCUR = `echo -n \$HOME/.qcur`;
-my $QLIST = `echo -n \$HOME/.qlist`;
-my $QHIST = `echo -n \$HOME/.qhistory`;
-my $FIFO = '/tmp/qmplayer_fifo';
-my $PID_FILE = '/tmp/qmplayer_pid';
+my $klompCmdExec = 'klomp-cmd';
+my $klomplayerExec = 'klomplayer';
+my $KLOMPCUR = `echo -n \$HOME/.klompcur`;
+my $KLOMPLIST = `echo -n \$HOME/.klomplist`;
+my $KLOMPHIST = `echo -n \$HOME/.klomphistory`;
+my $FIFO = '/tmp/klomplayer_fifo';
+my $PID_FILE = '/tmp/klomplayer_pid';
 
 sub main(){
   my $cmd = $ARGV[0];
@@ -47,13 +48,13 @@ sub main(){
     }
   }elsif($cmd eq 'next'){
     stop;
-    start if qNext();
+    start if nextItem();
   }elsif($cmd eq 'prev'){
     stop;
-    start if qPrev();
+    start if prevItem();
   }elsif($cmd eq 'reset'){
-    system "echo -n > $QLIST";
-    system "echo -n > $QHIST";
+    system "echo -n > $KLOMPLIST";
+    system "echo -n > $KLOMPHIST";
   }elsif(@ARGV > 0){
     system "echo @ARGV > $FIFO";
   }else{
@@ -66,21 +67,21 @@ sub isN900(){
   return hostname() =~ /n900/i ? 1 : 0;
 }
 sub defaultPlaylist(){
-  my @qlist = -e $QLIST ? `cat $QLIST` : ();
-  if(@qlist == 0){
-    system "q -a";
+  my @KLOMPLIST = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
+  if(@KLOMPLIST == 0){
+    system "$klompCmdExec -a";
   }
 }
 sub start(){
-  system "qmplayer";
+  system "$klomplayerExec";
 }
 
 sub stop(){
-  system "kill -9 `cat /tmp/qmplayer_pid`";
+  system "kill -9 `cat $PID_FILE`";
   system "killall -9 mplayer" if isN900;
 }
 sub isRunning(){
-  system "kill -0 `cat /tmp/qmplayer_pid`";
+  system "kill -0 `cat $PID_FILE`";
   return $? == 0 ? 1 : 0;
 }
 
@@ -132,7 +133,7 @@ sub pushFile($$){
 }
 
 sub getCur(){
-  my $cur = -e $QCUR ? `cat $QCUR` : '';
+  my $cur = -e $KLOMPCUR ? `cat $KLOMPCUR` : '';
   if($cur =~ /^[0-9\-\.]+ [0-9\-\.]+ (.*)$/s){
     my $item = $1;
     chomp $item;
@@ -146,7 +147,7 @@ sub getCur(){
 sub setCur($){
   my $item = shift;
   $item =~ s/\/\/\/\\\\\\/\n/g;
-  open FH, "> $QCUR";
+  open FH, "> $KLOMPCUR";
   print FH "0.0 0.0 $item\n";
   close FH;
 }
@@ -168,12 +169,12 @@ sub prevnext($$){
   }
 }
 
-sub qNext(){
-  return prevnext $QLIST, $QHIST;
+sub nextItem(){
+  return prevnext $KLOMPLIST, $KLOMPHIST;
 }
 
-sub qPrev(){
-  return prevnext $QHIST, $QLIST;
+sub prevItem(){
+  return prevnext $KLOMPHIST, $KLOMPLIST;
 }
 
 &main;

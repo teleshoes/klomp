@@ -1,25 +1,42 @@
 Copyright 2011 by Elliot Wolk
-This is free software, released under the GPLv3
+klomp is free software, released under the GPLv3
 
-CLI music player
-qdb is a perl script that creates, updates, and queries a sqlite database.
-q is a cli frontend for qdb.
-flacmirror maintains a parallel directory full of oggs that
- correspond to the flacs in your library
+klomp - CLI music player
 
-qdb handles: mp3, flac, ogg, m4a, wma, wav
+FILES
+klomp - interactive playlist viewer and editor
+klomp-call-handler - watches for calls on the n900 to turn off klomplayer
+klomp-cmd - sends messages to mplayer, and modifies playlist
+klomp-db - manages and queries a sqlite database. reads tags
+klomp-fifo-writer - writes to the mplayer fifo at fixed interval
+klomplayer - mplayer wrapper that updates a file with time position
+klomp-search - interactive frontend to klomp-db
+klomp-term - launches klomp in a gnome-terminal
+flacmirror - rsync style ogg->flac conversion util
+COPYING - GPLv3
+README - ?????? wtf is this thing?
 
-you dont need to be able to update the db to use the music player;
- you can update the database on one computer,
- sync your music library to another computer,
- and merely copy the db file over
 
-to update the library and read tags from files, you need:
-mp3info and mp3info2 {mp3}
-  sudo apt-get install mp3info
-lltag {ogg and flac}
-  sudo apt-get install lltag
-perl module Audio::WMA {wma}
-  cpan Audio::WMA
-AtomicParsley {mp4, m4a, m4p, m4v, m4b}
-  sudo apt-get install atomicparsley
+klomp-db handles: mp3, flac, ogg, m4a, wma, wav
+everything else relies on mplayer
+
+
+dependencies:
+klomp, klomp-search           perl, Term::ReadKey
+klomp-call-handler            python
+klomp-cmd, klomp-fifo-writer  perl
+klomplayer                    perl, mplayer
+
+klomp-db
+ to update the library and read tags from files, you need:
+   mp3info and mp3info2 {mp3}
+     sudo apt-get install mp3info
+   lltag {ogg and flac}
+     sudo apt-get install lltag
+   perl module Audio::WMA {wma}
+     cpan Audio::WMA
+   AtomicParsley {mp4, m4a, m4p, m4v, m4b}
+     sudo apt-get install atomicparsley
+ to get japanese transliteration, you need:
+   perl module Lingua::JA::Romanize::Japanese
+

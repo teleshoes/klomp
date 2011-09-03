@@ -1,0 +1,4 @@
+#!/bin/bash
+gnome-terminal -e 'klomp' --class 'klomp' -t 'KLOMP' &
+sleep 1
+xdotool search --name 'KLOMP' set_window --classname klomp %@
