@@ -49,6 +49,8 @@ sub main(){
   }elsif($cmd eq 'next'){
     stop;
     start if nextItem();
+  }elsif($cmd eq 'shuffle'){
+    system "sort -R $KLOMPLIST -o $KLOMPLIST";
   }elsif($cmd eq 'prev'){
     stop;
     start if prevItem();

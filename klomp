@@ -172,6 +172,7 @@ sub doKlompCmd($){
     ' '    => 'pause',
     'p'    => 'pause',
     'q'    => 'stop',
+    's'    => 'shuffle',
   );
   my $cmd = $cmdKeys{$key};
   
