@@ -194,14 +194,23 @@ sub doKlompCmd($){
     }
     print "\n";
     print ''
-     . "q 'quit'   stops playback per above, also exits this display\n"
+     . "q 'quit'    stops playback per above, also exits this display\n"
      . "\n"
-     . "e 'edit'   edit $KLOMPLIST contents using \$EDITOR\n"
-     . "a 'append' runs $klompSearchExec --once\n"
-     . "           interactively searches for songs\n"
-     . "           adds them to the current playlist\n"
-     . "           you can append, prepend, shuffle in, or overwrite\n"
+     . "h 'help'    show this printout\n"
+     . "\n"
+     . "e 'edit'    edit $KLOMPLIST contents using \$EDITOR\n"
+     . "\n"
+     . "a 'append'  runs $klompSearchExec --once\n"
+     . "            interactively searches for songs\n"
+     . "            adds them to the current playlist\n"
+     . "            you can append, prepend, shuffle in, or overwrite\n"
+     . "\n"
+     . "s 'shuffle' randomly shuffle $KLOMPLIST in place\n"
+     . "\n"
+     . ": 'cmd'     prompts for a command and passes it to $klompCmdExec\n"
+     . "\n"
      ;
+    print "Press enter to return.\n";
     <STDIN>;
   }elsif($key eq 'a'){
     system "$klompSearchExec --once";
