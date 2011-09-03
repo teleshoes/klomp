@@ -98,12 +98,13 @@ sub printKlompCur(){
   my ($pos, $length, $artist, $title) = parseCur $cur;
   my $size = @list;
 
-  my $headerOne = "$pos $artist";
-  my $headerTwo = "$length $title";
-  my $headerThree = "$size files";
-  push @lines, $headerOne;
-  push @lines, $headerTwo;
-  push @lines, $headerThree;
+  my $cmdSummary = "q quit, e edit, a add, < prev, > next, h help";
+  $cmdSummary = (' ' x int(($width-(length $cmdSummary))/2)) . $cmdSummary;
+
+  push @lines, "$pos $artist";
+  push @lines, "$length $title";
+  push @lines, "$size files";
+  push @lines, $cmdSummary;
 
   my $max = @list;
   $max = $height-2 if $height-2 < $max;
@@ -118,7 +119,8 @@ sub printKlompCur(){
     $file =~ s/^$flacLib//;
     $file =~ s/^$n900lib//;
     $file =~ s/^$n900flacLib//;
-    push @lines, "$i: $file";
+    my $num = $i+1;
+    push @lines, "$num: $file";
   }
 
   my $out = ''
@@ -143,7 +145,7 @@ sub formatLines(\@$$){
   my $width = shift;
   my $height = shift;
  
-  my $topLimit = $height-2;
+  my $topLimit = $height-1;
   $topLimit = $#lines if $topLimit > $#lines;
 
   my $out = '';
@@ -184,6 +186,23 @@ sub doKlompCmd($){
     system "clear";
     ReadMode 0;
     exit 0;
+  }elsif($key eq 'h'){
+    system "clear";
+    print "keys i understand:\n";
+    for my $key(sort keys %cmdKeys){
+      print "'$key' -> $klompCmdExec $cmdKeys{$key}\n";
+    }
+    print "\n";
+    print ''
+     . "q 'quit'   stops playback per above, also exits this display\n"
+     . "\n"
+     . "e 'edit'   edit $KLOMPLIST contents using \$EDITOR\n"
+     . "a 'append' runs $klompSearchExec --once\n"
+     . "           interactively searches for songs\n"
+     . "           adds them to the current playlist\n"
+     . "           you can append, prepend, shuffle in, or overwrite\n"
+     ;
+    <STDIN>;
   }elsif($key eq 'a'){
     system "$klompSearchExec --once";
   }elsif($key eq 'e'){
