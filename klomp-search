@@ -87,7 +87,7 @@ sub main(){
     print FH "\n" if @files > 0;
     close FH;
   }elsif($cmd eq '-r'){
-    print "appending " . scalar(@files) . " files and reshuffling\n";
+    print "shuffling " . scalar(@files) . " files into existing\n";
     prependList(\@files, 'on');
   }
 }
@@ -266,6 +266,34 @@ sub showQuery(){
   system 'echo', '-ne', $out;
 }
 
+sub shuffleTogether(\@\@){
+  my @arr1 = @{shift()};
+  my @arr2 = @{shift()};
+  if(@arr1 > @arr2){
+    my @tmp = @arr2;
+    @arr2 = @arr1;
+    @arr1 = @tmp;
+  }
+  if(@arr1 == 0){
+    return @arr2;
+  }
+
+  my @newArr;
+  while(@arr1 > 0 or @arr2 > 0){
+    my $ratio = @arr1 / @arr2 / 2;
+    if(@arr1 == 0){
+      push @newArr, shift @arr2;
+    }elsif(@arr2 == 0){
+      push @newArr, shift @arr1;
+    }elsif(rand() < $ratio){
+      push @newArr, shift @arr1;
+    }else{
+      push @newArr, shift @arr2;
+    }
+  }
+  return @newArr;
+}
+
 sub prependList($$){
   my @files = @{shift()};
   my $shuffle = shift;
@@ -275,9 +303,12 @@ sub prependList($$){
   }
   
   my @existingFiles = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
-  @files = (@files, @existingFiles);
 
-  @files = List::Util::shuffle(@files) if $shuffle eq 'on';
+  if($shuffle eq 'on'){
+    @files = shuffleTogether @files, @existingFiles;
+  }else{
+    @files = (@files, @existingFiles);
+  }
 
   open FH, "> $KLOMPLIST" or die "Could not write to $KLOMPLIST";
   print FH @files;
@@ -358,17 +389,17 @@ sub prompt(\@){
     . "p     - prepend files to $KLOMPLIST 'Add to play queue'\n"
     . "o     - overwrite $KLOMPLIST with files\n"
     . "w     - write to a file you specify\n"
-    . "r     - append files to $KLOMPLIST and (re)shuffle the whole thing\n"
+    . "r     - randomly shuffle files into $KLOMPLIST, keeping order\n"
     ;
 
   ReadMode 3;
   my $key = ReadKey 0;
-  ReadMode 0;
   while($key eq ' '){
     $shuffle = $shuffle eq 'on' ? 'off' : 'on';
     print "shuffle is now $shuffle\n";
     $key = ReadKey 0;
   }
+  ReadMode 0;
 
   if($shuffle eq 'on'){
     @files = List::Util::shuffle(@files);
