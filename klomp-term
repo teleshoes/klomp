@@ -1,4 +1,16 @@
-#!/bin/bash
-gnome-terminal -e 'klomp' --class 'klomp' -t 'KLOMP' &
-sleep 1
-xdotool search --name 'KLOMP' set_window --classname klomp %@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $PID_FILE = '/tmp/klomp_term_pid';
+system "kill -0 `cat $PID_FILE`";
+if($? != 0){
+  if(fork){
+    system "echo $$ > $PID_FILE";
+    system "gnome-terminal -e 'klomp' --class 'klomp' -t 'KLOMP' --disable-factory ";
+  }else{
+    sleep 1;
+    system "xdotool search --name 'KLOMP' set_window --classname klomp %@ ";
+  }
+}
+
