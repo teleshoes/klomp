@@ -86,9 +86,12 @@ sub main(){
     print FH join "\n", @files;
     print FH "\n" if @files > 0;
     close FH;
-  }elsif($cmd eq '-r'){
+  }elsif($cmd eq '-s'){
     print "shuffling " . scalar(@files) . " files into existing\n";
     prependList(\@files, 'on');
+  }elsif($cmd eq '-r'){
+    print "removing all instances\n";
+    removeList(\@files);
   }
 }
 
@@ -294,6 +297,29 @@ sub shuffleTogether(\@\@){
   return @newArr;
 }
 
+sub removeList($){
+  my @files = @{shift()};
+
+  my %fnames;
+  for my $file(@files){
+    $file =~ /^(.*)\/\/\/\\\\\\/;
+    my $filename = $1;
+    $fnames{$filename} = 1;
+  }
+  
+  my @existingFiles = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
+  my @newFiles;
+  for my $file(@existingFiles){
+    $file =~ /^(.*)\/\/\/\\\\\\/;
+    my $filename = $1;
+    push @newFiles, $file unless defined $fnames{$filename};
+  }
+
+  open FH, "> $KLOMPLIST" or die "Could not write to $KLOMPLIST";
+  print FH @newFiles;
+  close FH;
+}
+
 sub prependList($$){
   my @files = @{shift()};
   my $shuffle = shift;
@@ -389,7 +415,8 @@ sub prompt(\@){
     . "p     - prepend files to $KLOMPLIST 'Add to play queue'\n"
     . "o     - overwrite $KLOMPLIST with files\n"
     . "w     - write to a file you specify\n"
-    . "r     - randomly shuffle files into $KLOMPLIST, keeping order\n"
+    . "s     - randomly shuffle files into $KLOMPLIST, keeping order\n"
+    . "r     - REMOVE all the indicated files from $KLOMPLIST\n"
     ;
 
   ReadMode 3;
@@ -423,6 +450,8 @@ sub prompt(\@){
     print FH "\n" if @files > 0;
     close FH;
   }elsif($key eq "r"){
+    removeList(\@files);
+  }elsif($key eq "s"){
     prependList(\@files, 'on');
   }
   exit 0 if $exitAfterFetch;
