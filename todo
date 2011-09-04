@@ -1,0 +1,4 @@
+backspace in search to return, even if --once
+different views in search, album should be default
+bug:  db -s returns songs out of order 1 10 11 12 mysteriously
+got a divide by zero when shuffling in scott pilgrim to neko case, didnt repro
