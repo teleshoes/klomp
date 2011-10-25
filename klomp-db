@@ -156,6 +156,7 @@ sub update($$){
     }
   }
   my @songRelPaths = shell 'find', '.', '-iregex', $suffixPattern;
+  @songRelPaths = sort @songRelPaths;
   for (my $i=0; $i<@songRelPaths; $i++){
     my $songRelPath = $songRelPaths[$i];
     chomp $songRelPath;
