@@ -29,8 +29,8 @@ klomplayer                    perl, mplayer
 
 klomp-db
  to update the library and read tags from files, you need:
-   mp3info and mp3info2 {mp3}
-     sudo apt-get install mp3info
+   eyeD3 {mp3}
+     sudo apt-get install eyed3
    lltag {ogg and flac}
      sudo apt-get install lltag
    perl module Audio::WMA {wma}

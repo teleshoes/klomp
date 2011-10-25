@@ -710,7 +710,19 @@ sub readTags($){
   my $number='';
   my $date='';
   my $genre='';
-  if($file =~ /\.(mp3|ogg|flac)$/i){
+  if($file =~ /\.mp3$/i){
+    my $eyeD3 = `eyeD3 --no-color '$file'`;
+    $eyeD3 =~ s/\t\t/\n/g;
+
+    $title  = $1 if $eyeD3 =~ /^title: (.*)/mi;
+    $artist = $1 if $eyeD3 =~ /artist: (.*)\n/mi;
+    $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
+    $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
+    $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
+    $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
+
+    $genre =~ s/ \(id \d+\)$//; #trim the genre id
+  }elsif($file =~ /\.(ogg|flac)$/i){
     my $lltag = `lltag -S '$file'`;
     $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
     $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
