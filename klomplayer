@@ -2,6 +2,11 @@
 use strict;
 use warnings;
 
+my @mplayerOptions = (
+  '-cache', '8192',
+  '-cache-min', '20',
+);
+
 if(not fork){
   system "killall klomp-fifo-writer";
   exec "klomp-fifo-writer &";
@@ -31,7 +36,7 @@ system "rm -f $FIFO";
 system "mkfifo $FIFO";
 
 my $pid = open FH, '-|',
-  'mplayer',
+  'mplayer', @mplayerOptions,
   '-quiet',
   '-input', "file=$FIFO",
   '-ss', $initPos,
