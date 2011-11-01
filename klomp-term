@@ -3,7 +3,9 @@ use strict;
 use warnings;
 
 my $PID_FILE = '/tmp/klomp_term_pid';
-system "kill -0 `cat $PID_FILE`";
+if(-e $PID_FILE){
+  system "kill -0 `cat $PID_FILE`";
+}
 if($? != 0){
   if(fork){
     system "echo $$ > $PID_FILE";
