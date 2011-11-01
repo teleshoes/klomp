@@ -29,7 +29,11 @@ $len = $2;
 $file = $3;
 
 my $PID_FILE = '/tmp/klomplayer_pid';
-system "kill -9 `cat $PID_FILE` 2>/dev/null";
+if(-e $PID_FILE){
+  my $pid = `cat $PID_FILE 2>/dev/null`;
+  chomp $pid;
+  system "kill -9 $pid 2>/dev/null";
+}
 
 my $FIFO = '/tmp/klomplayer_fifo';
 system "rm -f $FIFO";
