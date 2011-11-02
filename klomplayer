@@ -33,6 +33,7 @@ if(-e $PID_FILE){
   my $pid = `cat $PID_FILE 2>/dev/null`;
   chomp $pid;
   system "kill -9 $pid 2>/dev/null";
+  system "rm $PID_FILE";
 }
 
 my $FIFO = '/tmp/klomplayer_fifo';
@@ -76,11 +77,16 @@ sub update($$){
 }
 
 while(1){
-  my $newPid = `cat $PID_FILE`;
-  chomp $newPid;
-  if($newPid ne $pid){
-    die "new $0 is running\n";
+  if(not -e $PID_FILE){
+    die "missing pidfile\n";
+  }else{
+    my $newPid = `cat $PID_FILE`;
+    chomp $newPid;
+    if($newPid ne $pid){
+      die "new $0 is running\n";
+    }
   }
+
   if(not -p $FIFO){
     die "fifo $FIFO is broken\n";
   }
