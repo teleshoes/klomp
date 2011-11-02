@@ -79,13 +79,20 @@ sub start(){
 }
 
 sub stop(){
-  system "kill -9 `cat $PID_FILE`";
+  if(-e $PID_FILE){
+    system "kill -9 `cat $PID_FILE`";
+    system "rm $PID_FILE";
+  }
   system "killall -9 mplayer" if isN900;
   system "rm /tmp/klomplayer*";
 }
 sub isRunning(){
-  system "kill -0 `cat $PID_FILE`";
-  return $? == 0 ? 1 : 0;
+  if(-e $PID_FILE){
+    system "kill -0 `cat $PID_FILE`";
+    return $? == 0 ? 1 : 0;
+  }else{
+    return 0;
+  }
 }
 
 sub wrapTokens(@){
