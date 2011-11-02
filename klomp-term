@@ -4,15 +4,15 @@ use warnings;
 
 my $PID_FILE = '/tmp/klomp_term_pid';
 if(-e $PID_FILE){
-  system "kill -0 `cat $PID_FILE`";
-}
-if($? != 0){
-  if(fork){
-    system "echo $$ > $PID_FILE";
-    system "gnome-terminal -e 'klomp' --class 'klomp' -t 'KLOMP' --disable-factory ";
-  }else{
-    sleep 1;
-    system "xdotool search --name 'KLOMP' set_window --classname klomp %@ ";
+  system "kill -0 `cat $PID_FILE` > /dev/null 2>/dev/null";
+  if($? == 0){
+    exit 0;
   }
+}
+if(fork){
+  system "echo $$ > $PID_FILE";
+  exec "gnome-terminal -e 'klomp' --class 'klomp' -t 'KLOMP' --disable-factory";
+}else{
+  exec "sleep 1; xdotool search --name 'KLOMP' set_window --classname klomp %@ ";
 }
 
