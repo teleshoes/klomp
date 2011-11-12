@@ -5,6 +5,8 @@ use warnings;
 #sudo apt-get install libaudio-wma-perl lltag
 #sudo cpan Lingua::JA::Romanize::Japanese
 
+my $defaultDb = "$ENV{HOME}/.klompdb";
+
 sub shell(@);
 sub shellQuiet(@);
 sub runSql($$;@);
@@ -45,6 +47,9 @@ my $usage = "Usage:
  $0 [db-path] -a|--add library-dir song-rel-path
    Add or update the info in the db for the file at library-dir/song-rel-path
 
+ $0 [db-path] -i|--info [song-rel-path or song-abs-path]
+   Query for the info for a song, given the path of the song
+
  $0 [db-path] -s|--search query [OPTS]
    Query for relative paths to songs, or more information
    optional OPTS:
@@ -53,29 +58,41 @@ my $usage = "Usage:
      by default, just relpath is returned. possible values include:
      @allowedCols
 
- $0 [db-path] -i|--info [song-rel-path or song-abs-path]
-   Query for the info for a song, given the path of the song
+ [db-path] is optional and cannot start with a hyphen. {arg parsing => im lazy}
+ if not given, the default is '$defaultDb'
 ";
 
 sub main(@){
-  die $usage if @_ < 2 or $_[0] eq '-h' or $_[0] eq '--help';
+  die $usage if @_ == 0 or $_[0] =~ /^(-h|--help)/;
 
-  my $db = shift;
-  my $cmd = shift;
+  my $db;
+  if($_[0] !~ /^-/){
+    $db = shift;
+  }else{
+    $db = $defaultDb;
+  }
 
-  if($cmd eq '-c' or $cmd eq '--create' and @_ == 0){
+  my $cmd = shift() || '';
+
+  if($cmd =~ /^(-c|--create)$/ and @_ == 0){
+    if(-e $db){
+      die "'$db' exists already\n";
+    }
     create($db);
-  }elsif($cmd eq '-u' or $cmd eq '--update' and @_ == 1){
+  }elsif($cmd =~ /^(-u|--update)$/ and @_ == 1){
     my $libDir = shift();
     update($db, $libDir);
-  }elsif($cmd eq '-m' or $cmd eq '--missing' and @_ == 1){
+  }elsif($cmd =~ /^(-m|--missing)$/ and @_ == 1){
     my $libDir = shift();
     missing($db, $libDir);
-  }elsif($cmd eq '-a' or $cmd eq '--add' and @_ == 2){
+  }elsif($cmd =~ /^(-a|--add)$/ and @_ >= 2){
     my $libDir = shift();
     my $songRelPath = shift();
     add($db, $libDir, $songRelPath);
-  }elsif($cmd eq '-s' or $cmd eq '--search' and @_ >= 2){
+  }elsif($cmd =~ /^(-i|--info)$/ and @_ == 1){
+    my $songRelPath = shift();
+    info($db, $songRelPath);
+  }elsif($cmd =~ /^(-s|--search)$/ and @_ >= 1){
     my $query = shift;
 
     my $limit = 0;
@@ -106,9 +123,6 @@ sub main(@){
     }
 
     search($db, $query, $limit, @cols);
-  }elsif($cmd eq '-i' or $cmd eq '--info' and @_ == 1){
-    my $songRelPath = shift();
-    info($db, $songRelPath);
   }else{
     die $usage;
   }
