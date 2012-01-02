@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $klomplib = "$ENV{HOME}/.klomplib";
+
+if(not -e $klomplib){
+  die "$klomplib file not found\n";
+}
+
+sub readLib(){
+  open FH, "< $klomplib" or die "Could not read $klomplib";
+  my @lines = grep {/^[^#]/} <FH>;
+  chomp foreach @lines;
+  my %libs = map {my @arr = split ':'; {shift @arr, \@arr}} @lines;
+  close FH;
+  return \%libs;
+}
+
+my $cmd = shift;
+my $lib = shift;
+my $libs = readLib;
+
+if(not defined $cmd){
+  print map {"$_\n"} sort keys %$libs;
+}elsif($cmd =~ /^( -d )$/x){
+  print map {"$_\n"} grep {${$$libs{$_}}[0] eq 'default'} sort keys %$libs;
+}elsif($cmd =~ /^( -l | -f )$/x and defined $lib){
+  if(not defined $$libs{$lib}){
+    die "Unknown lib '$lib' (known libs: " . (join ', ', keys %$libs) . ")\n";
+  }
+  my $libArr = $$libs{$lib};
+  print "$$libArr[1]\n" if $cmd eq '-l' and @$libArr >= 2;
+  print "$$libArr[2]\n" if $cmd eq '-f' and @$libArr >= 3;
+}else{
+  die "Usage:
+    $0
+      print available libs
+    $0 -d
+      print default libs
+    $0 -l <lib>
+      print library path for <lib>
+    $0 -f <lib>
+      print flacmirror path for <lib>\n";
+}

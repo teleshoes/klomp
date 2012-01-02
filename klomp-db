@@ -7,11 +7,13 @@ use warnings;
 
 my $defaultDb = "$ENV{HOME}/.klompdb";
 
+sub getAllLibs();
+sub libpath($);
 sub shell(@);
 sub shellQuiet(@);
 sub runSql($$;@);
 sub cols($);
-sub guess($$$$$$$$);
+sub guess($$$$$$$);
 sub transliterateJapanese($);
 sub addSongs($$$);
 sub wrapGuessCol($);
@@ -19,7 +21,7 @@ sub create($);
 sub update($$);
 sub missing($$);
 sub add($$$);
-sub search($$$\@);
+sub search($$$$$);
 sub info($$);
 sub readTags($);
 
@@ -31,32 +33,35 @@ BEGIN{
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
 
-my @allowedCols = qw(libpath relpath filesize modified md5sum
+my @allowedCols = qw(library relpath filesize modified md5sum
                      title artist album number date genre);
 
 my $usage = "Usage: 
  $0 [db-path] -c|--create
-   Make an empty sqlite db
+   Make an empty sqlite db with necessary structures
 
- $0 [db-path] -u|--update library-dir
-   Add or update the info in the db for all the music files in library-dir
+ $0 [db-path] -u|--update [lib lib ...]
+   Add or update the info in the db for music files in the given libs (or all)
 
- $0 [db-path] -m|--missing library-dir
-   Check for missing files, and prompt for removal.
+ $0 [db-path] -m|--missing [lib lib ...]
+   Check for missing files in given libs (or all), and prompt for removal.
 
- $0 [db-path] -a|--add library-dir song-rel-path
-   Add or update the info in the db for the file at library-dir/song-rel-path
+ $0 [db-path] -a|--add lib song-rel-path
+   Add or update the info in the db for the file at song-rel-path in lib
 
  $0 [db-path] -i|--info [song-rel-path or song-abs-path]
    Query for the info for a song, given the path of the song
 
  $0 [db-path] -s|--search query [OPTS]
-   Query for relative paths to songs, or more information
+   Query for relative paths to songs in given libs (or all), or more info.
    optional OPTS:
-   -l|--limit LIMIT        optional limit on the number of rows returned
-   --columns  COL COL ...  optional columns to return as csv.
-     by default, just relpath is returned. possible values include:
-     @allowedCols
+   --lib lib               optional libs to search (all if not given)
+                           {can appear multiple times}
+   -l|--limit LIMIT        optional integer limit on number of rows returned
+   --col COL               optional col; returned as csv if any specified
+                           {can appear multiple times}
+                           by default, just relpath is returned.
+                           allowed values include: \n   @allowedCols
 
  [db-path] is optional and cannot start with a hyphen. {arg parsing => im lazy}
  if not given, the default is '$defaultDb'
@@ -79,50 +84,43 @@ sub main(@){
       die "'$db' exists already\n";
     }
     create($db);
-  }elsif($cmd =~ /^(-u|--update)$/ and @_ == 1){
-    my $libDir = shift();
-    update($db, $libDir);
-  }elsif($cmd =~ /^(-m|--missing)$/ and @_ == 1){
-    my $libDir = shift();
-    missing($db, $libDir);
+  }elsif($cmd =~ /^(-u|--update)$/){
+    update($db, \@_);
+  }elsif($cmd =~ /^(-m|--missing)$/){
+    missing($db, \@_);
   }elsif($cmd =~ /^(-a|--add)$/ and @_ >= 2){
-    my $libDir = shift();
-    my $songRelPath = shift();
-    add($db, $libDir, $songRelPath);
+    my $lib = shift;
+    my $songRelPath = shift;
+    add($db, $lib, $songRelPath);
   }elsif($cmd =~ /^(-i|--info)$/ and @_ == 1){
-    my $songRelPath = shift();
+    my $songRelPath = shift;
     info($db, $songRelPath);
   }elsif($cmd =~ /^(-s|--search)$/ and @_ >= 1){
     my $query = shift;
 
+    my @libs;
     my $limit = 0;
     my @cols;
     my $mode = 'playlist';
     while(@_){
-      my $arg = shift();
-      if(($arg eq '-l' or $arg eq '--limit') && @_>0){
-        $limit = shift();
-        if(not defined $limit or $limit !~ /^\d+$/){
-          die $usage;
-        }
-      }elsif(($arg eq '--columns') && @_>0){
-        my %allowed;
-        for my $allow(@allowedCols){
-          $allowed{$allow} = 1;
-        }
-        while(@_){
-          my $arg = shift;
-          if(not defined $allowed{$arg}){
-            die $usage;
-          }
-          push @cols, $arg;
-        }
+      my $arg = shift;
+      if($arg =~ /^(-l|--limit)$/ && @_>0){
+        $limit = shift;
+        die $usage if $limit !~ /^\d+$/;
+      }elsif($arg =~ /^(--col)$/ && @_>0){
+        my $col = shift;
+        my %allowed = map {$_ => 1} @allowedCols;
+        die $usage if not defined $allowed{$col};
+        push @cols, $col;
+      }elsif($arg =~ /^(--lib)$/ && @_>0){
+        my $lib = shift;
+        push @libs, $lib;
       }else{
         die $usage;
       }
     }
 
-    search($db, $query, $limit, @cols);
+    search($db, $query, $limit, \@cols, \@libs);
   }else{
     die $usage;
   }
@@ -136,7 +134,7 @@ sub create($){
   }
   runSql($db,
     "create table Songs (".
-      "libpath varchar,".
+      "library varchar,".
       "relpath varchar,".
       "filesize int,".
       "modified int,".
@@ -153,38 +151,46 @@ sub create($){
       "number_guess varchar,".
       "date_guess varchar,".
       "genre_guess varchar,".
-      "PRIMARY KEY (libpath, relpath)".
+      "PRIMARY KEY (library, relpath)".
     ");");
 }
 
 sub update($$){
   my $db = shift;
-  my $lib = shift;
-  chdir $lib;
-
-  my $suffixPattern;
-  for(my $i=0; $i<@songSuffixes; $i++){
-    $suffixPattern .= ".*\\." . $songSuffixes[$i];
-    if($i < $#songSuffixes){
-      $suffixPattern .= "\\|";
+  my @libs = @{shift()};
+  for my $lib(@libs){
+    my $libpath = libpath $lib;
+    if(not -d $libpath){
+      die "Invalid library path $libpath\n";
     }
+    chdir $libpath;
+
+    my $suffixPattern;
+    for(my $i=0; $i<@songSuffixes; $i++){
+      $suffixPattern .= ".*\\." . $songSuffixes[$i];
+      if($i < $#songSuffixes){
+        $suffixPattern .= "\\|";
+      }
+    }
+    my @songRelPaths = shell 'find', '.', '-iregex', $suffixPattern;
+    @songRelPaths = sort @songRelPaths;
+    for (my $i=0; $i<@songRelPaths; $i++){
+      my $songRelPath = $songRelPaths[$i];
+      chomp $songRelPath;
+      $songRelPath =~ s/^.\///;
+      $songRelPaths[$i] = $songRelPath;
+    }
+    addSongs($db, $lib, \@songRelPaths);
   }
-  my @songRelPaths = shell 'find', '.', '-iregex', $suffixPattern;
-  @songRelPaths = sort @songRelPaths;
-  for (my $i=0; $i<@songRelPaths; $i++){
-    my $songRelPath = $songRelPaths[$i];
-    chomp $songRelPath;
-    $songRelPath =~ s/^.\///;
-    $songRelPaths[$i] = $songRelPath;
-  }
-  addSongs($db, $lib, \@songRelPaths);
 }
 
 sub missing($$){
   my $db = shift;
-  my $lib = shift;
-  chdir $lib;
-  checkMissing($db, $lib);
+  my @libs = @{shift()};
+  for my $lib(@libs){
+    chdir $lib;
+    checkMissing($db, $lib);
+  }
 }
 
 sub add($$$){
@@ -241,11 +247,18 @@ sub parseQuotes($){
   return ($newQuery, %quoteAtoms);
 }
 
-sub search($$$\@){
+sub search($$$$$){
   my $db = shift;
   my $query = shift;
   my $limit = shift;
   my @cols = @{shift()};
+  my @libs = @{shift()};
+  
+  my $libWhere = '';
+  if(@libs > 0){
+    $libWhere = "library in (" . (join ', ', map {"'$_'"} @libs) . ") and";
+  }
+
 
   if(not @cols){
     @cols = ('relpath');
@@ -289,7 +302,7 @@ sub search($$$\@){
   my $sql = ''
     . "select $selCols \n"
     . "from Songs \n"
-    . "where (\n  ";
+    . "where $libWhere (\n  (\n  ";
 
   $query .= '~term~';
   my @subqueries;
@@ -354,7 +367,7 @@ sub search($$$\@){
     }
     $sql .= join(" $negAndOr ", @wheres) . ")$term\n  "
   }
-  $sql .= "\n$orderBy\n$lim;";
+  $sql .= "\n) \n$orderBy\n$lim;";
   
   #print STDERR $sql;
   
@@ -369,16 +382,27 @@ sub info($$){
   my $db = shift;
   my $songRelPath = shift;
 
-  $songRelPath =~ s/'/''/g;
-  my @rows = runSql(
-    $db,
-    "select * ".
-    "from Songs ".
-    "where relpath = '$songRelPath' or libpath || '/' || relpath = '$songRelPath';",
-    '-csv',  '-header');
-  if(@rows != 2){
-    die "file not found in db: $songRelPath";
+  my $libWhere = '1=1';
+  for my $lib(getAllLibs()){
+    my $libpath = libpath $lib;
+    if($songRelPath =~ s/^$libpath//){
+      $libWhere = "library = '$lib'";
+      last;
+    }
   }
+  $songRelPath =~ s/^\///;
+  $songRelPath =~ s/'/''/g;
+
+  my $sql = ''
+    . "select * "
+    . "from Songs "
+    . "where relpath = '$songRelPath' "
+    . "  and $libWhere;"
+    ;
+  my @rows = runSql($db, $sql, '-csv', '-header');
+  die "file not found in db: $songRelPath\n" if @rows < 2;
+  die "more than one song found, use abs path instead of '$songRelPath'\n"
+    if @rows > 2;
 
   my @headers = cols $rows[0];
   my @data = cols $rows[1];
@@ -399,6 +423,21 @@ sub wrapTokens(@){
     push @tokens, "'$t'";
   }
   return @tokens;
+}
+
+sub getAllLibs(){
+  my @libs = `klomp-lib`;
+  chomp foreach @libs;
+  return @libs;
+}
+sub libpath($){
+  my $lib = shift;
+  my $libpath = `klomp-lib -l $lib`;
+  chomp $libpath;
+  if(not $libpath){
+    die "Error finding library path for $lib\n";
+  }
+  return $libpath;
 }
 sub shellQuiet(@){
   my $cmd = join ' ', wrapTokens(@_);
@@ -449,9 +488,8 @@ sub cols($){
   return @cols;
 }
 
-sub guess($$$$$$$$){
-  my ($lib, $songRelPath,
-        $title, $artist, $album, $number, $date, $genre) = @_;
+sub guess($$$$$$$){
+  my ($songRelPath, $title, $artist, $album, $number, $date, $genre) = @_;
   my ($title_guess, $artist_guess, $album_guess,
     $number_guess, $date_guess, $genre_guess);
 
@@ -558,11 +596,12 @@ sub transliterateJapanese($){
 sub checkMissing($$){
   my $db = shift;
   my $lib = shift;
-  $lib =~ s/\/$//;
-  $lib =~ s/'/''/g;
+  my $libpath = libpath $lib;
+
   print "checking for missing songs, fetching from db\n";
+  
   my @songRelPaths =
-    runSql $db, "select relpath from songs where libpath = '$lib'";
+    runSql $db, "select relpath from songs where library = '$lib'";
   my $len = @songRelPaths;
   my $piece = 1+$len / 10;
   print "checking $len songs\n";
@@ -571,14 +610,14 @@ sub checkMissing($$){
   my $deleteSql = '';
   for my $songRelPath(@songRelPaths){
     chomp $songRelPath;
-    if(not -e "$lib/$songRelPath"){
+    if(not -e "$libpath/$songRelPath"){
       print "$songRelPath\n";
       push @missing, $songRelPath;
       $songRelPath =~ s/'/''/g;
       $deleteSql .= ''
           . "delete from Songs "
           . "where relpath = '$songRelPath' "
-          . "  and libpath = '$lib';\n"
+          . "  and library = '$lib';\n"
           ;
     }
     if($count++ % $piece == 0){
@@ -598,9 +637,10 @@ sub checkMissing($$){
 sub addSongs($$$){
   my $db = shift;
   my $lib = shift;
-  $lib =~ s/\/$//;
   my @songRelPaths = @{scalar shift};
 
+  my $libpath = libpath $lib;
+  
   print "loading filesize and modified into memory from db\n";
   my %dbInfo;
   for my $line(runSql($db, 'select filesize, modified, relpath from Songs')){
@@ -626,21 +666,21 @@ sub addSongs($$$){
       $dbMod = $infoArr[1];
     }
   
-    my $stat = shellQuiet 'stat', '--format', '%s:%Y', "$lib/$songRelPath";
+    my $stat = shellQuiet 'stat', '--format', '%s:%Y', "$libpath/$songRelPath";
     if($? or $stat !~ /(\d+):(\d+)/){
-      print STDERR "file not found: $lib/$songRelPath\n";
+      print STDERR "file not found: $libpath/$songRelPath\n";
       next;
     }
     my $filesize = $1;
     my $modified = $2;
 
     if($dbExists and $dbSize == $filesize and $dbMod == $modified){
-      print "Same size and modified date, skipping $lib/$songRelPath\n";
+      print "Same size and modified date, skipping $libpath/$songRelPath\n";
       next;
     }
     
     my $md5sum = '';
-    #my $md5sum = shell 'md5sum', "$lib/$songRelPath";
+    #my $md5sum = shell 'md5sum', "$libpath/$songRelPath";
     #$md5sum = substr $md5sum, 0, 32;
 
     #if($dbExists and $dbMd5 eq $md5sum){
@@ -654,7 +694,7 @@ sub addSongs($$$){
     #}
 
     my ($path, $title, $artist, $album, $number, $date, $genre) =
-      readTags("$lib/$songRelPath");
+      readTags("$libpath/$songRelPath");
 
     $title =~ s/'/''/g;
     $artist =~ s/'/''/g;
@@ -665,8 +705,7 @@ sub addSongs($$$){
 
     my ($title_guess, $artist_guess, $album_guess,
         $number_guess, $date_guess, $genre_guess) = guess(
-          $lib, $songRelPath,
-          $title, $artist, $album, $number, $date, $genre);
+          $songRelPath, $title, $artist, $album, $number, $date, $genre);
 
     $title_guess =~ s/'/''/g;
     $artist_guess =~ s/'/''/g;
@@ -679,7 +718,7 @@ sub addSongs($$$){
     $sql .= "delete from Songs where relpath='$sqlPath';";
     $sql .= 
       "insert into Songs ".
-      "(libpath, relpath, filesize, modified, md5sum, ".
+      "(library, relpath, filesize, modified, md5sum, ".
         "title, artist, album, number, date, genre, ".
         "title_guess, artist_guess, album_guess, number_guess, ".
         "date_guess, genre_guess) ".

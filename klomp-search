@@ -26,11 +26,8 @@ sub shellQuiet(@);
 
 #prefs
 our $keyDelay = isN900 ? 0.4 : 0.1;
-our $klompdb = `echo -n \$HOME/.klompdb`;
 our $klompdbExec = 'klomp-db';
 our $flacmirrorExec = 'flacmirror';
-our $lib = `echo -n \$HOME/Desktop/Music/Library`;
-our $flacmirrorLib = `echo -n \$HOME/Desktop/Music/flacmirror`;
 our $KLOMPLIST = `echo -n \$HOME/.klomplist`;
 
 #global state
@@ -39,16 +36,16 @@ our $pos = 0;
 our $query = '';
 our $offset = 0;
 
-sub main(){
-  my $cmd = $ARGV[0];
+sub main(@){
+  my $cmd = $_[0];
+  $cmd = '' if not defined $cmd;
   if($cmd eq '--once'){
     $exitAfterFetch = 1;
-    shift @ARGV;
+    shift @_;
   }
 
-  $cmd = '' if not defined $cmd;
   if($cmd !~ /^-(a|p|o|w|r)$/i){
-    $query = join ' ', @ARGV;
+    $query = join ' ', @_;
     utf8::decode $query;
     $pos = length $query;
     system "clear";
@@ -59,9 +56,9 @@ sub main(){
     exit 0;
   }
 
-  shift @ARGV;
+  shift @_;
 
-  my $query = join ' ', @ARGV;
+  my $query = join ' ', @_;
   print "fetching query: $query\n";
   my @files = fetch $query;
   print scalar(@files) . " files\n";
@@ -200,26 +197,50 @@ sub strwidth($){
   return $w;
 }
 
+sub makeQuery($;$){
+  my $query = shift;
+  my $limit = shift;
+  
+  my @libs;
+  my %knownLibs = map {chomp; {$_ => 1}} `klomp-lib`;
+  my $libRegex = qr/^\$([a-zA-Z0-9]+)/;
+  while($query =~ /$libRegex/){
+    my $lib = $1;
+    if($lib eq 'all'){
+      $query =~ s/$libRegex//;
+      @libs = keys %knownLibs;
+    }elsif($knownLibs{$lib}){
+      $query =~ s/$libRegex//;
+      push @libs, $lib;
+    }else{
+      last;
+    }
+  }
+  @libs = `klomp-lib -d` if @libs == 0;
+  chomp foreach @libs;
+
+  my @libArgs = map {('--lib', $_)} @libs;
+  my @limitArgs = ("-l", $limit) if defined $limit;
+  my @colArgs = map {('--col', $_)} qw(artist album number title relpath library);
+  return shellQuiet $klompdbExec,
+    '-s', $query, @libArgs, @limitArgs, @colArgs;
+}
+
 sub showQuery(){
   my @size = Term::ReadKey::GetTerminalSize;
   my $width = $size[0];
   my $height = $size[1];
  
-  #limit controls the number of elements returned
+  #number of elements returned
   my $limit = 2*$height + $offset;
+  my @songRows = makeQuery $query, $limit;
   
-  my @columns = qw(artist album number title relpath);
-  my @songRows = shellQuiet $klompdbExec, $klompdb,
-    '-s', $query,
-    '-l', $limit,
-    '--columns', @columns;
-
   my %artists;
   for my $songRow(@songRows){
     utf8::decode $songRow;
     chomp $songRow;
     my @cols = parseCsv($songRow);
-    my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
+    my ($artist, $album, $number, $title, $relpath, $library) = @cols;
     my $albums;
     if(not defined $artists{$artist}){
       my %hash;
@@ -364,29 +385,28 @@ sub appendList($){
 }
 
 sub flacmirror($$){
-  my $libpath = shift;
+  my $library = shift;
   my $relpath = shift;
-  #replace last path entry with 'flacmirror'
-  $libpath =~ s/\/[^\/]+$/\/flacmirror/;
+  my $flacmirrorPath = `klomp-lib -f $library`;
   #replace .flac with .ogg, case insensitive on the 'flac'
   $relpath =~ s/\.flac$/\.ogg/i;
-  return "$libpath/$relpath";
+  return "$flacmirrorPath/$relpath";
 }
 
 sub fetch($){
   my $query = shift;
 
-  my @columns = qw(artist album number title relpath libpath);
-  my @songRows = shellQuiet $klompdbExec, $klompdb, '-s', $query, '--columns', @columns;
+  my @songRows = makeQuery $query;
   my @files;
   for my $songRow(@songRows){
     chomp $songRow;
 
     my @cols = parseCsv($songRow);
-    my ($artist, $album, $number, $title, $relpath, $libpath) = @cols;
+    my ($artist, $album, $number, $title, $relpath, $library) = @cols;
+    my $libpath = `klomp-lib -l $library`;
     
     my $fullPath = "$libpath/$relpath";
-    my $flacmirrorPath = flacmirror $libpath, $relpath;
+    my $flacmirrorPath = flacmirror $library, $relpath;
     my $path;
     if(not -e $fullPath and -e $flacmirrorPath){
       $path = $flacmirrorPath;
@@ -617,4 +637,4 @@ sub shellQuiet(@){
   return `$cmd 2>/dev/null`;
 }
 
-&main;
+&main(@ARGV);
