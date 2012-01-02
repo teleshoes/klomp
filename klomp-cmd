@@ -17,7 +17,6 @@ if(isN900 and `whoami` =~ /^root(\n|$)/){
   exec "udo", $0, @ARGV;
 }
 
-my $klompCmdExec = 'klomp-cmd';
 my $klomplayerExec = 'klomplayer';
 my $KLOMPCUR = `echo -n \$HOME/.klompcur`;
 my $KLOMPLIST = `echo -n \$HOME/.klomplist`;
@@ -71,7 +70,7 @@ sub isN900(){
 sub defaultPlaylist(){
   my @KLOMPLIST = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
   if(@KLOMPLIST == 0){
-    system "$klompCmdExec -a";
+    system "$0 -a";
   }
 }
 sub start(){
