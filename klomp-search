@@ -36,6 +36,16 @@ our $pos = 0;
 our $query = '';
 our $offset = 0;
 
+our @allLibs = `klomp-lib`;
+our @defaultLibs = `klomp-lib -d`;
+chomp foreach @allLibs;
+chomp foreach @defaultLibs;
+
+our %libraryPaths = map {$_ => scalar `klomp-lib -l $_`} @allLibs;
+our %flacmirrorPaths = map {$_ => scalar `klomp-lib -f $_`} @allLibs;
+chomp foreach values %libraryPaths;
+chomp foreach values %flacmirrorPaths;
+
 sub main(@){
   my $cmd = $_[0];
   $cmd = '' if not defined $cmd;
@@ -202,21 +212,20 @@ sub makeQuery($;$){
   my $limit = shift;
   
   my @libs;
-  my %knownLibs = map {chomp; {$_ => 1}} `klomp-lib`;
   my $libRegex = qr/^\$([a-zA-Z0-9]+)/;
   while($query =~ /$libRegex/){
     my $lib = $1;
     if($lib eq 'all'){
       $query =~ s/$libRegex//;
-      @libs = keys %knownLibs;
-    }elsif($knownLibs{$lib}){
+      @libs = keys %libraryPaths;
+    }elsif(defined $libraryPaths{$lib}){
       $query =~ s/$libRegex//;
       push @libs, $lib;
     }else{
       last;
     }
   }
-  @libs = `klomp-lib -d` if @libs == 0;
+  @libs = @defaultLibs if @libs == 0;
   chomp foreach @libs;
 
   my @libArgs = map {('--lib', $_)} @libs;
@@ -387,7 +396,7 @@ sub appendList($){
 sub flacmirror($$){
   my $library = shift;
   my $relpath = shift;
-  my $flacmirrorPath = `klomp-lib -f $library`;
+  my $flacmirrorPath = $flacmirrorPaths{$library};
   #replace .flac with .ogg, case insensitive on the 'flac'
   $relpath =~ s/\.flac$/\.ogg/i;
   return "$flacmirrorPath/$relpath";
@@ -398,13 +407,15 @@ sub fetch($){
 
   my @songRows = makeQuery $query;
   my @files;
+  
+  system "clear";
   for my $songRow(@songRows){
     chomp $songRow;
 
     my @cols = parseCsv($songRow);
     my ($artist, $album, $number, $title, $relpath, $library) = @cols;
-    my $libpath = `klomp-lib -l $library`;
-    
+    my $libpath = $libraryPaths{$library};
+
     my $fullPath = "$libpath/$relpath";
     my $flacmirrorPath = flacmirror $library, $relpath;
     my $path;
