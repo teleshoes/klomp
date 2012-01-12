@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+for my $lib(`klomp-lib`){
+  chomp $lib;
+  print "\n\nHandling library: $lib\n";
+
+  print "Check missing\n";
+  system 'klomp-db', '-m', $lib;
+
+  print "Adding new songs and updating modified songs\n";
+  system 'klomp-db', '-u', $lib;
+
+  my $dir = `klomp-lib -l $lib`;
+  chomp $dir;
+  my $flacMirrorDir = `klomp-lib -f $lib`;
+  chomp $flacMirrorDir;
+  if(-e $flacMirrorDir and -e $dir){
+    print "Checking flacmirror\n";
+    system "flacmirror $dir $flacMirrorDir";
+  }
+}
