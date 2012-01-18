@@ -31,9 +31,11 @@ Works nicely on the N900.
   you can build the db on one computer,
   copy it elsewere, and search/play it without installing the tagging deps
 
+
 **** Limitations ****
 klomp-db tags only: mp3, flac, ogg, m4a, wma, wav
 everything else can do anything mplayer can
+
 
 **** Files ****
 COPYING - GPLv3
@@ -56,13 +58,11 @@ $HOME/.klomplist - the central play queue; absolute paths that play in order
 $HOME/.klomphistory - songs that have played or been skipped, for re-playing
 
 
-
 **** Dependencies ****
 klomp, klomp-search     Term::ReadKey
 klomp-call-handler      python
 klomplayer              mplayer
 flacmirror              dir2ogg
-
 
 just GNU/Linux and perl for:
 klomp-cmd, klomp-lib, klomp-term, klomp-fifo-writer
@@ -79,4 +79,3 @@ klomp-db
      sudo apt-get install atomicparsley
  to get japanese transliteration, you need:
    perl module Lingua::JA::Romanize::Japanese
-
