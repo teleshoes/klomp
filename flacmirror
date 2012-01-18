@@ -4,6 +4,8 @@
 use strict;
 use warnings;
 
+my $dir2oggExec = 'dir2ogg';
+
 sub shellQuiet(@);
 sub convert($$$$);
 
@@ -14,7 +16,7 @@ die "Usage: $0 src dest" if not defined $srcDir or not defined $destDir;
 die "src '$srcDir' is not a directory" if !-d $srcDir;
 die "dest '$destDir' is not a directory" if !-d $destDir;
 
-system "dir2ogg --help > /dev/null";
+system "$dir2oggExec --help > /dev/null";
 if($?){
   die "could not exec dir2ogg";
 }
@@ -208,7 +210,7 @@ sub convert($$$$){
   my $destDir = shift;
   my $baseName = shift;
 
-  system 'dir2ogg', "$srcDir/$flac";
+  system $dir2oggExec, "$srcDir/$flac";
   if($?){
     return "failure: $flac\n";
   }
