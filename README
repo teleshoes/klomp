@@ -1,31 +1,71 @@
-Copyright 2011 by Elliot Wolk
+Copyright 2011-2012 by Elliot Wolk
 klomp is free software, released under the GPLv3
 
+========================
 klomp - CLI music player
+========================
 
-FILES
-klomp - interactive playlist viewer and editor
-klomp-call-handler - watches for calls on the n900 to turn off klomplayer
-klomp-cmd - sends messages to mplayer, and modifies playlist
-klomp-db - manages and queries a sqlite database. reads tags
-klomp-fifo-writer - writes to the mplayer fifo at fixed interval
-klomplayer - mplayer wrapper that updates a file with time position
-klomp-search - interactive frontend to klomp-db
-klomp-term - launches klomp in a gnome-terminal
-flacmirror - rsync style ogg->flac conversion util
+klomp is a set of perl scripts that manage mplayer in an mpd-like fashion.
+The goal is to have a pure command line music player with powerful searching,
+and to work on portable linux devices {e.g.: maemo/meego/mer}.
+
+Core requirements are GNU/Linux, mplayer, and perl.
+{plus optional requirements for reading tags from different filetypes}
+Works nicely on the N900.
+
+
+**** Features ****
+-Stateless: if you delete the db, it can be 100% automatically rebuilt
+  never modifies song files: very nice, robust tagging utilities already exist
+-Modular: well-defined, non-interactive commands
+-Quasi-portable: as long as you use gnu/linux, you should be good
+  very few dependencies {apart from tagging when db building}
+  installs anywhere you damn well please, these are executable perl scripts
+-Powerful query language {really powerful, but not well-documented}
+-Flacmirror:
+  lossless audio on your computer, tiny oggs on your phone, transparently
+-optional CLI interactive interface that invokes the same commands
+-resume playback from the position you quit in the current song
+-moderate resource consumption {runs smoothly on N900 - 256MB ram, 600mhz cpu}
+-separation of db-building and playback/playlists;
+  you can build the db on one computer,
+  copy it elsewere, and search/play it without installing the tagging deps
+
+**** Limitations ****
+klomp-db tags only: mp3, flac, ogg, m4a, wma, wav
+everything else can do anything mplayer can
+
+**** Files ****
 COPYING - GPLv3
 README - ?????? wtf is this thing?
+flacmirror - rsync style ogg->flac conversion util {parallel dir structure}
+klomp - interactive current-playlist viewer and editor {calls klomp-search}
+klomp-search - interactive frontend to klomp-db for querying
+klomp-cmd - sends messages to mplayer, and modifies playlist
+klomp-db - manages and queries a sqlite database. reads tags. {central script}
+klomp-lib - turns library names into absolute paths
+klomp-call-handler - N900-specific: kill klomplayer when recieving a phone call
+klomp-term - launches klomp in a terminal, modifies WM props
+klomp-fifo-writer - repeatedly query for song pos by writing to mplayer fifo
+klomplayer - mplayer wrapper that updates a file with time position
+
+$HOME/.klompdb - default location for sqlite db
+$HOME/.klomplib - default location for library path definitions
+$HOME/.klompcur - current song's info and current position
+$HOME/.klomplist - the central play queue; absolute paths that play in order
+$HOME/.klomphistory - songs that have played or been skipped, for re-playing
 
 
-klomp-db handles: mp3, flac, ogg, m4a, wma, wav
-everything else relies on mplayer
+
+**** Dependencies ****
+klomp, klomp-search     Term::ReadKey
+klomp-call-handler      python
+klomplayer              mplayer
+flacmirror              dir2ogg
 
 
-dependencies:
-klomp, klomp-search           perl, Term::ReadKey
-klomp-call-handler            python
-klomp-cmd, klomp-fifo-writer  perl
-klomplayer                    perl, mplayer
+just GNU/Linux and perl for:
+klomp-cmd, klomp-lib, klomp-term, klomp-fifo-writer
 
 klomp-db
  to update the library and read tags from files, you need:
