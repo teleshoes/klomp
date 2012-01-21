@@ -18,7 +18,7 @@ sub runPrompt(@){
 }
 
 print "searching for and playing music:\n";
-run qw(apt-get install perl python mplayer);
+run qw(apt-get install perl python mplayer sqlite3);
 
 print "\n\n";
 
