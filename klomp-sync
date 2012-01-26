@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-my $usage = "$0 OPTS
+my $usage = "$0 [user@]host OPTS
   OPTS:  --force-flacs, --no-force-flacs
                If a library has a flacmirror on the destination,
                flacs are omitted. This flag makes them never be omitted.
