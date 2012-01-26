@@ -2,7 +2,15 @@
 use strict;
 use warnings;
 
-my $klomplib = "$ENV{HOME}/.klomplib";
+my $defaultKlomplib = "$ENV{HOME}/.klomplib";
+
+my $klomplib;
+if(@ARGV > 0 and $ARGV[0] =~ /^--file=(.*)$/){
+  shift;
+  $klomplib = $1;
+}else{
+  $klomplib = $defaultKlomplib;
+}
 
 if(not -e $klomplib){
   die "$klomplib file not found\n";
@@ -34,12 +42,13 @@ if(not defined $cmd){
   print "$$libArr[2]\n" if $cmd eq '-f' and @$libArr >= 3;
 }else{
   die "Usage:
-    $0
+    $0 [--file=libfile]
       print available libs
-    $0 -d
+    $0 [--file=libfile] -d
       print default libs
-    $0 -l <lib>
+    $0 [--file=libfile] -l <lib>
       print library path for <lib>
-    $0 -f <lib>
-      print flacmirror path for <lib>\n";
+    $0 [--file=libfile] -f <lib>
+      print flacmirror path for <lib>
+    --file=libfile is optional, default is $defaultKlomplib\n";
 }
