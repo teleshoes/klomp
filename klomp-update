@@ -2,8 +2,10 @@
 use strict;
 use warnings;
 
-for my $lib(`klomp-lib`){
-  chomp $lib;
+my @libs = `klomp-lib`;
+chomp foreach @libs;
+
+for my $lib(@libs){
   print "\n\nHandling library: $lib\n";
 
   print "Check missing\n";
@@ -11,13 +13,17 @@ for my $lib(`klomp-lib`){
 
   print "Adding new songs and updating modified songs\n";
   system 'klomp-db', '-u', $lib;
+}
 
+for my $lib(@libs){
   my $dir = `klomp-lib -l $lib`;
   chomp $dir;
   my $flacMirrorDir = `klomp-lib -f $lib`;
   chomp $flacMirrorDir;
+  system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir;
+  
   if(-e $flacMirrorDir and -e $dir){
-    print "Checking flacmirror\n";
+    print "\n\nflacmirror for: $lib\n";
     system "flacmirror $dir $flacMirrorDir";
   }
 }
