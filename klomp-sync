@@ -2,41 +2,73 @@
 use strict;
 use warnings;
 
+my $klompDb = "$ENV{HOME}/.klompdb";
+
+my $klompLib = "$ENV{HOME}/.klomplib";
+my $tmpKlompLib = "/tmp/klomp-sync_" . time();
+
 my $usage = "$0 [user@]host OPTS
   OPTS:  --force-flacs, --no-force-flacs
                If a library has a flacmirror on the destination,
                flacs are omitted. This flag makes them never be omitted.
 ";
 
-sub main(@){
-  my $dest = shift;
-  my $forceFlacs = shift() || '--no-force-flacs';
-  die $usage if not defined $dest or $forceFlacs !~ /^(--(no-)?force-flacs)$/;
-
-  
+sub syncDir($$$$){
+  my ($local, $remote, $host, $exclude) = @_;
+  #delete trailing slashes
+  $local =~ s/\/$//;
+  $remote =~ s/\/$//;
+  my @args = $exclude ? ($exclude) : ();
+  system "ssh", "$host", "mkdir -p $remote";
+  system "presync", "$local", "$host:$remote";
+  system "rsync",
+    "--delete-after", "-av",
+    "--progress",
+    "$local/",
+    "$host:$remote",
+    @args;
 }
 
 
+sub main(@){
+  my $host = shift;
+  my $forceFlacs = shift() || '--no-force-flacs';
+  die $usage if not defined $host or $forceFlacs !~ /^(--(no-)?force-flacs)$/;
 
+  system 'scp', "$host:~/.klomplib", $tmpKlompLib;
+  die "Error copying $host:~/.klomplib\n" if not -e $tmpKlompLib;
+
+  system 'scp', $klompDb, "$host:~";
+
+  my %libs = map {chomp; $_ => 1} `klomp-lib`;
+  my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$tmpKlompLib`;
+
+  for my $lib(sort keys %libs){
+    if(not defined $remoteLibs{$lib}){
+      print "skipping $lib\n";
+      next;
+    }
+    my $path = `klomp-lib -l $lib`;
+    chomp $path;
+    my $remotePath = `klomp-lib --file=$tmpKlompLib -l $lib`;
+    chomp $remotePath;
+
+    my $flacmirrorPath = `klomp-lib -f $lib`;
+    chomp $flacmirrorPath;
+    
+    my $remoteFlacmirrorPath = `klomp-lib --file=$tmpKlompLib -f $lib`;
+    chomp $remoteFlacmirrorPath;
+    
+    my $exclude = '';
+    if($flacmirrorPath and $remoteFlacmirrorPath){
+      $exclude = '--exclude=*.flac';
+    }
+    syncDir $path, $remotePath, $host, $exclude;
+
+    if($flacmirrorPath and $remoteFlacmirrorPath){
+      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, '';
+    }
+  }
+}
 
 &main(@ARGV);
-#SRC=~/Desktop/Music
-#DEST=/media/mmc1/Music
-#klomp-update
-#echo moving files around on the destination to prepare for library sync
-#presync $SRC/Library root@`n900`:$DEST/Library
-#
-#echo Syncing library, sans flac
-#rsync -av --exclude=*.flac --del $SRC/Library/ root@`n900`:$DEST/Library
-#
-#echo moving files around on the destination to prepare for flacmirror sync
-#presync $SRC/flacmirror root@`n900`:$DEST/flacmirror
-#
-#echo Syncing flacmirror oggs
-#rsync -av $SRC/flacmirror/ --del root@`n900`:$DEST/flacmirror
-#echo chown $DEST on n900
-#ssh root@`n900` chown user.users -R $DEST
-#
-#echo copying .klompdb to n900
-#scp ~/.klompdb root@`n900`:/home/user
-#ssh root@`n900` chown user.users /home/user/.klompdb
