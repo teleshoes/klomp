@@ -34,18 +34,22 @@ sub main(@){
   my $host = shift;
   my $forceFlacs = shift() || '--no-force-flacs';
   die $usage if not defined $host or $forceFlacs !~ /^(--(no-)?force-flacs)$/;
+  $forceFlacs = $forceFlacs eq '--force-flacs' ? 1 : 0;
 
+  print "Copying remote .klomplib here to read\n";
   system 'scp', "$host:~/.klomplib", $tmpKlompLib;
   die "Error copying $host:~/.klomplib\n" if not -e $tmpKlompLib;
 
+  print "Overwriting remote .klompdb with local .klompdb\n";
   system 'scp', $klompDb, "$host:~";
 
   my %libs = map {chomp; $_ => 1} `klomp-lib`;
   my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$tmpKlompLib`;
 
   for my $lib(sort keys %libs){
+    print "\n\nSYNCING $lib\n";
     if(not defined $remoteLibs{$lib}){
-      print "skipping $lib\n";
+      print "not in remote .klomplib, skipping..\n";
       next;
     }
     my $path = `klomp-lib -l $lib`;
@@ -60,13 +64,19 @@ sub main(@){
     chomp $remoteFlacmirrorPath;
     
     my $exclude = '';
-    if($flacmirrorPath and $remoteFlacmirrorPath){
+    if($forceFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){
+      print "COPYING FLACS\n";
+    }else{
+      print "ignoring flacs\n";
       $exclude = '--exclude=*.flac';
     }
     syncDir $path, $remotePath, $host, $exclude;
 
+    print "\n\nflacmirror for: $lib\n";
     if($flacmirrorPath and $remoteFlacmirrorPath){
       syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, '';
+    }else{
+      print "skipping, flacmirror must to be set in both lib files";
     }
   }
 }
