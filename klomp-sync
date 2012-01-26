@@ -2,6 +2,24 @@
 use strict;
 use warnings;
 
+my $usage = "$0 OPTS
+  OPTS:  --force-flacs, --no-force-flacs
+               If a library has a flacmirror on the destination,
+               flacs are omitted. This flag makes them never be omitted.
+";
+
+sub main(@){
+  my $dest = shift;
+  my $forceFlacs = shift() || '--no-force-flacs';
+  die $usage if not defined $dest or $forceFlacs !~ /^(--(no-)?force-flacs)$/;
+
+  
+}
+
+
+
+
+&main(@ARGV);
 #SRC=~/Desktop/Music
 #DEST=/media/mmc1/Music
 #klomp-update
