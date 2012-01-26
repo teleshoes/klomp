@@ -65,6 +65,7 @@ my @execs = qw(
   klomp-fifo-writer
   klomp-lib
   klomp-search
+  klomp-sync
   klomp-term
   klomp-update
 );
