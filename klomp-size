@@ -1,0 +1,114 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $unit = "MiB";
+my $unitBytes = 2**20;
+my $numFormat = "%6.0f";
+
+sub du($;$);
+sub convert($);
+sub getSizes($);
+
+sub main(@){
+  my @libs = `klomp-lib`;
+  chomp foreach @libs;
+
+  print "Unit: $unit  ($unitBytes bytes)  format: $numFormat\n";
+  my %okLibs = map {$_ => 1} @_;
+  %okLibs = map {$_ => 1} @libs if keys %okLibs == 0;
+
+  my @libSizeHashes;
+  for my $lib(@libs){
+    next if not defined $okLibs{$lib};
+    my %libSizeHash = getSizes $lib;
+    push @libSizeHashes, \%libSizeHash;
+  }
+  my %totalSizeHash = (lib => 'total');
+  if(@libSizeHashes > 0){
+    foreach my $key(keys %{$libSizeHashes[0]}){
+      next if $key eq 'lib';
+      foreach(@libSizeHashes){
+        my $val = $$_{$key};
+        $totalSizeHash{$key} = 0 if not defined $totalSizeHash{$key};
+        $totalSizeHash{$key} = fmt($val + $totalSizeHash{$key});
+      }
+    }
+  }
+  push @libSizeHashes, \%totalSizeHash;
+
+  foreach(@libSizeHashes){
+    my $lib = $$_{lib};
+    my $abbrev = 5;
+    $lib = ' 'x($abbrev-length $lib) . substr $lib, 0, $abbrev;
+    print ''
+      . "$lib"
+      . " | $$_{sync}"
+      . " |tot $$_{total}"
+      . " |nonflac $$_{nonflac}"
+      . " |flac $$_{flac}"
+      . " |fm $$_{flacmirror}"
+      . "\n"
+      ;
+  }
+}
+
+
+sub du($;$){
+  my $path = shift;
+  my $args = shift() || '';
+  $path =~ s/'/'\\''/g;
+  my $cmd = "du -bs $args '$path'";
+  my $size = `$cmd`;
+  if($size !~ /^(\d+)/){
+    die "Error processing $cmd\n";
+  }else{
+    return $1;
+  }
+}
+
+sub convert($){
+  return $_[0]/$unitBytes;
+}
+sub fmt($){
+  return sprintf $numFormat, $_[0];
+}
+sub fmtAndConvert($){
+  return fmt(convert($_[0]));
+}
+
+sub getSizes($){
+  my $lib = shift;
+
+  my $path = `klomp-lib -l $lib`;
+  chomp $path;
+  my $fmPath = `klomp-lib -f $lib`;
+  chomp $fmPath;
+  
+  my $size = du $path;
+  if(defined $fmPath and $fmPath){
+    my $nonFlacSize = du $path, '--exclude=\*.flac';
+    my $flacMirrorSize = du $fmPath;
+    my $flacSize = $size - $nonFlacSize;
+    my $sync = $nonFlacSize + $flacMirrorSize;
+    return (
+      lib => $lib,
+      total => fmtAndConvert $size,
+      sync => fmtAndConvert $sync,
+      nonflac => fmtAndConvert $nonFlacSize,
+      flac => fmtAndConvert $flacMirrorSize,
+      flacmirror => fmtAndConvert $flacSize,
+    );
+  }else{
+    return (
+      lib => $lib,
+      total => fmtAndConvert $size,
+      sync => fmtAndConvert $size,
+      nonflac => fmtAndConvert 0,
+      flac => fmtAndConvert $size,
+      flacmirror => fmtAndConvert 0,
+    );
+  }
+}
+
+&main(@ARGV);
