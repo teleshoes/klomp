@@ -6,6 +6,23 @@ if(`whoami` ne "root\n"){
   exec 'sudo', $0, @ARGV;
 }
 
+my @execs = qw(
+  flacmirror
+  klomplayer
+  klomp
+  klomp-call-handler
+  klomp-cmd
+  klomp-db
+  klomp-fifo-writer
+  klomp-lib
+  klomp-search
+  klomp-sync
+  klomp-term
+  klomp-update
+  klomp-size
+);
+
+
 sub run(@){
   print "@_\n";
   system @_;
@@ -54,21 +71,6 @@ print "\n\n";
 
 my $dest = '/usr/local/bin';
 print "copying the scripts to $dest\n";
-
-my @execs = qw(
-  flacmirror
-  klomplayer
-  klomp
-  klomp-call-handler
-  klomp-cmd
-  klomp-db
-  klomp-fifo-writer
-  klomp-lib
-  klomp-search
-  klomp-sync
-  klomp-term
-  klomp-update
-);
 
 for my $exec(@execs){
   run ("cp", $exec, $dest);
