@@ -96,8 +96,8 @@ sub getSizes($){
       total => fmtAndConvert $size,
       sync => fmtAndConvert $sync,
       nonflac => fmtAndConvert $nonFlacSize,
-      flac => fmtAndConvert $flacMirrorSize,
-      flacmirror => fmtAndConvert $flacSize,
+      flac => fmtAndConvert $flacSize,
+      flacmirror => fmtAndConvert $flacMirrorSize,
     );
   }else{
     return (
