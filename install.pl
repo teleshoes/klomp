@@ -5,6 +5,7 @@ use warnings;
 if(`whoami` ne "root\n"){
   exec 'sudo', $0, @ARGV;
 }
+my $dest = '/usr/local/bin';
 
 my @execs = qw(
   flacmirror
@@ -22,10 +23,9 @@ my @execs = qw(
   klomp-size
 );
 
-
-my $dest = '/usr/local/bin';
-print "copying the scripts to $dest\n";
+print "copying these scripts to $dest\n";
+print "@execs\n";
 
 for my $exec(@execs){
-  run "cp", $exec, $dest;
+  system "cp", $exec, $dest;
 }
