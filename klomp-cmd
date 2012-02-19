@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Sys::Hostname;
 
-sub isN900();
+sub isPhone();
 sub defaultPlaylist();
 sub start();
 sub stop();
@@ -12,9 +12,9 @@ sub shellQuiet(@);
 sub nextItem();
 sub prevItem();
 
-if(isN900 and `whoami` =~ /^root(\n|$)/){
+if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
-  exec "udo", $0, @ARGV;
+  exec "su -c '$0 @ARGV' user";
 }
 
 my $klomplayerExec = 'klomplayer';
@@ -39,7 +39,7 @@ sub main(){
       defaultPlaylist;
       start;
     }else{
-      if(isN900){
+      if(isPhone){
         stop;
       }else{
         system "echo pause > $FIFO";
@@ -64,8 +64,8 @@ sub main(){
   }
 }
 
-sub isN900(){
-  return hostname() =~ /n900/i ? 1 : 0;
+sub isPhone(){
+  return hostname() =~ /(n9|n900)$/i ? 1 : 0;
 }
 sub defaultPlaylist(){
   my @KLOMPLIST = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
@@ -82,7 +82,7 @@ sub stop(){
     system "kill -9 `cat $PID_FILE`";
     system "rm $PID_FILE";
   }
-  system "killall -9 mplayer" if isN900;
+  system "killall -9 mplayer" if isPhone;
   system "rm /tmp/klomplayer*";
 }
 sub isRunning(){
