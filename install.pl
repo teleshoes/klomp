@@ -2,10 +2,14 @@
 use strict;
 use warnings;
 
+my $prefix = shift() || '/usr/local';
+die "Usage: $0 <prefix>\n" if @ARGV > 0;
+my $dest = "$prefix/bin";
+die "Invalid install location: $dest\n" if not -d $dest;
+
 if(`whoami` ne "root\n"){
   exec 'sudo', $0, @ARGV;
 }
-my $dest = '/usr/local/bin';
 
 my @execs = qw(
   flacmirror
