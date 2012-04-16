@@ -3,6 +3,18 @@ use strict;
 use warnings;
 use Sys::Hostname;
 
+my $usage = "Usage:
+  $0 start - start
+  $0 stop  - stop
+  $0 pause - play/pause
+  $0 next  - skip song
+  $0 prev  - previous song
+  $0 reset - clear song list and history
+  $0 -h    - show this message
+  $0 <mplayer slave input>
+     {e.g.: $0 seek 10}
+";
+
 sub isPhone();
 sub defaultPlaylist();
 sub start();
@@ -28,7 +40,10 @@ sub main(){
   my $cmd = $ARGV[0];
   $cmd = '' if not defined $cmd;
 
-  if($cmd eq 'start'){
+  if($cmd eq '-h'){
+    print $usage;
+    exit 0;
+  }elsif($cmd eq 'start'){
     stop;
     start;
   }elsif($cmd eq 'stop'){
@@ -59,8 +74,7 @@ sub main(){
   }elsif(@ARGV > 0){
     system "echo @ARGV > $FIFO";
   }else{
-    die "Usage: $0 [start|stop|pause|next|prev|reset]
-    or $0 <mplayer slave input> {e.g.: seek 10}\n";
+    die $usage;
   }
 }
 
