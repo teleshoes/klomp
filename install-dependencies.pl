@@ -23,7 +23,7 @@ run qw(apt-get install perl python mplayer sqlite3);
 print "\n\n";
 
 print "optional interactive CLI\n  {perl moudle Term::ReadKey}\n";
-runPrompt qw(apt-get install lib-term-readkey-perl);
+runPrompt qw(apt-get install libterm-readkey-perl);
 
 print "\n\n";
 
@@ -36,7 +36,7 @@ print "\n\n-ogg and flac {lltag}:\n";
 runPrompt qw(apt-get install lltag);
 
 print "\n\n-wma {perl module Audio::WMA}\n";
-runPrompt qw(apt-get install lib-audio-wma-perl);
+runPrompt qw(apt-get install libaudio-wma-perl);
 
 print "\n\n-mp4, m4a, m4p, m4v, m4b {AtomicParsley }\n";
 runPrompt qw(apt-get install atomicparsley);
