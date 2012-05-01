@@ -4,8 +4,11 @@ use warnings;
 
 my $unit = "MiB";
 my $unitBytes = 2**20;
-my $numFormat = "%6.0f";
+my $numLen = 6;
+my $numFormat = "%$numLen.0f";
 
+sub formatLine($$$$$$);
+sub pad($$);
 sub du($;$);
 sub convert($);
 sub getSizes($);
@@ -37,22 +40,38 @@ sub main(@){
   }
   push @libSizeHashes, \%totalSizeHash;
 
+  print formatLine("LIB", "SYNC", "TOTAL", "FLAC", "FM-OGG", "OTHER");
+
   foreach(@libSizeHashes){
-    my $lib = $$_{lib};
-    my $abbrev = 5;
-    $lib = ' 'x($abbrev-length $lib) . substr $lib, 0, $abbrev;
-    print ''
-      . "$lib"
-      . " | $$_{sync}"
-      . " |tot $$_{total}"
-      . " |nonflac $$_{nonflac}"
-      . " |flac $$_{flac}"
-      . " |fm $$_{flacmirror}"
-      . "\n"
-      ;
+    print formatLine(
+      $$_{lib},
+      $$_{sync},
+      $$_{total},
+      $$_{flac},
+      $$_{flacmirror},
+      $$_{nonflac},
+      );
   }
 }
 
+sub formatLine($$$$$$){
+  my ($lib, $sync, $total, $flac, $flacmirror, $nonflac) = @_;
+  my $abbrev = 5;
+  $lib = pad $abbrev, substr($lib, 0, $abbrev);
+  return ''
+    . "$lib"
+    . " | " . pad($numLen, $sync)
+    . " | " . pad($numLen, $total)
+    . " | " . pad($numLen, $flac)
+    . " => " . pad($numLen, $flacmirror)
+    . " | " . pad($numLen, $nonflac)
+    . "\n"
+    ;
+}
+
+sub pad($$){
+  return ' ' x ($_[0] - length $_[1]) . $_[1];
+}
 
 sub du($;$){
   my $path = shift;
