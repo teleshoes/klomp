@@ -114,6 +114,10 @@ for(my $i=0; $i<@biggestFlacs; $i++){
 
 
 my $baseLog = '/tmp/flacmirror_' . time;
+my @workerLogFiles;
+for(my $w=0; $w<@workers; $w++){
+  push @workerLogFiles, "$baseLog-$w.log";
+}
 
 my @pids;
 for(my $w=0; $w<@workers; $w++){
@@ -127,7 +131,7 @@ for(my $w=0; $w<@workers; $w++){
     }
     print "worker#$w starting $len flacs with total filesize $bytes\n";
     
-    my $logFile = "$baseLog-$w.log";
+    my $logFile = $workerLogFiles[$w];
     open FH, "> $logFile" or die "Could not open log file $logFile\n";
     for my $flac(@flacsJob){
       my $dirName = shellQuiet 'dirname', $flac;
@@ -154,7 +158,12 @@ print "finished\n";
 system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
 mkdir $destDir;
 
-my @statuses = shellQuiet 'cat', "$baseLog-*.log";
+my @statuses;
+for my $logFile(@workerLogFiles){
+  open FH, "< $logFile" or die "Couldnt read logfile $logFile\n";
+  @statuses = (@statuses, <FH>);
+  close FH;
+}
 @statuses = sort @statuses;
 my @successes;
 my @failues;
@@ -176,11 +185,11 @@ for my $flac(@flacsToTranscode){
 }
 
 print "successfully converted " . scalar(@successes) . " flacs\n";
+print join("\n", @successes) . "\n";
 
 if(@failures > 0){
-  print "There were " . scalar(@failures) . " failures\n";
-  print join "\n", @failures;
-  print "\n";
+  print STDERR "There were " . scalar(@failures) . " failures\n";
+  print STDERR join("\n", @failures) . "\n";
   exit 1;
 }
 
