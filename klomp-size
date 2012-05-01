@@ -18,6 +18,7 @@ sub main(@){
   chomp foreach @libs;
 
   print "Unit: $unit  ($unitBytes bytes)  format: $numFormat\n";
+  print "  {SYNC is the size with flacmirror-oggs, instead of flacs}\n";
   my %okLibs = map {$_ => 1} @_;
   %okLibs = map {$_ => 1} @libs if keys %okLibs == 0;
 
