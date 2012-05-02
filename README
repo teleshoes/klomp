@@ -73,5 +73,7 @@ klomp-db
    lltag {ogg and flac}
    Audio::WMA {wma}
    AtomicParsley {mp4, m4a, m4p, m4v, m4b}
+ to get ascii transliteration, you need:
+   Text::Unidecode
  to get improved japanese transliteration, you need:
    Lingua::JA::Romanize::Japanese

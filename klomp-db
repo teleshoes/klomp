@@ -6,6 +6,10 @@ my $AUDIO_WMA = eval{ require Audio::WMA };
 require Audio::WMA if $AUDIO_WMA;
 print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
 
+my $TEXT_UNIDECODE = eval { require Text::Unidecode };
+require Text::Unidecode if $TEXT_UNIDECODE;
+print STDERR "WARNING: Cannot find perl module Text::Unidecode\n";
+
 my $LINGUA_JA_ROMANIZE_JAPANESE = eval {
   require Lingua::JA::Romanize::Japanese };
 require Lingua::JA::Romanize::Japanese if $LINGUA_JA_ROMANIZE_JAPANESE;
@@ -22,6 +26,7 @@ sub runSql($$;@);
 sub cols($);
 sub guess($$$$$$$);
 sub transliterateJapanese($);
+sub transliterateAscii($);
 sub addSongs($$$);
 sub wrapGuessCol($);
 sub create($);
@@ -502,6 +507,13 @@ sub guess($$$$$$$){
   $date_guess = transliterateJapanese $date;
   $genre_guess = transliterateJapanese $genre;
 
+  $title_guess = transliterateAscii $title if not defined $title_guess;
+  $artist_guess = transliterateAscii $artist if not defined $artist_guess;
+  $album_guess = transliterateAscii $album if not defined $album_guess;
+  $number_guess = transliterateAscii $number if not defined $number_guess;
+  $date_guess = transliterateAscii $date if not defined $date_guess;
+  $genre_guess = transliterateAscii $genre if not defined $genre_guess;
+
   my ($filename, $innerDir, $outerDir);
   if($songRelPath =~ /([^\/]*) \/ ([^\/]*) \/ ([^\/]*)$/x){
     $filename = $3;
@@ -596,6 +608,24 @@ sub transliterateJapanese($){
     return $res;
   }
   return undef;
+}
+
+sub transliterateAscii($){
+  return undef if not $TEXT_UNIDECODE;
+  my $arg = shift;
+  return undef if not defined $arg or $arg eq '';
+  
+  my $oldArg = $arg;
+
+  utf8::decode($arg);
+  $arg = unidecode $arg;
+  utf8::encode($arg);
+  
+  if($oldArg eq $arg){
+    return undef;
+  }else{
+    return $arg;
+  }
 }
 
 sub checkMissing($$){

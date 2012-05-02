@@ -43,7 +43,13 @@ runPrompt qw(apt-get install atomicparsley);
 
 print "\n\n";
 
-print "japanese transliteration tagging\n";
+print "non-roman => ascii transliteration for tag parsing\n";
+print "  {perl module Text::Unidecode}\n";
+runPrompt qw(apt-get install libtext-unidecode-perl);
+
+print "\n\n";
+
+print "improved japanese transliteration for tag parsing\n";
 print "  {perl module Lingua::JA::Romanize::Japanese}\n";
 runPrompt qw(cpan Lingua::JA::Romanize::Japanese);
 
