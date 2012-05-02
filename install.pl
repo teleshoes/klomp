@@ -25,7 +25,6 @@ my @execs = qw(
   klomp-term
   klomp-update
   klomp-size
-  jap2romaji
 );
 
 print "copying these scripts to $dest\n";

@@ -2,8 +2,15 @@
 use strict;
 use warnings;
 
-#sudo apt-get install libaudio-wma-perl lltag
-#sudo cpan Lingua::JA::Romanize::Japanese
+my $AUDIO_WMA = eval{ require Audio::WMA };
+require Audio::WMA if $AUDIO_WMA;
+print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
+
+my $LINGUA_JA_ROMANIZE_JAPANESE = eval {
+  require Lingua::JA::Romanize::Japanese };
+require Lingua::JA::Romanize::Japanese if $LINGUA_JA_ROMANIZE_JAPANESE;
+print STDERR
+  "WARNING: Cannot find perl module Lingua::JA::Romanize::Japanese\n";
 
 my $defaultDb = "$ENV{HOME}/.klompdb";
 
@@ -24,11 +31,6 @@ sub add($$$);
 sub search($$$$$);
 sub info($$);
 sub readTags($);
-
-my $useAudioWma;
-BEGIN{
-  $useAudioWma = eval{require Audio::WMA;};
-};
 
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
@@ -559,6 +561,7 @@ sub guess($$$$$$$){
 }
 
 sub transliterateJapanese($){
+  return undef if not $LINGUA_JA_ROMANIZE_JAPANESE;
   my $arg = shift;
   if(not defined $arg or length $arg == 0){
     return $arg;
@@ -574,7 +577,9 @@ sub transliterateJapanese($){
     my $nonjap = $1;
     my $jap = $2;
     $theRest = $3;
-    my $romaji = shell 'jap2romaji', $jap;
+    my $conv = Lingua::JA::Romanize::Japanese->new();
+    my $romaji = $conv->chars($jap);
+
     push @parts, $nonjap;
     if(not $? and defined $romaji){
       $romaji =~ s/\s+//g;
@@ -785,11 +790,11 @@ sub readTags($){
     $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
   }elsif($file =~ /\.(wma)$/i){
     my %tags;
-    if($useAudioWma){
+    if($AUDIO_WMA){
       my $wma  = Audio::WMA->new($path);
       %tags = %{$wma->tags()};
     }else{
-      print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
+      print STDERR "WARNING: no tags for $file, missing Audio::WMA\n";
     }
 
     for my $tag(keys %tags) {
