@@ -3,26 +3,38 @@ use strict;
 use warnings;
 
 my $AUDIO_WMA = eval{ require Audio::WMA };
-if($AUDIO_WMA){
-  require Audio::WMA;
-}else{
+if(not $AUDIO_WMA){
   print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
 }
-
+BEGIN{
+  if(eval{ require Audio::WMA }){
+    require Audio::WMA;
+    Audio::WMA->import();
+  }
+}
+  
 my $TEXT_UNIDECODE = eval { require Text::Unidecode };
-if($TEXT_UNIDECODE){
-  require Text::Unidecode;
-}else{
+if(not $TEXT_UNIDECODE){
   print STDERR "WARNING: Cannot find perl module Text::Unidecode\n";
+}
+BEGIN{
+  if(eval{ require Text::Unidecode }){
+    require Text::Unidecode;
+    Text::Unidecode->import;
+  }
 }
 
 my $LINGUA_JA_ROMANIZE_JAPANESE =
   eval { require Lingua::JA::Romanize::Japanese };
-if($LINGUA_JA_ROMANIZE_JAPANESE){
-  require Lingua::JA::Romanize::Japanese;
-}else{
-  print STDERR
-    "WARNING: Cannot find perl module Lingua::JA::Romanize::Japanese\n";
+if(not $LINGUA_JA_ROMANIZE_JAPANESE){
+    print STDERR
+      "WARNING: Cannot find perl module Lingua::JA::Romanize::Japanese\n";
+}
+BEGIN{
+  if(eval { require Lingua::JA::Romanize::Japanese }){
+    require Lingua::JA::Romanize::Japanese;
+    Lingua::JA::Romanize::Japanese->import;
+  }
 }
 
 my $defaultDb = "$ENV{HOME}/.klompdb";
