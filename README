@@ -70,12 +70,8 @@ klomp-cmd, klomp-lib, klomp-term, klomp-fifo-writer
 klomp-db
  to update the library and read tags from files, you need:
    eyeD3 {mp3}
-     sudo apt-get install eyed3
    lltag {ogg and flac}
-     sudo apt-get install lltag
-   perl module Audio::WMA {wma}
-     cpan Audio::WMA
+   Audio::WMA {wma}
    AtomicParsley {mp4, m4a, m4p, m4v, m4b}
-     sudo apt-get install atomicparsley
- to get japanese transliteration, you need:
-   perl module Lingua::JA::Romanize::Japanese
+ to get improved japanese transliteration, you need:
+   Lingua::JA::Romanize::Japanese
