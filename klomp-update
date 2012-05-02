@@ -5,6 +5,11 @@ use warnings;
 my @libs = `klomp-lib`;
 chomp foreach @libs;
 
+if(not -e "$ENV{HOME}/.klompdb"){
+  print "No db file; creating from scratch\n";
+  system 'klomp-db', '-c';
+}
+
 for my $lib(@libs){
   print "\nHandling library: $lib\n";
 
