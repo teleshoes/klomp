@@ -598,13 +598,11 @@ sub checkMissing($$){
   my $lib = shift;
   my $libpath = libpath $lib;
 
-  print "checking for missing songs, fetching from db\n";
-  
   my @songRelPaths =
     runSql $db, "select relpath from songs where library = '$lib'";
   my $len = @songRelPaths;
   my $piece = 1+$len / 10;
-  print "checking $len songs\n";
+  print "checking $len songs from the db for missing\n";
   my $count = 0;
   my @missing;
   my $deleteSql = '';
@@ -620,12 +618,9 @@ sub checkMissing($$){
           . "  and library = '$lib';\n"
           ;
     }
-    if($count++ % $piece == 0){
-      print "  checked $count / $len songs\n";
-    }
   }
   my $missingCount = scalar @missing;
-  print "finished, $missingCount missing\n";
+  print "  finished, $missingCount missing\n";
   if($missingCount > 0){
     print "Remove above missing files from lib? (y/N) ";
     if(<STDIN> =~ /^y$/i){
@@ -641,7 +636,6 @@ sub addSongs($$$){
 
   my $libpath = libpath $lib;
   
-  print "loading filesize and modified into memory from db\n";
   my %dbInfo;
   for my $line(runSql($db, 'select filesize, modified, relpath from Songs')){
     $line =~ /(\d+)\|(\d+)\|(.*)\n/;
@@ -649,9 +643,12 @@ sub addSongs($$$){
     $dbInfo{$3} = \@fs_mod;
   }
 
+  my $songCount = @songRelPaths;
+  print "Adding/updating $songCount songs from the filesystem\n";
   my $count = 0;
   my $limit = 30;
   my $sql = 'BEGIN;';
+  my @skippedSongs;
   for my $songRelPath(@songRelPaths){
     my $sqlPath = $songRelPath;
     $sqlPath =~ s/'/''/g;
@@ -675,7 +672,7 @@ sub addSongs($$$){
     my $modified = $2;
 
     if($dbExists and $dbSize == $filesize and $dbMod == $modified){
-      print "Same size and modified date, skipping $libpath/$songRelPath\n";
+      push @skippedSongs, "$libpath/$songRelPath";
       next;
     }
     
@@ -739,6 +736,8 @@ sub addSongs($$$){
     print "  running remaining $count\n";
     runSql($db, $sql.'END;');
   }
+  my $skippedCount = @skippedSongs;
+  print "  skipped $skippedCount unmodified songs {same size and mod date}\n";
 }
 
 sub wrapGuessCol($){

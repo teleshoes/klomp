@@ -60,10 +60,14 @@ for my $ogg(@oggs){
   }
 }
 
+my $flacCount = @flacs;
+print "Converting $flacCount flacs\n";
+
 my $len = length @flacs;
 my $i=0;
 my @failures;
 my @flacsToTranscode;
+my @skippedFlacs;
 for my $flac(@flacs){
   my $dirName = shellQuiet 'dirname', $flac;
   chomp $dirName;
@@ -71,14 +75,18 @@ for my $flac(@flacs){
   my $baseName = $1;
 
   if(defined $unmodifiedBasenames{$baseName}){
-    print "skipping $srcDir/$flac\n";
+    push @skippedFlacs, "$srcDir/$flac";
   }else{
     push @flacsToTranscode, $flac;
   }
 }
 
+if(@skippedFlacs > 0){
+  print "  skipped " . scalar(@skippedFlacs) . " flacs\n";
+}
 
-my $cores ;
+
+my $cores;
 $cores = `cat /proc/cpuinfo | grep ^processor | wc -l`;
 chomp $cores;
 if($cores !~ /^\d+$/){
@@ -153,7 +161,6 @@ for(my $w=0; $w<@workers; $w++){
 for my $pid(@pids){
   waitpid $pid, 0;
 }
-print "finished\n";
 
 system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
 mkdir $destDir;
@@ -184,8 +191,10 @@ for my $flac(@flacsToTranscode){
   }
 }
 
-print "successfully converted " . scalar(@successes) . " flacs\n";
-print join("\n", @successes) . "\n";
+if(@successes > 0){
+  print "  successfully converted " . scalar(@successes) . " flacs\n";
+  print join("\n", @successes) . "\n";
+}
 
 if(@failures > 0){
   print STDERR "There were " . scalar(@failures) . " failures\n";

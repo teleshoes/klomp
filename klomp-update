@@ -6,12 +6,9 @@ my @libs = `klomp-lib`;
 chomp foreach @libs;
 
 for my $lib(@libs){
-  print "\n\nHandling library: $lib\n";
+  print "\nHandling library: $lib\n";
 
-  print "Check missing\n";
   system 'klomp-db', '-m', $lib;
-
-  print "Adding new songs and updating modified songs\n";
   system 'klomp-db', '-u', $lib;
 }
 
@@ -23,7 +20,7 @@ for my $lib(@libs){
   system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir;
   
   if(-e $flacMirrorDir and -e $dir){
-    print "\n\nflacmirror for: $lib\n";
+    print "\nflacmirror for: $lib\n";
     system "flacmirror $dir $flacMirrorDir";
   }
 }
