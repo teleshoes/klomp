@@ -23,6 +23,8 @@ sub isRunning();
 sub shellQuiet(@);
 sub nextItem();
 sub prevItem();
+sub addCurTimestamp($);
+sub removeCurTimestamp($);
 
 if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
@@ -175,12 +177,27 @@ sub setCur($){
   close FH;
 }
 
+sub addCurTimestamp($){
+  my $cur = shift;
+  $cur = removeCurTimestamp $cur;
+  my $timestamp = `date`;
+  chomp $timestamp;
+  return "$cur###$timestamp###";
+}
+sub removeCurTimestamp($){
+  my $cur = shift;
+  $cur =~ s/###.*###$//;
+  return $cur;
+}
+
 sub prevnext($$){
   my $srcFile = shift;
   my $destFile = shift;
   
   my $oldCur = getCur;
+  $oldCur = addCurTimestamp $oldCur;
   my $cur = popFile $srcFile;
+  $cur = removeCurTimestamp $cur;
   if(defined $cur){
     if(defined $oldCur){
       pushFile $destFile, $oldCur;
