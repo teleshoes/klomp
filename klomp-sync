@@ -7,21 +7,42 @@ my $klompDb = "$ENV{HOME}/.klompdb";
 my $klompLib = "$ENV{HOME}/.klomplib";
 my $tmpKlompLib = "/tmp/klomp-sync_" . time();
 
+my %okExts = map {$_ => 1} qw(
+  flac 
+  ogg
+  wav
+  mp3 m4a wma
+);
+
 my $usage = "$0 [user@]host OPTS
   OPTS:  --force-flacs, --no-force-flacs
                If a library has a flacmirror on the destination,
                flacs are omitted. This flag makes them never be omitted.
 ";
 
-sub syncDir($$$$){
-  my ($local, $remote, $host, $exclude) = @_;
+sub run(@){
+  print "@_\n";
+  system @_;
+}
+
+sub syncDir($$$@){
+  my ($local, $remote, $host, @whitelist) = @_;
+  my @args;
+  #include subdirs
+  push @args, "--include=*/";
+  for my $pattern(@whitelist){
+    push @args, "--include=$pattern";
+    push @args, "--include=" . uc($pattern);
+  }
+  #exclude everything
+  push @args, "--exclude=*";
+
   #delete trailing slashes
   $local =~ s/\/$//;
   $remote =~ s/\/$//;
-  my @args = $exclude ? ($exclude) : ();
-  system "ssh", "$host", "mkdir -p $remote";
-  system "presync", "$local", "$host:$remote";
-  system "rsync",
+  run "ssh", "$host", "mkdir -p $remote";
+  run "presync", "$local", "$host:$remote";
+  run "rsync",
     "--delete-after", "-av",
     "--progress",
     "$local/",
@@ -62,19 +83,20 @@ sub main(@){
     
     my $remoteFlacmirrorPath = `klomp-lib --file=$tmpKlompLib -f $lib`;
     chomp $remoteFlacmirrorPath;
-    
-    my $exclude = '';
+
+    my %exts = %okExts;
     if($forceFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){
       print "COPYING FLACS\n";
     }else{
       print "ignoring flacs\n";
-      $exclude = '--exclude=*.flac';
+      delete $exts{flac};
     }
-    syncDir $path, $remotePath, $host, $exclude;
+    my @whitelist = map {"*.$_"} keys %exts;
+    syncDir $path, $remotePath, $host, @whitelist;
 
     print "\n\nflacmirror for: $lib\n";
     if($flacmirrorPath and $remoteFlacmirrorPath){
-      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, '';
+      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, "*.ogg";
     }else{
       print "skipping, flacmirror must to be set in both lib files";
     }
