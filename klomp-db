@@ -2,6 +2,9 @@
 use strict;
 use warnings;
 
+my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
+                    #aiff
+
 my $AUDIO_WMA = eval{ require Audio::WMA };
 if(not $AUDIO_WMA){
   print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
@@ -57,9 +60,6 @@ sub add($$$);
 sub search($$$$$);
 sub info($$);
 sub readTags($);
-
-my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
-                    #aiff
 
 my @allowedCols = qw(library relpath filesize modified md5sum
                      title artist album number date genre);
