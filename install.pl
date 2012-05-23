@@ -23,6 +23,7 @@ my @execs = qw(
   klomp-search
   klomp-size
   klomp-sync
+  klomp-tag
   klomp-term
   klomp-update
 );
