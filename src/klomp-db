@@ -445,9 +445,9 @@ sub runSql($$;@){
 }
 sub runSqlBatch($\@;@){
   my $db = shift;
-  my @sqls = @{shift()};
-  my $sql = join ";\n", @sqls;
-  $sql = "BEGIN;\n$sql;\nEND;\n";
+  my @stmts = @{shift()};
+  @stmts = ("BEGIN", @stmts, "END");
+  my $sql = join ";\n", @stmts;
   runSql $db, $sql, @_;
 }
 
@@ -546,7 +546,7 @@ sub addSongs($$$){
   
   my $count = 0;
   my @stmts = ();
-  my $limit = 30;
+  my $limit = 50;
   for my $songRelPath(@songRelPaths){
     my ($dbSize, $dbMod);
     
@@ -602,7 +602,9 @@ sub addSongs($$$){
     }
 
     print "$songRelPath\n";
-    push @stmts, "delete from Songs where relpath='$cols{relpath}'";
+    my $sqlPath = $songRelPath;
+    $sqlPath =~ s/'/''/g;
+    push @stmts, "delete from Songs where relpath='$sqlPath'";
     push @stmts, ''
       . " insert into Songs"
       . " (" . join(", ", @allCols) . ")"
@@ -611,7 +613,7 @@ sub addSongs($$$){
       ;
 
     if(++$count >= $limit){
-      print "  adding $count.." .
+      print "  adding $count  " .
         "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
       runSqlBatch $db, @stmts;
       $handledCount += $count;
@@ -620,7 +622,7 @@ sub addSongs($$$){
     }
   }
   if($count > 0){
-    print "  adding $count.." .
+    print "  adding $count  " .
       "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
     runSqlBatch $db, @stmts;
     $handledCount += $count;
