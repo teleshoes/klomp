@@ -40,6 +40,12 @@ BEGIN{
   }
 }
 
+my @infoCols = qw(library relpath filesize modified md5sum);
+my @tagCols = qw(title artist album number date genre);
+my @guessTagCols = map{$_ . "_guess"} @tagCols;
+my @searchableCols = (@infoCols, @tagCols);
+my @allCols = (@infoCols, @tagCols, @guessTagCols);
+
 my $defaultDb = "$ENV{HOME}/.klompdb";
 
 sub getAllLibs();
@@ -60,9 +66,6 @@ sub add($$$);
 sub search($$$$$);
 sub info($$);
 sub readTags($);
-
-my @allowedCols = qw(library relpath filesize modified md5sum
-                     title artist album number date genre);
 
 my $usage = "Usage: 
  $0 [db-path] -c|--create
@@ -89,7 +92,7 @@ my $usage = "Usage:
    --col COL               optional col; returned as csv if any specified
                            {can appear multiple times}
                            by default, just relpath is returned.
-                           allowed values include: \n   @allowedCols
+                           allowed values: \n   @searchableCols
 
  [db-path] is optional and cannot start with a hyphen. {arg parsing => im lazy}
  if not given, the default is '$defaultDb'
@@ -137,8 +140,8 @@ sub main(@){
         die $usage if $limit !~ /^\d+$/;
       }elsif($arg =~ /^(--col)$/ && @_>0){
         my $col = shift;
-        my %allowed = map {$_ => 1} @allowedCols;
-        die $usage if not defined $allowed{$col};
+        my %isAllowed = map {$_ => 1} @searchableCols;
+        die $usage if not defined $isAllowed{$col};
         push @cols, $col;
       }elsif($arg =~ /^(--lib)$/ && @_>0){
         my $lib = shift;
@@ -161,26 +164,10 @@ sub create($){
     die "$db exists already\n";
   }
   runSql($db,
-    "create table Songs (".
-      "library varchar,".
-      "relpath varchar,".
-      "filesize int,".
-      "modified int,".
-      "md5sum varchar,".
-      "title varchar,".
-      "artist varchar,".
-      "album varchar,".
-      "number varchar,".
-      "date varchar,".
-      "genre varchar,".
-      "title_guess varchar,".
-      "artist_guess varchar,".
-      "album_guess varchar,".
-      "number_guess varchar,".
-      "date_guess varchar,".
-      "genre_guess varchar,".
-      "PRIMARY KEY (library, relpath)".
-    ");");
+    "create table Songs ("
+      . (join "", map {"$_ varchar,"} @allCols)
+      . "PRIMARY KEY (library, relpath)"
+    . ");");
 }
 
 sub update($$){
@@ -287,16 +274,17 @@ sub search($$$$$){
     $libWhere = "library in (" . (join ', ', map {"'$_'"} @libs) . ") and";
   }
 
-
   if(not @cols){
     @cols = ('relpath');
   }
+
+  my %isGuessCol = map{$_ => 1} @guessTagCols;
 
   my @guessCols;
   my @namedCols;
   for my $col(@cols){
     my $guessCol;
-    if($col eq 'artist' or $col eq 'album' or $col eq 'title' or $col eq 'number'){
+    if(defined $isGuessCol{$col}){
       $guessCol = wrapGuessCol($col);
     }else{
       $guessCol = $col;
@@ -749,37 +737,50 @@ sub addSongs($$$){
     my ($path, $title, $artist, $album, $number, $date, $genre) =
       readTags("$libpath/$songRelPath");
 
-    $title =~ s/'/''/g;
-    $artist =~ s/'/''/g;
-    $album =~ s/'/''/g;
-    $number =~ s/'/''/g;
-    $date =~ s/'/''/g;
-    $genre =~ s/'/''/g;
-
     my ($title_guess, $artist_guess, $album_guess,
         $number_guess, $date_guess, $genre_guess) = guess(
           $songRelPath, $title, $artist, $album, $number, $date, $genre);
 
-    $title_guess =~ s/'/''/g;
-    $artist_guess =~ s/'/''/g;
-    $album_guess =~ s/'/''/g;
-    $number_guess =~ s/'/''/g;
-    $date_guess =~ s/'/''/g;
-    $genre_guess =~ s/'/''/g;
-   
-    print "$sqlPath\n";
-    $sql .= "delete from Songs where relpath='$sqlPath';";
-    $sql .= 
-      "insert into Songs ".
-      "(library, relpath, filesize, modified, md5sum, ".
-        "title, artist, album, number, date, genre, ".
-        "title_guess, artist_guess, album_guess, number_guess, ".
-        "date_guess, genre_guess) ".
-      "values".
-      "('$lib', '$sqlPath', $filesize, $modified, '$md5sum', ".
-        "'$title', '$artist', '$album', '$number', '$date', '$genre', ".
-        "'$title_guess', '$artist_guess', '$album_guess', '$number_guess', ".
-        "'$date_guess', '$genre_guess');";
+    my %cols;
+    $cols{title} = $title;
+    $cols{artist} = $artist;
+    $cols{album} = $album;
+    $cols{number} = $number;
+    $cols{date} = $date;
+    $cols{genre} = $genre;
+
+    $cols{title_guess} = $title_guess;
+    $cols{artist_guess} = $artist_guess;
+    $cols{album_guess} = $album_guess;
+    $cols{number_guess} = $number_guess;
+    $cols{date_guess} = $date_guess;
+    $cols{genre_guess} = $genre_guess;
+    
+    $cols{library} = $lib;
+    $cols{relpath} = $songRelPath;
+    $cols{filesize} = $filesize;
+    $cols{modified} = $modified;
+    $cols{md5sum} = $md5sum;
+
+    my @allVals;
+    for my $col(@allCols){
+      my $val = $cols{$col};
+      chomp $val;
+      $val =~ s/'/''/g;
+      $val = "'$val'";
+      push @allVals, $val;
+    }
+
+    print "$songRelPath\n";
+    $sql .= "delete from Songs where relpath='$cols{relpath}'; ";
+    $sql .= ''
+      . " insert into Songs"
+      . " (" . join(", ", @allCols) . ")"
+      . " values"
+      . " (" . join(", ", @allVals) . ")"
+      . "; "
+      ;
+
     $count++;
     if($count == $limit){
       print "  running last $limit\n";
