@@ -53,6 +53,7 @@ sub libpath($);
 sub shell(@);
 sub shellQuiet(@);
 sub runSql($$;@);
+sub runSqlBatch($\@;@);
 sub cols($);
 sub guess($$$$$$$);
 sub transliterateJapanese($);
@@ -479,6 +480,13 @@ sub runSql($$;@){
 
   return shell @tokens;
 }
+sub runSqlBatch($\@;@){
+  my $db = shift;
+  my @sqls = @{shift()};
+  my $sql = join ";\n", @sqls;
+  $sql = "BEGIN;\n$sql;\nEND;\n";
+  runSql $db, $sql, @_;
+}
 
 sub cols($){
   my $csvrow = shift;
@@ -649,14 +657,14 @@ sub checkMissing($$){
   print "checking $len songs from the db for missing\n";
   my $count = 0;
   my @missing;
-  my $deleteSql = '';
+  my @deleteSql;
   for my $songRelPath(@songRelPaths){
     chomp $songRelPath;
     if(not -e "$libpath/$songRelPath"){
       print "$songRelPath\n";
       push @missing, $songRelPath;
       $songRelPath =~ s/'/''/g;
-      $deleteSql .= ''
+      push @deleteSql, ''
           . "delete from Songs "
           . "where relpath = '$songRelPath' "
           . "  and library = '$lib';\n"
@@ -668,7 +676,21 @@ sub checkMissing($$){
   if($missingCount > 0){
     print "Remove above missing files from lib? (y/N) ";
     if(<STDIN> =~ /^y$/i){
-      runSql $db, $deleteSql;
+      my $limit = 30;
+      my $lastEnd = -1;
+      for(my $i=$limit; $i<@deleteSql; $i+=$limit){
+        my ($start, $end) = ($lastEnd+1, $i);
+        print "Removing songs $start-$end\n";
+        my @toRun = @deleteSql[$start .. $end];
+        runSqlBatch $db, @toRun;
+        $lastEnd = $i;
+      }
+      if($lastEnd < $#deleteSql){
+        my ($start, $end) = ($lastEnd+1, $#deleteSql);
+        print "Removing songs $start-$end\n";
+        my @toRun = @deleteSql[$start .. $end];
+        runSqlBatch $db, @toRun;
+      }
     }
   }
 }
