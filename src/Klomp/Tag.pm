@@ -8,19 +8,22 @@ my $OGG_FLAC_LIB = eval{system "command -v lltag >/dev/null"; $? == 0};
 my $WMA_LIB = eval{require Audio::WMA};
 BEGIN{
   if(eval {require Audio::WMA}){
-    use Audio::WMA; 
+    require Audio::WMA; 
+    Audio::WMA->import;
   }
 }
 my $UNIDECODE_LIB = eval {require Text::Unidecode};
 BEGIN{
   if(eval {require Text::Unidecode}){
-    use Text::Unidecode;
+    require Text::Unidecode;
+    Text::Unidecode->import;
   }
 }
 my $JAPANESE_LIB = eval {require Lingua::JA::Romanize::Japanese};
 BEGIN{
   if(eval {require Lingua::JA::Romanize::Japanese}){
-    use Lingua::JA::Romanize::Japanese;
+    require Lingua::JA::Romanize::Japanese;
+    Lingua::JA::Romanize::Japanese->import;
   }
 }
 
