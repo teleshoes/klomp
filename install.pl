@@ -2,7 +2,9 @@
 use strict;
 use warnings;
 
-my $prefix = shift() || '/usr/local';
+my $prefix = '/usr/local';
+my $libDir = '/opt/klomp/lib';
+
 die "Usage: $0 <prefix>\n" if @ARGV > 0;
 my $dest = "$prefix/bin";
 die "Invalid install location: $dest\n" if not -d $dest;
@@ -31,6 +33,11 @@ my @execs = qw(
 chdir 'src';
 print "copying these scripts to $dest\n";
 print "@execs\n";
+
+print "copying lib\n";
+system "rm", "-r", $libDir;
+system "mkdir", "-p", $libDir;
+system "cp -r Klomp $libDir";
 
 for my $exec(@execs){
   system "cp", $exec, $dest;

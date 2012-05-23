@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Tag;
 
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
@@ -20,9 +22,6 @@ sub shellQuiet(@);
 sub runSql($$;@);
 sub runSqlBatch($\@;@);
 sub cols($);
-sub guess($$$$$$$);
-sub transliterateJapanese($);
-sub transliterateAscii($);
 sub addSongs($$$);
 sub wrapGuessCol($);
 sub create($);
@@ -31,7 +30,6 @@ sub missing($$);
 sub add($$$);
 sub search($$$$$);
 sub info($$);
-sub readTags($);
 
 my $usage = "Usage: 
  $0 [db-path] -c|--create
@@ -575,17 +573,17 @@ sub addSongs($$$){
     
     my $md5sum = '';
 
-    my $tagInfo = shell 'klomp-tag', "$libpath/$songRelPath";
+    my %tagInfo = Klomp::Tag::readTags "$libpath/$songRelPath";
 
     my %cols;
     for my $col(@tagCols){
-      if($tagInfo =~ /^$col:(.*)$/m){
-        $cols{$col} = $1;
+      if(defined $tagInfo{$col}){
+        $cols{$col} = $tagInfo{$col};
       }else{
         $cols{$col} = '';
       }
-      $cols{$col . "_guess"} = shell 'klomp-tag', "--guess=$col",
-        $songRelPath, $cols{$col};
+      $cols{$col . "_guess"} = Klomp::Tag::guess(
+        $col, $songRelPath, $cols{$col});
     }
     
     $cols{library} = $lib;
