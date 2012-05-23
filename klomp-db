@@ -742,18 +742,6 @@ sub addSongs($$$){
     }
     
     my $md5sum = '';
-    #my $md5sum = shell 'md5sum', "$libpath/$songRelPath";
-    #$md5sum = substr $md5sum, 0, 32;
-
-    #if($dbExists and $dbMd5 eq $md5sum){
-    #  print "Same md5sum, skipping $songRelPath, but setting new modified\n";
-    #  runSql(
-    #    $db,
-    #    "update Songs ".
-    #    "set modified=$modified ".
-    #    "where path='$sqlPath'");
-    #  exit 0;
-    #}
 
     my ($path, $title, $artist, $album, $number, $date, $genre) =
       readTags("$libpath/$songRelPath");
