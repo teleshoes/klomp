@@ -1,0 +1,235 @@
+
+my $AUDIO_WMA = eval{ require Audio::WMA };
+if(not $AUDIO_WMA){
+  print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
+}
+BEGIN{
+  if(eval{ require Audio::WMA }){
+    require Audio::WMA;
+    Audio::WMA->import();
+  }
+}
+  
+my $TEXT_UNIDECODE = eval { require Text::Unidecode };
+if(not $TEXT_UNIDECODE){
+  print STDERR "WARNING: Cannot find perl module Text::Unidecode\n";
+}
+BEGIN{
+  if(eval{ require Text::Unidecode }){
+    require Text::Unidecode;
+    Text::Unidecode->import;
+  }
+}
+
+my $LINGUA_JA_ROMANIZE_JAPANESE =
+  eval { require Lingua::JA::Romanize::Japanese };
+if(not $LINGUA_JA_ROMANIZE_JAPANESE){
+    print STDERR
+      "WARNING: Cannot find perl module Lingua::JA::Romanize::Japanese\n";
+}
+BEGIN{
+  if(eval { require Lingua::JA::Romanize::Japanese }){
+    require Lingua::JA::Romanize::Japanese;
+    Lingua::JA::Romanize::Japanese->import;
+  }
+}
+
+sub guess($$$$$$$){
+  my ($songRelPath, $title, $artist, $album, $number, $date, $genre) = @_;
+  my ($title_guess, $artist_guess, $album_guess,
+    $number_guess, $date_guess, $genre_guess);
+
+  $title_guess = transliterateJapanese $title;
+  $artist_guess = transliterateJapanese $artist;
+  $album_guess = transliterateJapanese $album;
+  $number_guess = transliterateJapanese $number;
+  $date_guess = transliterateJapanese $date;
+  $genre_guess = transliterateJapanese $genre;
+
+  $title_guess = transliterateAscii $title if not defined $title_guess;
+  $artist_guess = transliterateAscii $artist if not defined $artist_guess;
+  $album_guess = transliterateAscii $album if not defined $album_guess;
+  $number_guess = transliterateAscii $number if not defined $number_guess;
+  $date_guess = transliterateAscii $date if not defined $date_guess;
+  $genre_guess = transliterateAscii $genre if not defined $genre_guess;
+
+  my ($filename, $innerDir, $outerDir);
+  if($songRelPath =~ /([^\/]*) \/ ([^\/]*) \/ ([^\/]*)$/x){
+    $filename = $3;
+    $innerDir = $2;
+    $outerDir = $1;
+  }elsif($songRelPath =~ /([^\/]*) \/ ([^\/]*)$/x){
+    $filename = $2;
+    $innerDir = '';
+    $outerDir = $1;
+  }elsif($songRelPath =~ /([^\/]*)$/x){
+    $filename = $1;
+    $innerDir = '';
+    $outerDir = '';
+  }
+
+  if(not defined $title or length $title == 0){
+    $title_guess = $filename;
+    my $suffixRegex;
+    for (my $i=0; $i<@songSuffixes; $i++){
+      $suffixRegex .= '.' . $songSuffixes[$i];
+      if($i < $#songSuffixes){
+        $suffixRegex .= '|';
+      }
+    }
+    $title_guess =~ s/($suffixRegex)$//i;
+    $title_guess =~ s/^[0-9 \-_]+//;
+    #$title_guess =~ s/_/ /g;
+  }
+  if(not defined $artist or length $artist == 0){
+    $artist_guess = $outerDir;
+    #$artist_guess =~ s/_/ /g;
+  }
+  if(not defined $album or length $album == 0){
+    $album_guess = $innerDir;
+    #$album_guess =~ s/_/ /g;
+  }
+  if(not defined $number or length $number == 0){
+    if($filename =~ /^\s*(\d+)\s*/){
+      $number_guess = $1;
+    }
+  }
+  if(not defined $date or length $date == 0){
+    if($songRelPath =~ /(19\d\d|20\d\d)/){
+      $date_guess = $1;
+    }
+  }
+
+  $title_guess = '' if not defined $title_guess;
+  $artist_guess = '' if not defined $artist_guess;
+  $album_guess = '' if not defined $album_guess;
+  $number_guess = '' if not defined $number_guess;
+  $date_guess = '' if not defined $date_guess;
+  $genre_guess = '' if not defined $genre_guess;
+
+  return ($title_guess, $artist_guess, $album_guess, $number_guess,
+    $date_guess, $genre_guess);
+}
+
+sub transliterateJapanese($){
+  return undef if not $LINGUA_JA_ROMANIZE_JAPANESE;
+  my $arg = shift;
+  if(not defined $arg or length $arg == 0){
+    return $arg;
+  }
+  utf8::decode($arg);
+  my @parts;
+  my $theRest;
+  while($arg =~/
+      (.*?)
+      ((?:\p{Hiragana}|\p{Katakana}|\p{Han})+)
+      (?=(.*$))
+    /gsxi){
+    my $nonjap = $1;
+    my $jap = $2;
+    $theRest = $3;
+    my $conv = Lingua::JA::Romanize::Japanese->new();
+    my $romaji = $conv->chars($jap);
+
+    push @parts, $nonjap;
+    if(not $? and defined $romaji){
+      $romaji =~ s/\s+//g;
+      push @parts, $romaji;
+    }else{
+      push @parts, $jap;
+    }
+  }
+  utf8::encode($arg);
+  if(@parts > 0){
+    push @parts, $theRest;
+    my $res = join '', @parts;
+    utf8::encode($res);
+    return $res;
+  }
+  return undef;
+}
+
+sub transliterateAscii($){
+  return undef if not $TEXT_UNIDECODE;
+  my $arg = shift;
+  return undef if not defined $arg or $arg eq '';
+  
+  my $oldArg = $arg;
+
+  utf8::decode($arg);
+  $arg = unidecode $arg;
+  utf8::encode($arg);
+  
+  if($oldArg eq $arg){
+    return undef;
+  }else{
+    return $arg;
+  }
+}
+
+sub readTags($){
+  my $file = shift;
+  my $path = $file;
+  $file =~ s/'/'\\''/g;
+
+  my $title='';
+  my $artist='';
+  my $album='';
+  my $number='';
+  my $date='';
+  my $genre='';
+  if($file =~ /\.mp3$/i){
+    my $eyeD3 = `eyeD3 --no-color '$file'`;
+    $eyeD3 =~ s/\t\t/\n/g;
+
+    $title  = $1 if $eyeD3 =~ /^title: (.*)/mi;
+    $artist = $1 if $eyeD3 =~ /artist: (.*)\n/mi;
+    $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
+    $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
+    $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
+    $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
+
+    $genre =~ s/ \(id \d+\)$//; #trim the genre id
+  }elsif($file =~ /\.(ogg|flac)$/i){
+    my $lltag = `lltag -S '$file'`;
+    $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
+    $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
+    $album  = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
+    $number = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
+    $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
+    $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
+  }elsif($file =~ /\.(wma)$/i){
+    my %tags;
+    if($AUDIO_WMA){
+      my $wma  = Audio::WMA->new($path);
+      %tags = %{$wma->tags()};
+    }else{
+      print STDERR "WARNING: no tags for $file, missing Audio::WMA\n";
+    }
+
+    for my $tag(keys %tags) {
+      $title  = $tags{$tag} if $tag =~ m/^TITLE$/mix;
+      $artist = $tags{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
+      $artist = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
+      $album  = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
+      $number = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
+      $date   = $tags{$tag} if $tag =~ m/^YEAR$/mix;
+      $genre  = $tags{$tag} if $tag =~ m/^GENRE$/mix;
+    }
+  }elsif($file =~ /\.(mp4|m4a|m4p|m4v|m4b)$/i){
+    my $atomic = `AtomicParsley '$file' -t`;
+    $title  = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
+    $artist = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
+    $album  = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
+    $number = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
+    $date   = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
+    $genre  = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
+  }elsif($file =~ /\.wav$/i){
+    #so wavs apparently have RIFF tags, but ive never seen em
+  }else{
+    print STDERR "Not a filetype we know how to read tags from: $path";
+    return [];
+  }
+
+  return ($path, $title, $artist, $album, $number, $date, $genre);
+}
