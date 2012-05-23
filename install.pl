@@ -28,6 +28,7 @@ my @execs = qw(
   klomp-update
 );
 
+chdir 'src';
 print "copying these scripts to $dest\n";
 print "@execs\n";
 
