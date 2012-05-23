@@ -242,13 +242,13 @@ sub search($$$$$){
     @cols = ('relpath');
   }
 
-  my %isGuessCol = map{$_ => 1} @guessTagCols;
+  my %isTagCol = map{$_ => 1} @tagCols;
 
   my @guessCols;
   my @namedCols;
   for my $col(@cols){
     my $guessCol;
-    if(defined $isGuessCol{$col}){
+    if(defined $isTagCol{$col}){
       $guessCol = wrapGuessCol($col);
     }else{
       $guessCol = $col;
