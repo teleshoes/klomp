@@ -21,10 +21,10 @@ my @execs = qw(
   klomp-fifo-writer
   klomp-lib
   klomp-search
+  klomp-size
   klomp-sync
   klomp-term
   klomp-update
-  klomp-size
 );
 
 print "copying these scripts to $dest\n";
