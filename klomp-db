@@ -710,15 +710,14 @@ sub addSongs($$$){
   }
 
   my $songCount = @songRelPaths;
+  my $handledCount = 0;
+  my $skippedCount = 0;
   print "Adding/updating $songCount songs from the filesystem\n";
+  
   my $count = 0;
+  my @stmts = ();
   my $limit = 30;
-  my $sql = 'BEGIN;';
-  my @skippedSongs;
   for my $songRelPath(@songRelPaths){
-    my $sqlPath = $songRelPath;
-    $sqlPath =~ s/'/''/g;
-
     my ($dbSize, $dbMod);
     
     my $info = $dbInfo{$songRelPath};
@@ -738,7 +737,7 @@ sub addSongs($$$){
     my $modified = $2;
 
     if($dbExists and $dbSize == $filesize and $dbMod == $modified){
-      push @skippedSongs, "$libpath/$songRelPath";
+      $skippedCount++;
       next;
     }
     
@@ -794,28 +793,32 @@ sub addSongs($$$){
     }
 
     print "$songRelPath\n";
-    $sql .= "delete from Songs where relpath='$cols{relpath}'; ";
-    $sql .= ''
+    push @stmts, "delete from Songs where relpath='$cols{relpath}'";
+    push @stmts, ''
       . " insert into Songs"
       . " (" . join(", ", @allCols) . ")"
       . " values"
       . " (" . join(", ", @allVals) . ")"
-      . "; "
       ;
 
-    $count++;
-    if($count == $limit){
-      print "  running last $limit\n";
-      runSql($db, $sql.'END;');
-      $sql = 'BEGIN;';
+    if(++$count >= $limit){
+      print "  adding $count.." .
+        "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
+      runSqlBatch $db, @stmts;
+      $handledCount += $count;
+      @stmts = ();
       $count = 0;
     }
   }
   if($count > 0){
-    print "  running remaining $count\n";
-    runSql($db, $sql.'END;');
+    print "  adding $count.." .
+      "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
+    runSqlBatch $db, @stmts;
+    $handledCount += $count;
+    @stmts = ();
+    $count = 0;
   }
-  my $skippedCount = @skippedSongs;
+  print "  handled $handledCount new or modified songs\n";
   print "  skipped $skippedCount unmodified songs {same size and mod date}\n";
 }
 
