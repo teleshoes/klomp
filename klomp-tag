@@ -24,38 +24,25 @@ my $usage = "Usage:
       Print this usage
 ";
 
-my $AUDIO_WMA = eval{ require Audio::WMA };
-if(not $AUDIO_WMA){
-  print STDERR "WARNING: Cannot find perl module Audio::WMA\n";
-}
+my $MPEG_LIB = eval{system "command -v AtomicParsley >/dev/null"; $? == 0};
+my $MP3_LIB = eval{system "command -v eyeD3 >/dev/null"; $? == 0};
+my $OGG_FLAC_LIB = eval{system "command -v lltag >/dev/null"; $? == 0};
+my $WMA_LIB = eval{require Audio::WMA};
 BEGIN{
-  if(eval{ require Audio::WMA }){
-    require Audio::WMA;
-    Audio::WMA->import();
+  if(eval {require Audio::WMA}){
+    use Audio::WMA; 
   }
 }
-  
-my $TEXT_UNIDECODE = eval { require Text::Unidecode };
-if(not $TEXT_UNIDECODE){
-  print STDERR "WARNING: Cannot find perl module Text::Unidecode\n";
-}
+my $UNIDECODE_LIB = eval {require Text::Unidecode};
 BEGIN{
-  if(eval{ require Text::Unidecode }){
-    require Text::Unidecode;
-    Text::Unidecode->import;
+  if(eval {require Text::Unidecode}){
+    use Text::Unidecode;
   }
 }
-
-my $LINGUA_JA_ROMANIZE_JAPANESE =
-  eval { require Lingua::JA::Romanize::Japanese };
-if(not $LINGUA_JA_ROMANIZE_JAPANESE){
-    print STDERR
-      "WARNING: Cannot find perl module Lingua::JA::Romanize::Japanese\n";
-}
+my $JAPANESE_LIB = eval {require Lingua::JA::Romanize::Japanese};
 BEGIN{
-  if(eval { require Lingua::JA::Romanize::Japanese }){
-    require Lingua::JA::Romanize::Japanese;
-    Lingua::JA::Romanize::Japanese->import;
+  if(eval {require Lingua::JA::Romanize::Japanese}){
+    use Lingua::JA::Romanize::Japanese;
   }
 }
 
@@ -141,7 +128,7 @@ sub guess($$$){
 }
 
 sub transliterateJapanese($){
-  return '' if not $LINGUA_JA_ROMANIZE_JAPANESE;
+  return '' if not $JAPANESE_LIB;
   my $arg = shift;
   if(length $arg == 0){
     return $arg;
@@ -179,7 +166,7 @@ sub transliterateJapanese($){
 }
 
 sub transliterateAscii($){
-  return '' if not $TEXT_UNIDECODE;
+  return '' if not $UNIDECODE_LIB;
   my $arg = shift;
   return '' if $arg eq '';
   
@@ -208,28 +195,36 @@ sub readTags($){
   my $date='';
   my $genre='';
   if($file =~ /\.mp3$/i){
-    my $eyeD3 = `eyeD3 --no-color '$file'`;
-    $eyeD3 =~ s/\t\t/\n/g;
+    if($MP3_LIB){
+      my $eyeD3 = `eyeD3 --no-color '$file'`;
+      $eyeD3 =~ s/\t\t/\n/g;
 
-    $title  = $1 if $eyeD3 =~ /^title: (.*)/mi;
-    $artist = $1 if $eyeD3 =~ /artist: (.*)\n/mi;
-    $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
-    $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
-    $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
-    $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
+      $title  = $1 if $eyeD3 =~ /^title: (.*)/mi;
+      $artist = $1 if $eyeD3 =~ /artist: (.*)\n/mi;
+      $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
+      $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
+      $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
+      $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
 
-    $genre =~ s/ \(id \d+\)$//; #trim the genre id
+      $genre =~ s/ \(id \d+\)$//; #trim the genre id
+    }else{
+      print STDERR "WARNING: no tags for $file, missing eyeD3\n";
+    }
   }elsif($file =~ /\.(ogg|flac)$/i){
-    my $lltag = `lltag -S '$file'`;
-    $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
-    $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
-    $album  = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
-    $number = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
-    $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
-    $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
+    if($OGG_FLAC_LIB){
+      my $lltag = `lltag -S '$file'`;
+      $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
+      $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
+      $album  = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
+      $number = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
+      $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
+      $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
+    }else{
+      print STDERR "WARNING: no tags for $file, missing lltag\n";
+    }
   }elsif($file =~ /\.(wma)$/i){
     my %tags;
-    if($AUDIO_WMA){
+    if($WMA_LIB){
       my $wma  = Audio::WMA->new($path);
       %tags = %{$wma->tags()};
     }else{
@@ -246,13 +241,17 @@ sub readTags($){
       $genre  = $tags{$tag} if $tag =~ m/^GENRE$/mix;
     }
   }elsif($file =~ /\.(mp4|m4a|m4p|m4v|m4b)$/i){
-    my $atomic = `AtomicParsley '$file' -t`;
-    $title  = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
-    $artist = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
-    $album  = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
-    $number = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
-    $date   = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
-    $genre  = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
+    if($MPEG_LIB){
+      my $atomic = `AtomicParsley '$file' -t`;
+      $title  = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
+      $artist = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
+      $album  = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
+      $number = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
+      $date   = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
+      $genre  = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
+    }else{
+      print STDERR "WARNING: no tags for $file, missing AtomicParsley\n";
+    }
   }elsif($file =~ /\.wav$/i){
     #so wavs apparently have RIFF tags, but ive never seen em
   }else{
