@@ -1,3 +1,28 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my @cols = qw(title artist album number date genre);
+my $colUsage = join "|", @cols;
+
+my $usage = "Usage:
+  $0 song
+     Reads tags for a variety of files and prints them
+  $0 --guess=($colUsage) path-hint [value-hint]
+     Does not look at the file.
+     Prints a reasonable value based on the path-hint,
+       or if value-hint is passed in, transliterates/normalizes/strips
+       non-ascii characters
+     e.g.:
+       > $0 --guess=album 'The Beatles/Revolver/01-Taxman.flac'
+       Revolver
+       > $0 --guess=title 'Ponyo/01-深海牧場.flac' '深海牧場'
+       fukami/shinkaibokujou/makiba
+       > $0 --guess=date 'Nicole Atkins/Neptune City [2007]/04 Cool Enough.ogg'
+       2007
+  $0 [-h|--help]
+      Print this usage
+";
 
 my $AUDIO_WMA = eval{ require Audio::WMA };
 if(not $AUDIO_WMA){
@@ -34,87 +59,91 @@ BEGIN{
   }
 }
 
-sub guess($$$$$$$){
-  my ($songRelPath, $title, $artist, $album, $number, $date, $genre) = @_;
-  my ($title_guess, $artist_guess, $album_guess,
-    $number_guess, $date_guess, $genre_guess);
+sub guess($$$);
+sub transliterateJapanese($);
+sub transliterateAscii($);
+sub readTags($);
 
-  $title_guess = transliterateJapanese $title;
-  $artist_guess = transliterateJapanese $artist;
-  $album_guess = transliterateJapanese $album;
-  $number_guess = transliterateJapanese $number;
-  $date_guess = transliterateJapanese $date;
-  $genre_guess = transliterateJapanese $genre;
+sub main(@){
+  die $usage if @_ == 0 or $_[0] eq '-h' or $_[0] eq '--help';
+  if($_[0] =~ /^--guess=([a-z]+)$/i){
+    my $col = $1;
+    my %okCols = map{$_ => 1} @cols;
+    die $usage if not defined $okCols{$col};
 
-  $title_guess = transliterateAscii $title if not defined $title_guess;
-  $artist_guess = transliterateAscii $artist if not defined $artist_guess;
-  $album_guess = transliterateAscii $album if not defined $album_guess;
-  $number_guess = transliterateAscii $number if not defined $number_guess;
-  $date_guess = transliterateAscii $date if not defined $date_guess;
-  $genre_guess = transliterateAscii $genre if not defined $genre_guess;
+    my ($pathHint, $valueHint);
+    if(@_ == 2){
+      $pathHint = $_[1];
+      $valueHint = '';
+    }elsif(@_ ==3){
+      $pathHint = $_[1];
+      $valueHint = $_[2];
+    }else{
+      die $usage;
+    }
+
+    print guess($col, $pathHint, $valueHint) . "\n";
+  }else{
+    my $path = shift;
+    die $usage if @_ > 0;
+    my ($title, $artist, $album, $number, $date, $genre) = readTags $path;
+    print ''
+      . "title:$title\n"
+      . "artist:$artist\n"
+      . "album:$album\n"
+      . "number:$number\n"
+      . "date:$date\n"
+      . "genre:$genre\n"
+      ;
+  }
+}
+
+sub guess($$$){
+  my $col = shift;
+  my $pathHint = shift;
+  my $valueHint = shift;
 
   my ($filename, $innerDir, $outerDir);
-  if($songRelPath =~ /([^\/]*) \/ ([^\/]*) \/ ([^\/]*)$/x){
-    $filename = $3;
-    $innerDir = $2;
-    $outerDir = $1;
-  }elsif($songRelPath =~ /([^\/]*) \/ ([^\/]*)$/x){
-    $filename = $2;
-    $innerDir = '';
-    $outerDir = $1;
-  }elsif($songRelPath =~ /([^\/]*)$/x){
-    $filename = $1;
-    $innerDir = '';
-    $outerDir = '';
+  if($pathHint =~ /([^\/]*) \/ ([^\/]*) \/ ([^\/]*)$/x){
+    ($filename, $innerDir, $outerDir) = ($3, $2, $1);
+  }elsif($pathHint =~ /([^\/]*) \/ ([^\/]*)$/x){
+    ($filename, $innerDir, $outerDir) = ($2, '', $1);
+  }elsif($pathHint =~ /([^\/]*)$/x){
+    ($filename, $innerDir, $outerDir) = ($1, '', '');
   }
 
-  if(not defined $title or length $title == 0){
-    $title_guess = $filename;
-    my $suffixRegex;
-    for (my $i=0; $i<@songSuffixes; $i++){
-      $suffixRegex .= '.' . $songSuffixes[$i];
-      if($i < $#songSuffixes){
-        $suffixRegex .= '|';
+  my $guess = '';
+
+  if(length $valueHint > 0){
+    $guess = transliterateJapanese $valueHint if $guess eq '';
+    $guess = transliterateAscii $valueHint if $guess eq '';
+  }else{
+    if($col eq 'title'){
+      $guess = $filename;
+      $guess =~ s/\.[a-z0-9]{1,5}$//i;
+      $guess =~ s/^[0-9 \-_]+//;
+    }elsif($col eq 'artist'){
+      $guess = $outerDir;
+    }elsif($col eq 'album'){
+      $guess = $innerDir;
+    }elsif($col eq 'number'){
+      if($filename =~ /^\s*(\d+)\s*/){
+        $guess = $1;
+      }
+    }elsif($col eq 'date'){
+      if($pathHint =~ /(19\d\d|20\d\d)/){
+        $guess = $1;
       }
     }
-    $title_guess =~ s/($suffixRegex)$//i;
-    $title_guess =~ s/^[0-9 \-_]+//;
-    #$title_guess =~ s/_/ /g;
-  }
-  if(not defined $artist or length $artist == 0){
-    $artist_guess = $outerDir;
-    #$artist_guess =~ s/_/ /g;
-  }
-  if(not defined $album or length $album == 0){
-    $album_guess = $innerDir;
-    #$album_guess =~ s/_/ /g;
-  }
-  if(not defined $number or length $number == 0){
-    if($filename =~ /^\s*(\d+)\s*/){
-      $number_guess = $1;
-    }
-  }
-  if(not defined $date or length $date == 0){
-    if($songRelPath =~ /(19\d\d|20\d\d)/){
-      $date_guess = $1;
-    }
   }
 
-  $title_guess = '' if not defined $title_guess;
-  $artist_guess = '' if not defined $artist_guess;
-  $album_guess = '' if not defined $album_guess;
-  $number_guess = '' if not defined $number_guess;
-  $date_guess = '' if not defined $date_guess;
-  $genre_guess = '' if not defined $genre_guess;
-
-  return ($title_guess, $artist_guess, $album_guess, $number_guess,
-    $date_guess, $genre_guess);
+  return $guess;
 }
 
 sub transliterateJapanese($){
-  return undef if not $LINGUA_JA_ROMANIZE_JAPANESE;
+  return '' if not $LINGUA_JA_ROMANIZE_JAPANESE;
   my $arg = shift;
-  if(not defined $arg or length $arg == 0){
+  if(length $arg == 0){
     return $arg;
   }
   utf8::decode($arg);
@@ -146,13 +175,13 @@ sub transliterateJapanese($){
     utf8::encode($res);
     return $res;
   }
-  return undef;
+  return '';
 }
 
 sub transliterateAscii($){
-  return undef if not $TEXT_UNIDECODE;
+  return '' if not $TEXT_UNIDECODE;
   my $arg = shift;
-  return undef if not defined $arg or $arg eq '';
+  return '' if $arg eq '';
   
   my $oldArg = $arg;
 
@@ -161,7 +190,7 @@ sub transliterateAscii($){
   utf8::encode($arg);
   
   if($oldArg eq $arg){
-    return undef;
+    return '';
   }else{
     return $arg;
   }
@@ -228,8 +257,9 @@ sub readTags($){
     #so wavs apparently have RIFF tags, but ive never seen em
   }else{
     print STDERR "Not a filetype we know how to read tags from: $path";
-    return [];
   }
 
-  return ($path, $title, $artist, $album, $number, $date, $genre);
+  return ($title, $artist, $album, $number, $date, $genre);
 }
+
+&main(@ARGV);

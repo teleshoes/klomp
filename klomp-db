@@ -575,27 +575,18 @@ sub addSongs($$$){
     
     my $md5sum = '';
 
-    my ($path, $title, $artist, $album, $number, $date, $genre) =
-      readTags("$libpath/$songRelPath");
-
-    my ($title_guess, $artist_guess, $album_guess,
-        $number_guess, $date_guess, $genre_guess) = guess(
-          $songRelPath, $title, $artist, $album, $number, $date, $genre);
+    my $tagInfo = shell 'klomp-tag', "$libpath/$songRelPath";
 
     my %cols;
-    $cols{title} = $title;
-    $cols{artist} = $artist;
-    $cols{album} = $album;
-    $cols{number} = $number;
-    $cols{date} = $date;
-    $cols{genre} = $genre;
-
-    $cols{title_guess} = $title_guess;
-    $cols{artist_guess} = $artist_guess;
-    $cols{album_guess} = $album_guess;
-    $cols{number_guess} = $number_guess;
-    $cols{date_guess} = $date_guess;
-    $cols{genre_guess} = $genre_guess;
+    for my $col(@tagCols){
+      if($tagInfo =~ /^$col:(.*)$/m){
+        $cols{$col} = $1;
+      }else{
+        $cols{$col} = '';
+      }
+      $cols{$col . "_guess"} = shell 'klomp-tag', "--guess=$col",
+        $songRelPath, $cols{$col};
+    }
     
     $cols{library} = $lib;
     $cols{relpath} = $songRelPath;
