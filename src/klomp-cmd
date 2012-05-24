@@ -11,7 +11,9 @@ my $usage = "Usage:
   $0 prev  - previous song
   $0 reset - clear song list and history
   $0 -h    - show this message
-  $0 <mplayer slave input>
+  $0 <mplayer slave input command>
+     see: mplayer -input cmdlist
+     for complete command list
      {e.g.: $0 seek 10}
 ";
 
@@ -38,10 +40,8 @@ my $KLOMPHIST = `echo -n \$HOME/.klomphistory`;
 my $FIFO = '/tmp/klomplayer_fifo';
 my $PID_FILE = '/tmp/klomplayer_pid';
 
-sub main(){
-  my $cmd = $ARGV[0];
-  $cmd = '' if not defined $cmd;
-
+sub main(@){
+  my $cmd = shift() || '';
   if($cmd eq '-h'){
     print $usage;
     exit 0;
@@ -73,11 +73,23 @@ sub main(){
   }elsif($cmd eq 'reset'){
     system "echo -n > $KLOMPLIST";
     system "echo -n > $KLOMPHIST";
-  }elsif(@ARGV > 0){
-    system "echo @ARGV > $FIFO";
   }else{
-    die $usage;
+    my %okCmds = getAvailableInputCommands();
+    if(defined $okCmds{$cmd}){
+      system "echo \"$cmd @_\" > $FIFO";
+    }else{
+      die $usage;
+    }
   }
+}
+
+sub getAvailableInputCommands(){
+  my %cmds;
+  my $_ = `mplayer -input cmdlist`;
+  while(/^([a-z_]+)\s*(.*)/mg){
+    $cmds{$1} = $2;
+  }
+  return %cmds;
 }
 
 sub isPhone(){
@@ -217,4 +229,4 @@ sub prevItem(){
   return prevnext $KLOMPHIST, $KLOMPLIST;
 }
 
-&main;
+&main(@ARGV);
