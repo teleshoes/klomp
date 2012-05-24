@@ -4,6 +4,8 @@
 use strict;
 use warnings;
 
+my $quality = 3;
+
 my $dir2oggExec = 'dir2ogg';
 
 sub shellQuiet(@);
@@ -228,7 +230,7 @@ sub convert($$$$){
   my $destDir = shift;
   my $baseName = shift;
 
-  system $dir2oggExec, "$srcDir/$flac";
+  system $dir2oggExec, "--quality=$quality", "$srcDir/$flac";
   if($?){
     return "failure: $flac\n";
   }
