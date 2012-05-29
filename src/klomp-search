@@ -56,7 +56,6 @@ sub main(@){
 
   if($cmd !~ /^-(a|p|o|w|r)$/i){
     $query = join ' ', @_;
-    utf8::decode $query;
     $pos = length $query;
     system "clear";
     showQuery;
@@ -69,6 +68,7 @@ sub main(@){
   shift @_;
 
   my $query = join ' ', @_;
+  utf8::decode $query;
   print "fetching query: $query\n";
   my @files = fetch $query;
   print scalar(@files) . " files\n";
@@ -180,7 +180,6 @@ sub formatLines(\@$$){
 
 sub isFullwidth($){
   my $c = shift;
-  utf8::decode $c;
   my $p = ord $c;
   if(0
      or ($p >= 0x3041 and $p <= 0xfa2d)
@@ -298,8 +297,6 @@ sub showQuery(){
     . "\\033[$promptLine;${promptCol}H"
     ;
 
-  utf8::decode($out);
-  utf8::encode($out);
   system 'echo', '-ne', $out;
 }
 
@@ -404,6 +401,7 @@ sub flacmirror($$){
 
 sub fetch($){
   my $query = shift;
+  utf8::encode $query;
 
   my @songRows = makeQuery $query;
   my @files;
@@ -431,8 +429,6 @@ sub fetch($){
      . "///\\\\\\title=$title"
      . "///\\\\\\query=$query"
      ;
-    utf8::decode($info);
-    utf8::encode($info);
     push @files, "$path$info";
   }
 
@@ -567,7 +563,6 @@ sub getSomeInput(){
   return \@bytes;
 }
 
-#assumes utf8
 sub getSomeKeys(){
   my $enter = 'ENTER';
   my $bkspc = 'BACKSPACE';
