@@ -3,13 +3,48 @@ use strict;
 use warnings;
 use Time::HiRes qw(sleep);
 
-my $FIFO = '/tmp/klomplayer_fifo';
-my $PID_FILE = '/tmp/klomplayer_updater_pid';
-system "kill -9 `cat $PID_FILE`";
-system "echo $$ > $PID_FILE";
+sub getPid();
+sub setPid();
 
-while(1){
-  sleep 0.5;
-  system "echo pausing_keep_force get_time_length > $FIFO";
-  system "echo pausing_keep_force get_time_pos > $FIFO";
+my $FIFO = '/tmp/klomplayer_fifo';
+my $PID_FILE = '/tmp/klomplayer_fifo_pid';
+
+sub main(@){
+  die "Usage: $0\n" if @_ > 0;
+  my $pid = getPid;
+  system "kill", "-9", $pid if defined $pid;
+
+  system "rm", "-f", $FIFO;
+  system "mkfifo", $FIFO;
+
+  setPid;
+
+  while(1){
+    sleep 0.8;
+    die "$FIFO is not a FIFO\n" if not -p $FIFO;
+    die "New fifo writer is running\n" if $$ != getPid;
+    open FIFO, "> $FIFO" or die "Couldn't open FIFO $FIFO for writing";
+    print FIFO "pausing_keep_force get_time_length\n";
+    print FIFO "pausing_keep_force get_time_pos\n";
+    close FIFO;
+  }
 }
+
+sub getPid(){
+  if(-e $PID_FILE){
+    my $pid = `cat $PID_FILE`;
+    chomp $pid;
+    if($pid =~ /^\d+$/){
+      return $pid;
+    }
+  }
+  return undef;
+}
+
+sub setPid(){
+  open FH, "> $PID_FILE";
+  print FH "$$\n";
+  close FH;
+}
+
+&main(@ARGV);

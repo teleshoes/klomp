@@ -7,10 +7,8 @@ my @mplayerOptions = (
   '-cache-min', '20',
 );
 
-if(not fork){
-  system "killall klomp-fifo-writer";
-  exec "klomp-fifo-writer &";
-}
+my $FIFO = '/tmp/klomplayer_fifo';
+fork or exec "klomp-fifo-writer";
 
 my $klompCmdExec = 'klomp-cmd';
 my $KLOMPCUR = `echo -n \$HOME/.klompcur`;
@@ -35,10 +33,6 @@ if(-e $PID_FILE){
   system "kill -9 $pid 2>/dev/null";
   system "rm $PID_FILE";
 }
-
-my $FIFO = '/tmp/klomplayer_fifo';
-system "rm -f $FIFO";
-system "mkfifo $FIFO";
 
 my $pid = open FH, '-|',
   'mplayer', @mplayerOptions,
