@@ -34,7 +34,7 @@ sub main(){
 sub hms($){
   my $sex = shift;
   my $h = int($sex / (60*60));
-  my $m = int($sex / (60));
+  my $m = int($sex % (60*60) / (60));
   my $s = int($sex % (60));
   return ($h, $m, $s);
 }
