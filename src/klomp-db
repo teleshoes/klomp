@@ -306,14 +306,16 @@ sub search($$$$$){
     my $artist = 0;
     my $genre = 0;
     my $path = 0;
-    while($q =~ /^@[tlagp]/){
+    my $number = 0;
+    while($q =~ /^@[tlagpn]/){
       $default = 0;
-      $q =~ s/^@([tlagp])//;
+      $q =~ s/^@([tlagpn])//;
       $title = 1 if $1 eq 't';
       $album = 1 if $1 eq 'l';
       $artist = 1 if $1 eq 'a';
       $genre = 1 if $1 eq 'g';
       $path = 1 if $1 eq 'p';
+      $number = 1 if $1 eq 'n';
     }
 
     $q =~ s/~bang~/!/g;
@@ -344,6 +346,10 @@ sub search($$$$$){
     }
     if($path){
       push @wheres, "relpath $neg like '\%$q\%'\n  ";
+    }
+    if($number){
+      push @wheres, "number $neg like '\%$q\%'"
+                    . " $negAndOr number_guess $neg like '\%$q\%'\n  ";
     }
     $sql .= join(" $negAndOr ", @wheres) . ")$term\n  "
   }
