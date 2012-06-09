@@ -2,10 +2,13 @@
 use strict;
 use warnings;
 
-my $prefix = '/usr/local';
 my $libDir = '/opt/klomp/lib';
 
+my $prefix = shift;
+$prefix = '/usr/local' if not defined $prefix;
+
 die "Usage: $0 <prefix>\n" if @ARGV > 0;
+
 my $dest = "$prefix/bin";
 die "Invalid install location: $dest\n" if not -d $dest;
 
