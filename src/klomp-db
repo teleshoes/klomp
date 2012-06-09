@@ -213,6 +213,8 @@ sub parseQuotes($){
         $quoteAtom =~ s/""/"/g;
         $quoteAtom =~ s/@/~at~/g;
         $quoteAtom =~ s/!/~bang~/g;
+        $quoteAtom =~ s/\^/~carat~/g;
+        $quoteAtom =~ s/\$/~dollar~/g;
         $newQuery .= substr $query, $endOfLastQuote, $startQuote-$endOfLastQuote;
         $endOfLastQuote = $endQuote+1;
         $newQuery .= "~$atomId~";
@@ -318,6 +320,12 @@ sub search($$$$$){
       $number = 1 if $1 eq 'n';
     }
 
+    my ($startBoing, $endBoing) = ('%', '%');
+    $startBoing = '' if $q =~ s/^\^//;
+    $endBoing = '' if $q =~ s/\$$//;
+
+    $q =~ s/~dollar~/\$/g;
+    $q =~ s/~carat~/\^/g;
     $q =~ s/~bang~/!/g;
     $q =~ s/~at~/@/g;
     
@@ -329,7 +337,7 @@ sub search($$$$$){
     $term = " or (" if $$sub[1] eq '~or~';
     $term = "" if $$sub[1] eq '~term~';
 
-    my $like = "$neg like '\%$q\%'";
+    my $like = "$neg like '$startBoing$q$endBoing'";
     my @wheres;
     if($default or $title){
       push @wheres, "title $like $negAndOr title_guess $like\n  ";
