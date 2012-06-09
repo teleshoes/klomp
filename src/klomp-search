@@ -211,7 +211,7 @@ sub makeQuery($;$){
   my $limit = shift;
   
   my @libs;
-  my $libRegex = qr/^\$([a-zA-Z0-9]+)/;
+  my $libRegex = qr/^\@([a-zA-Z0-9]+)/;
   while($query =~ /$libRegex/){
     my $lib = $1;
     if($lib eq 'all'){
