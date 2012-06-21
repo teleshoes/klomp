@@ -8,8 +8,19 @@ my @cols = qw(title artist album number date genre);
 my $colUsage = join "|", @cols;
 
 my $usage = "Usage:
-  $0 song
-     Reads tags for a variety of files and prints them
+  $0 SONG
+     Reads tags from the file and prints them e.g.:
+          > $0 Zoe_Keating/One_Cello_x_16_Natoma/01_Legions_War.flac
+          title:Legions (War)
+          artist:Zoë Keating
+          album:One Cello x 16: Natoma
+          number:1
+          date:2005-01-01
+          genre:
+  $0 SONG SONG [SONG ...]
+     Reads tags from the files and prints them as above, except:
+     -prepends additional fake tag 'path:SONG'
+     -separates files with a newline
   $0 --guess=($colUsage) path-hint [value-hint]
      Does not look at the file.
      Prints a reasonable value based on the path-hint,
@@ -26,37 +37,47 @@ my $usage = "Usage:
       Print this usage
 ";
 
+sub printTags($$){
+  my ($path, $showPath) = @_;
+  if(not -f $path){
+    print STDERR "Not a file: $path\n";
+    return;
+  }
+
+  my %tags = Klomp::Tag::readTags $path;
+  print ''
+    . ($showPath ? "path:$path\n" : '')
+    . "title:$tags{title}\n"
+    . "artist:$tags{artist}\n"
+    . "album:$tags{album}\n"
+    . "number:$tags{number}\n"
+    . "date:$tags{date}\n"
+    . "genre:$tags{genre}\n"
+    ;
+}
+
+sub guess($$$){
+  my ($col, $pathHint, $valueHint) = @_;
+  my %okCols = map{$_ => 1} @cols;
+  die $usage if not defined $okCols{$col};
+  $valueHint = '' if not defined $valueHint;
+
+  print Klomp::Tag::guess($col, $pathHint, $valueHint) . "\n";
+}
 sub main(@){
   die $usage if @_ == 0 or $_[0] eq '-h' or $_[0] eq '--help';
-  if($_[0] =~ /^--guess=([a-z]+)$/i){
+  if((@_ == 2 or @_ == 3) and $_[0] =~ /^--guess=([a-z]+)$/i){
+    shift;
     my $col = $1;
-    my %okCols = map{$_ => 1} @cols;
-    die $usage if not defined $okCols{$col};
-
-    my ($pathHint, $valueHint);
-    if(@_ == 2){
-      $pathHint = $_[1];
-      $valueHint = '';
-    }elsif(@_ ==3){
-      $pathHint = $_[1];
-      $valueHint = $_[2];
-    }else{
-      die $usage;
-    }
-
-    print Klomp::Tag::guess($col, $pathHint, $valueHint) . "\n";
+    my $pathHint = shift;
+    my $valueHint = shift;
+    guess $col, $pathHint, $valueHint;
   }else{
-    my $path = shift;
-    die $usage if @_ > 0;
-    my %tags = Klomp::Tag::readTags $path;
-    print ''
-      . "title:$tags{title}\n"
-      . "artist:$tags{artist}\n"
-      . "album:$tags{album}\n"
-      . "number:$tags{number}\n"
-      . "date:$tags{date}\n"
-      . "genre:$tags{genre}\n"
-      ;
+    my $showPath = @_ > 1;
+    while(@_ > 0){
+      printTags shift(), $showPath;
+      print "\n" if @_ > 0;
+    }
   }
 }
 
