@@ -2,6 +2,15 @@
 use strict;
 use warnings;
 
+if(@ARGV == 1 and $ARGV[0] =~ /^(-h|--help)$/){
+  die "Usage:\n"
+    . "  $0                        update all libs\n"
+    . "  $0 LIB [LIB LIB ..]       updated specified libs\n";
+}
+my $allLibs = 0;
+$allLibs = 1 if @ARGV == 0;
+my %okLibs = map {$_ => 1} @ARGV;
+
 my @libs = `klomp-lib`;
 chomp foreach @libs;
 
@@ -11,6 +20,10 @@ if(not -e "$ENV{HOME}/.klompdb"){
 }
 
 for my $lib(@libs){
+  if(not $allLibs and not defined $okLibs{$lib}){
+    print "\nSkipped library: $lib\n";
+    next;
+  }
   print "\nHandling library: $lib\n";
 
   system 'klomp-db', '-m', $lib;
@@ -18,6 +31,10 @@ for my $lib(@libs){
 }
 
 for my $lib(@libs){
+  if(not $allLibs and not defined $okLibs{$lib}){
+    print "\nSkipped flacmirror for: $lib\n";
+    next;
+  }
   my $dir = `klomp-lib -l $lib`;
   chomp $dir;
   my $flacMirrorDir = `klomp-lib -f $lib`;
