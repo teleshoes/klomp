@@ -1,0 +1,60 @@
+import curses
+import curses.textpad
+import time
+import sys
+import os
+
+import threading
+
+def msg(s):
+  os.system("echo " + str(s) + " >> out")
+
+class TextLineThread(threading.Thread):
+  def __init__(self, line, width):
+    threading.Thread.__init__(self)
+    sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
+    self.win = curses.newwin(1,width,line,0)
+    self.tb = curses.textpad.Textbox(self.win, insert_mode=True)
+  def run(self):
+    self.tb.edit(lambda c: self.handleChar(c))
+  def getText(self):
+    return self.tb.gather()
+  def handleChar(self, c):
+    msg(c)
+    if c == 10:
+      return self.enterKey()
+    elif c == 262:
+      return self.homeKey()
+    elif c == 360:
+      return self.endKey()
+    elif c >= 265 and c <= 276:
+      return funKey(c - 265 + 1)
+    else:
+      return c
+  def funKey(self, f):
+    if f == 9:
+      msg("f9")
+      return 10
+  def homeKey(self):
+    return 1
+  def endKey(self):
+    return 5
+  def enterKey(self):
+    return 0
+
+def klomp(stdscr):
+  os.system("rm out")
+  tlt = TextLineThread(0, stdscr.getmaxyx()[1])
+  tlt.start()
+  win = curses.newwin(1,30,5,0)
+  c = 97
+  while True:
+    time.sleep(0.5)
+    c+=1
+    win.addch(0, 0, c)
+    win.noutrefresh()
+    tlt.win.noutrefresh()
+    curses.doupdate()
+
+if __name__ == "__main__":
+  curses.wrapper(klomp)
