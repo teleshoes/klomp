@@ -234,7 +234,31 @@ sub search($$$$$){
   my $limit = shift;
   my @cols = @{shift()};
   my @libs = @{shift()};
-  
+
+  my @allLibs = `klomp-lib`;
+  my @defaultLibs = `klomp-lib -d`;
+  chomp foreach @allLibs;
+  chomp foreach @defaultLibs;
+  my %okLibs = map {$_ => 1} @allLibs;
+
+  my $all = 0;
+  my $libRegex = qr/^\@([a-zA-Z0-9]+)/;
+  while($query =~ /$libRegex/){
+    my $lib = $1;
+    if($lib eq 'all'){
+      $query =~ s/$libRegex//;
+      $all = 1;
+    }elsif(defined $okLibs{$lib}){
+      $query =~ s/$libRegex//;
+      push @libs, $lib;
+    }else{
+      last;
+    }
+  }
+
+  @libs = @defaultLibs if @libs == 0;
+  @libs = () if $all;
+
   my $libWhere = '';
   if(@libs > 0){
     $libWhere = "library in (" . (join ', ', map {"'$_'"} @libs) . ") and";

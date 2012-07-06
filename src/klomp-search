@@ -37,9 +37,7 @@ our $query = '';
 our $offset = 0;
 
 our @allLibs = `klomp-lib`;
-our @defaultLibs = `klomp-lib -d`;
 chomp foreach @allLibs;
-chomp foreach @defaultLibs;
 
 our %libraryPaths = map {$_ => scalar `klomp-lib -l $_`} @allLibs;
 our %flacmirrorPaths = map {$_ => scalar `klomp-lib -f $_`} @allLibs;
@@ -210,28 +208,10 @@ sub makeQuery($;$){
   my $query = shift;
   my $limit = shift;
   
-  my @libs;
-  my $libRegex = qr/^\@([a-zA-Z0-9]+)/;
-  while($query =~ /$libRegex/){
-    my $lib = $1;
-    if($lib eq 'all'){
-      $query =~ s/$libRegex//;
-      @libs = keys %libraryPaths;
-    }elsif(defined $libraryPaths{$lib}){
-      $query =~ s/$libRegex//;
-      push @libs, $lib;
-    }else{
-      last;
-    }
-  }
-  @libs = @defaultLibs if @libs == 0;
-  chomp foreach @libs;
-
-  my @libArgs = map {('--lib', $_)} @libs;
   my @limitArgs = ("-l", $limit) if defined $limit;
   my @colArgs = map {('--col', $_)} qw(artist album number title relpath library);
   return shellQuiet $klompdbExec,
-    '-s', $query, @libArgs, @limitArgs, @colArgs;
+    '-s', $query, @limitArgs, @colArgs;
 }
 
 sub showQuery(){
