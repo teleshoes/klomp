@@ -17,12 +17,6 @@ lock = threading.RLock()
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
 
-def getPrintable(key):
-  try:
-    return chr(key)
-  except:
-    return None
-
 class KeyReader(threading.Thread):
   def __init__(self, stdscr, onKeyPressed):
     threading.Thread.__init__(self)
@@ -52,18 +46,6 @@ class KeyReader(threading.Thread):
       keys = self.keys
       self.keys = []
       return keys
-
-def isFullWidth(c):
-  p = ord(c)
-  if (False
-     or (p >= 0x3041 and p <= 0xfa2d)
-     or (p >= 0xfe30 and p <= 0xfe6b)
-     or (p >= 0xff01 and p <= 0xff60)
-     or (p >= 0xffe0 and p <= 0xffee)
-     ):
-    return True
-  else:
-    return False
 
 class LineEditor():
   def __init__(self, line, width):
@@ -99,14 +81,26 @@ class LineEditor():
     length = len(self.preText)
     tabwidth = 8
     tabstop = 0
-    for c in unicodedata.normalize('NFKD', self.preText):
+    for c in self.preText:
       tabstop = 1 + (tabstop % tabwidth)
       if c == "\t":
         length += tabwidth-tabstop
-        tabstop=0
-      elif isFullWidth(c):
+        tabstop = 0
+      elif self.isFullWidth(c):
         length += 1
+        tabstop += 1
     return length
+  def isFullWidth(self, c):
+    p = ord(c)
+    if (False
+       or (p >= 0x3041 and p <= 0xfa2d)
+       or (p >= 0xfe30 and p <= 0xfe6b)
+       or (p >= 0xff01 and p <= 0xff60)
+       or (p >= 0xffe0 and p <= 0xffee)
+       ):
+      return True
+    else:
+      return False
   def getText(self):
     return self.preText.encode('utf8') + self.postText.encode('utf8')
   def updateText(self):
