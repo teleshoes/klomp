@@ -8,7 +8,6 @@ import subprocess
 import threading
 import csv
 
-import unicodedata
 import locale
 locale.setlocale(locale.LC_ALL,"")
 
@@ -152,11 +151,13 @@ class KlompUI():
     self.height = stdscr.getmaxyx()[0]
     self.width = stdscr.getmaxyx()[1]
     self.lineEditor = LineEditor(0, self.width)
-    self.lineEditor.preText = initialQuery
     self.songDisplay = SongDisplay(self.height, self.width)
     self.lastQuery = None
     self.keyReader = KeyReader(stdscr, self.updateLineEditor)
     self.keyReader.start()
+    if initialQuery != None and len(initialQuery) > 0:
+      self.lineEditor.preText = initialQuery
+      self.updateLineEditor()
   def checkQuery(self):
     old = self.lastQuery
     self.lastQuery = self.lineEditor.getText()
@@ -197,4 +198,4 @@ if __name__ == "__main__":
     stdscr.keypad(0)
     curses.echo()
     curses.endwin()
-    #os._exit(0)
+    os._exit(0)
