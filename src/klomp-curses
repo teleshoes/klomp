@@ -141,6 +141,12 @@ class SongDisplay():
       left = lim/2
       right = length - lim/2 - lim%2 + ellipLen
       return s[:left] + ellip + s[right:]
+  def padNumbers(self, songs):
+    maxLen = max([len(s['number']) for s in songs])
+    for s in songs:
+      numLen = len(s['number'])
+      prefix = ('0' if numLen > 0 else ' ') * (maxLen - numLen)
+      s['number'] = prefix + s['number']
   def formatSong(self, s):
     return ' ' + s['number'] + ':' + s['title']
   def formatSongBucket(self, s):
@@ -202,8 +208,10 @@ class SongDisplay():
       if self.screenFull():
         break
       self.printLine(bucketDisplays[bucket])
-      for song in buckets[bucket]:
-        self.printLine(self.formatSong(song))
+      songs = buckets[bucket]
+      self.padNumbers(songs)
+      for fmtSong in sorted([self.formatSong(s) for s in songs]):
+        self.printLine(fmtSong)
     self.win.noutrefresh()
 
 class KlompQuery():
