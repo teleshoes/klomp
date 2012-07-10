@@ -13,6 +13,14 @@ locale.setlocale(locale.LC_ALL,"")
 
 uiLock = threading.RLock()
 
+def main(args):
+  sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
+  try:
+    curses.wrapper(KlompUI().start)
+  finally:
+    os._exit(0)
+    os.system("rm out")
+
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
 
@@ -226,32 +234,15 @@ class KlompQuery():
 class KlompUI():
   def __init__(self):
     self.klompQuery = KlompQuery()
-  def start(self):
-    self.cursesUp()
-    try:
-      height, width = self.stdscr.getmaxyx()
-      self.lineEditor = LineEditor(0, width, self.onEnterKey)
-      self.songDisplay = SongDisplay(height, width)
-      KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
-      while True:
-        self.updateSongs()
-        time.sleep(1)
-    finally:
-      self.cursesDown()
-      #self.forceExit(0)
-  def forceExit(self, exitCode):
-    os._exit(exitCode)
-  def cursesUp(self):
-    sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
-    self.stdscr = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    self.stdscr.keypad(1)
-  def cursesDown(self):
-    curses.nocbreak()
-    self.stdscr.keypad(0)
-    curses.echo()
-    curses.endwin()  
+  def start(self, stdscr):
+    self.stdscr = stdscr
+    height, width = self.stdscr.getmaxyx()
+    self.lineEditor = LineEditor(0, width, self.onEnterKey)
+    self.songDisplay = SongDisplay(height, width)
+    KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
+    while True:
+      self.updateSongs()
+      time.sleep(1)
   def updateSongs(self):
     songs = self.klompQuery.maybePerformQuery(self.lineEditor.getText())
     if songs != None:
@@ -270,5 +261,4 @@ class KlompUI():
       curses.doupdate()
 
 if __name__ == "__main__":
-  KlompUI().start()
-  os.system("rm out")
+  main(sys.argv)
