@@ -11,52 +11,53 @@ import csv
 import locale
 locale.setlocale(locale.LC_ALL,"")
 
-lock = threading.RLock()
+uiLock = threading.RLock()
 
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
 
-class KeyReader(threading.Thread):
-  def __init__(self, stdscr, onKeyPressed):
+def addstr(win, y, x, s):
+  try:
+    win.addstr(y, x, s)
+  except curses.error:
+    pass
+
+class KeyReaderThread(threading.Thread):
+  def __init__(self, stdscr, onGetSomeKeys):
     threading.Thread.__init__(self)
     self.stdscr = stdscr
-    self.keys = []
-    self.onKeyPressed = onKeyPressed
+    self.onGetSomeKeys = onGetSomeKeys
   def run(self):
     while True:
-      self.readNextKeyBlocking()
-      self.readAllAvailableKeys()
-      self.onKeyPressed()
-  def readNextKeyBlocking(self):
+      keys = self.getSomeKeysBlocking()
+      self.onGetSomeKeys(keys)
+  def getSomeKeysBlocking(self):
+    keys = []
+
     self.stdscr.nodelay(0)
-    self.appendKey(self.stdscr.getch())
-  def readAllAvailableKeys(self):
+    keys.append(self.stdscr.getch())
+
     self.stdscr.nodelay(1)
-    key = self.stdscr.getch()
-    while key != -1:
-      msg(key)
-      self.appendKey(key)
+    while True:
       key = self.stdscr.getch()
-  def appendKey(self, key):
-    with lock:
-      self.keys.append(key)
-  def grabKeys(self):
-    with lock:
-      keys = self.keys
-      self.keys = []
-      return keys
+      if key == -1:
+        break
+      keys.append(key)
+    return keys
 
 class LineEditor():
-  def __init__(self, line, width):
+  def __init__(self, line, width, onEnterKey):
+    self.line = line
+    self.width = width
+    self.onEnterKey = onEnterKey
+    self.win = curses.newwin(1, self.width, self.line, 0)
     self.preText = u""
     self.postText = u""
-    self.line = line
-    self.win = curses.newwin(1,width,line,0)
   def handleKeys(self, keys):
     text = ""
     for key in keys:
       if key == curses.KEY_ENTER or key == 10:
-        msg(key)
+        self.onEnterKey()
       elif key == curses.KEY_HOME:
         self.postText = self.preText + self.postText
         self.preText = u""
@@ -91,20 +92,17 @@ class LineEditor():
     return length
   def isFullWidth(self, c):
     p = ord(c)
-    if (False
+    return (False
        or (p >= 0x3041 and p <= 0xfa2d)
        or (p >= 0xfe30 and p <= 0xfe6b)
        or (p >= 0xff01 and p <= 0xff60)
        or (p >= 0xffe0 and p <= 0xffee)
-       ):
-      return True
-    else:
-      return False
+    )
   def getText(self):
     return self.preText.encode('utf8') + self.postText.encode('utf8')
   def updateText(self):
     self.win.erase()
-    self.win.addstr(0, 0, self.getText())
+    addstr(self.win, 0, 0, self.getText())
     self.win.noutrefresh()
   def updateCursor(self):
     pos = self.getCursorPos()
@@ -200,69 +198,77 @@ class SongDisplay():
         self.printLine(self.formatSong(song))
     self.win.noutrefresh()
 
-def readProc(cmdArr):
-  out, err = subprocess.Popen(cmdArr, stdout=subprocess.PIPE).communicate()
-  return out
-
-def klompQuery(q):
-  cols = ['artist', 'album', 'number', 'title', 'relpath', 'library']
-  cmd = ["klomp-db", "-s", q]
-  for col in cols:
-    cmd.append("--col")
-    cmd.append(col)
-  lines = readProc(cmd).split("\n")
-  return csv.DictReader(lines, fieldnames=cols, delimiter=',', quotechar='"')
+class KlompQuery():
+  def __init__(self):
+    self.cols = ['artist', 'album', 'number', 'title', 'relpath', 'library']
+    self.query = None
+  def buildQueryCmd(self):
+    cmd = ["klomp-db", "-s", self.query]
+    for col in self.cols:
+      cmd.append("--col")
+      cmd.append(col)
+    return cmd
+  def readProc(self, cmdArr):
+    out, err = subprocess.Popen(cmdArr, stdout=subprocess.PIPE).communicate()
+    return out
+  def parseCsv(self, string, colNames):
+    return list(csv.DictReader(string.split("\n"), fieldnames=colNames,
+      delimiter=',', quotechar='"'))
+  def maybePerformQuery(self, query):
+    if self.query != query:
+      self.query = query
+      return self.performQuery()
+    else:
+      return None
+  def performQuery(self):
+    return self.parseCsv(self.readProc(self.buildQueryCmd()), self.cols)
 
 class KlompUI():
-  def __init__(self, stdscr, initialQuery=''):
-    self.height = stdscr.getmaxyx()[0]
-    self.width = stdscr.getmaxyx()[1]
-    self.lineEditor = LineEditor(0, self.width)
-    self.songDisplay = SongDisplay(self.height, self.width)
-    self.lastQuery = None
-    self.keyReader = KeyReader(stdscr, self.updateLineEditor)
-    self.keyReader.start()
-    if initialQuery != None and len(initialQuery) > 0:
-      self.lineEditor.preText = initialQuery
-      self.updateLineEditor()
-  def checkQuery(self):
-    old = self.lastQuery
-    self.lastQuery = self.lineEditor.getText()
-    if self.lastQuery != old:
-      self.performQuery()
-  def performQuery(self):
-    self.songs = klompQuery(self.lastQuery)
-    with lock:
-      self.songDisplay.update(self.songs)
-      self.lineEditor.updateCursor()
-      curses.doupdate()
-  def updateLineEditor(self):
-    self.lineEditor.handleKeys(self.keyReader.grabKeys())
-    with lock:
+  def __init__(self):
+    self.klompQuery = KlompQuery()
+  def start(self):
+    self.cursesUp()
+    try:
+      height, width = self.stdscr.getmaxyx()
+      self.lineEditor = LineEditor(0, width, self.onEnterKey)
+      self.songDisplay = SongDisplay(height, width)
+      KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
+      while True:
+        self.updateSongs()
+        time.sleep(1)
+    finally:
+      self.cursesDown()
+      #self.forceExit(0)
+  def forceExit(self, exitCode):
+    os._exit(exitCode)
+  def cursesUp(self):
+    sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
+    self.stdscr = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    self.stdscr.keypad(1)
+  def cursesDown(self):
+    curses.nocbreak()
+    self.stdscr.keypad(0)
+    curses.echo()
+    curses.endwin()  
+  def updateSongs(self):
+    songs = self.klompQuery.maybePerformQuery(self.lineEditor.getText())
+    if songs != None:
+      self.songs = songs
+      with uiLock:
+        self.songDisplay.update(self.songs)
+        self.lineEditor.updateCursor()
+        curses.doupdate()
+  def onEnterKey(self):
+    self.updateSongs()
+  def onGetSomeKeys(self, keys):
+    self.lineEditor.handleKeys(keys)
+    with uiLock:
       self.lineEditor.updateText()
       self.lineEditor.updateCursor()
       curses.doupdate()
 
-
 if __name__ == "__main__":
-  stdscr = curses.initscr()
-  curses.noecho()
-  curses.cbreak()
-  stdscr.keypad(1)
-  try:
-    sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
-    os.system("rm out")
-    if len(sys.argv) > 1:
-      q = sys.argv[1].decode('utf8')
-    else:
-      q = ''
-    klompUI = KlompUI(stdscr, q)
-    while True:
-      klompUI.checkQuery()
-      time.sleep(1)
-  finally:
-    curses.nocbreak()
-    stdscr.keypad(0)
-    curses.echo()
-    curses.endwin()
-    os._exit(0)
+  KlompUI().start()
+  os.system("rm out")
