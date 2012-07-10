@@ -292,10 +292,10 @@ sub search($$$$$){
   
   my %quoteAtoms;
   ($query, %quoteAtoms) = parseQuotes $query;
-  
-  $query =~ s/\s*\&\&\s*/~and~/g;
-  $query =~ s/\s*\|\|\s*/~or~/g;
-  $query =~ s/\s*€\s*/~or~/g;  #euro symbol is synonym for ||
+
+  $query =~ s/\s*  \&\&  \s*/~and~/gx;
+  $query =~ s/\s*  \|\|  \s*/~or~/gx;
+  $query =~ s/\s*  \+\+  \s*/~or~/gx;
   $query =~ s/\s+/~and~/g;
   
 
