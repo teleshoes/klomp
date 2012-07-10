@@ -1,60 +1,206 @@
+#!/usr/bin/python
 import curses
 import curses.textpad
 import time
 import sys
 import os
-
+import subprocess
 import threading
+import csv
+
+import unicodedata
+import locale
+locale.setlocale(locale.LC_ALL,"")
+
+lock = threading.RLock()
 
 def msg(s):
-  os.system("echo " + str(s) + " >> out")
+  os.system("echo '" + str(s) + "' >> out")
 
-class TextLineThread(threading.Thread):
-  def __init__(self, line, width):
+def getPrintable(key):
+  try:
+    return chr(key)
+  except:
+    return None
+
+class KeyReader(threading.Thread):
+  def __init__(self, stdscr, onKeyPressed):
     threading.Thread.__init__(self)
-    sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
-    self.win = curses.newwin(1,width,line,0)
-    self.tb = curses.textpad.Textbox(self.win, insert_mode=True)
+    self.stdscr = stdscr
+    self.keys = []
+    self.onKeyPressed = onKeyPressed
   def run(self):
-    self.tb.edit(lambda c: self.handleChar(c))
-  def getText(self):
-    return self.tb.gather()
-  def handleChar(self, c):
-    msg(c)
-    if c == 10:
-      return self.enterKey()
-    elif c == 262:
-      return self.homeKey()
-    elif c == 360:
-      return self.endKey()
-    elif c >= 265 and c <= 276:
-      return funKey(c - 265 + 1)
-    else:
-      return c
-  def funKey(self, f):
-    if f == 9:
-      msg("f9")
-      return 10
-  def homeKey(self):
-    return 1
-  def endKey(self):
-    return 5
-  def enterKey(self):
-    return 0
+    while True:
+      self.readNextKeyBlocking()
+      self.readAllAvailableKeys()
+      self.onKeyPressed()
+  def readNextKeyBlocking(self):
+    self.stdscr.nodelay(0)
+    self.appendKey(self.stdscr.getch())
+  def readAllAvailableKeys(self):
+    self.stdscr.nodelay(1)
+    key = self.stdscr.getch()
+    while key != -1:
+      msg(key)
+      self.appendKey(key)
+      key = self.stdscr.getch()
+  def appendKey(self, key):
+    with lock:
+      self.keys.append(key)
+  def grabKeys(self):
+    with lock:
+      keys = self.keys
+      self.keys = []
+      return keys
 
-def klomp(stdscr):
-  os.system("rm out")
-  tlt = TextLineThread(0, stdscr.getmaxyx()[1])
-  tlt.start()
-  win = curses.newwin(1,30,5,0)
-  c = 97
-  while True:
-    time.sleep(0.5)
-    c+=1
-    win.addch(0, 0, c)
-    win.noutrefresh()
-    tlt.win.noutrefresh()
-    curses.doupdate()
+def isFullWidth(c):
+  p = ord(c)
+  if (False
+     or (p >= 0x3041 and p <= 0xfa2d)
+     or (p >= 0xfe30 and p <= 0xfe6b)
+     or (p >= 0xff01 and p <= 0xff60)
+     or (p >= 0xffe0 and p <= 0xffee)
+     ):
+    return True
+  else:
+    return False
+
+class LineEditor():
+  def __init__(self, line, width):
+    self.preText = u""
+    self.postText = u""
+    self.line = line
+    self.win = curses.newwin(1,width,line,0)
+  def handleKeys(self, keys):
+    text = ""
+    for key in keys:
+      if key == curses.KEY_ENTER or key == 10:
+        msg(key)
+      elif key == curses.KEY_HOME:
+        self.postText = self.preText + self.postText
+        self.preText = u""
+      elif key == curses.KEY_END:
+        self.preText += self.postText
+        self.postText = u""
+      elif key == curses.KEY_LEFT:
+        self.postText = self.preText[-1:] + self.postText
+        self.preText = self.preText[:-1]
+      elif key == curses.KEY_RIGHT:
+        self.preText += self.postText[:1]
+        self.postText = self.postText[1:]
+      elif key == curses.KEY_BACKSPACE:
+        self.preText = self.preText[:-1]
+      elif key == curses.KEY_DC: #delete
+        self.postText = self.postText[1:]
+      elif key < 256:
+        text += chr(key)
+    self.preText += text.decode('utf8')
+  def getCursorPos(self):
+    length = len(self.preText)
+    tabwidth = 8
+    tabstop = 0
+    for c in unicodedata.normalize('NFKD', self.preText):
+      tabstop = 1 + (tabstop % tabwidth)
+      if c == "\t":
+        length += tabwidth-tabstop
+        tabstop=0
+      elif isFullWidth(c):
+        length += 1
+    return length
+  def getText(self):
+    return self.preText.encode('utf8') + self.postText.encode('utf8')
+  def updateText(self):
+    self.win.erase()
+    self.win.addstr(0, 0, self.getText())
+    self.win.noutrefresh()
+  def updateCursor(self):
+    pos = self.getCursorPos()
+    self.win.move(self.line, pos)
+    curses.setsyx(self.line, pos)
+
+class SongDisplay():
+  def __init__(self, height, width):
+    self.height = height
+    self.width = width
+    self.win = curses.newwin(height-1,width,1,0)
+  def update(self, songs):
+    self.win.erase()
+    line = 0
+    for s in songs:
+      if line > self.height-1:
+        break
+      fmt = (
+        s['title'] + " | " +
+        s['album'] + " | " +
+        s['artist'])
+      try:
+        self.win.addstr(line, 0, fmt)
+      except curses.error:
+        pass
+      line+=1
+    self.win.noutrefresh()
+
+def readProc(cmdArr):
+  out, err = subprocess.Popen(cmdArr, stdout=subprocess.PIPE).communicate()
+  return out
+
+def klompQuery(q):
+  cols = ['artist', 'album', 'number', 'title', 'relpath', 'library']
+  cmd = ["klomp-db", "-s", q]
+  for col in cols:
+    cmd.append("--col")
+    cmd.append(col)
+  lines = readProc(cmd).split("\n")
+  return csv.DictReader(lines, fieldnames=cols, delimiter=',', quotechar='"')
+
+class KlompUI():
+  def __init__(self, stdscr, initialQuery=''):
+    self.height = stdscr.getmaxyx()[0]
+    self.width = stdscr.getmaxyx()[1]
+    self.lineEditor = LineEditor(0, self.width)
+    self.lineEditor.preText = initialQuery
+    self.songDisplay = SongDisplay(self.height, self.width)
+    self.lastQuery = None
+    self.keyReader = KeyReader(stdscr, self.updateLineEditor)
+    self.keyReader.start()
+  def checkQuery(self):
+    old = self.lastQuery
+    self.lastQuery = self.lineEditor.getText()
+    if self.lastQuery != old:
+      self.performQuery()
+  def performQuery(self):
+    self.songs = klompQuery(self.lastQuery)
+    with lock:
+      self.songDisplay.update(self.songs)
+      self.lineEditor.updateCursor()
+      curses.doupdate()
+  def updateLineEditor(self):
+    self.lineEditor.handleKeys(self.keyReader.grabKeys())
+    with lock:
+      self.lineEditor.updateText()
+      self.lineEditor.updateCursor()
+      curses.doupdate()
+
 
 if __name__ == "__main__":
-  curses.wrapper(klomp)
+  stdscr = curses.initscr()
+  curses.noecho()
+  curses.cbreak()
+  stdscr.keypad(1)
+  try:
+    sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
+    os.system("rm out")
+    if len(sys.argv) > 1:
+      q = sys.argv[1].decode('utf8')
+    else:
+      q = ''
+    klompUI = KlompUI(stdscr, q)
+    while True:
+      klompUI.checkQuery()
+      time.sleep(1)
+  finally:
+    curses.nocbreak()
+    stdscr.keypad(0)
+    curses.echo()
+    curses.endwin()
+    #os._exit(0)
