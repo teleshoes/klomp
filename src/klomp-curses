@@ -116,21 +116,88 @@ class SongDisplay():
     self.height = height
     self.width = width
     self.win = curses.newwin(height-1,width,1,0)
-  def update(self, songs):
+  def clear(self):
     self.win.erase()
-    line = 0
+    self.line = 0
+  def screenFull(self):
+    return self.line >= self.height
+  def printLine(self, msg):
+    addstr(self.win, self.line, 0, msg)
+    self.line += 1
+  def getSongBucket(self, s):
+    return s['artist'] + '###' + s['album'] + '###' + s['library']
+  def trimMid(self, s, lim, ellip):
+    length = len(s)
+    if length <= lim:
+      return s
+    else:
+      ellipLen = len(ellip.decode('utf8'))
+      left = lim/2
+      right = length - lim/2 - lim%2 + ellipLen
+      return s[:left] + ellip + s[right:]
+  def formatSong(self, s):
+    return ' ' + s['number'] + ':' + s['title']
+  def formatSongBucket(self, s):
+    prefix = ''
+    sep1 = ' - '
+    sep2 = ' ('
+    suffix = ')'
+    lib = s['library']
+    limit = self.width - len(prefix + sep1 + sep2 + lib + suffix)
+    artistLimit = limit/2 + limit%2
+    albumLimit = limit/2
+    artistLen = len(s['artist'])
+    albumLen = len(s['album'])
+    if artistLimit > artistLen:
+      albumLimit += artistLimit - artistLen
+      artistLimit = artistLen
+    if albumLimit > albumLen:
+      artistLimit += albumLimit - albumLen
+      albumLimit = albumLen
+
+    ellip = unichr(8230).encode('utf8') #HORIZONTAL ELLIPSIS
+    artist = self.trimMid(s['artist'], artistLimit, ellip)
+    album = self.trimMid(s['album'], albumLimit, ellip)
+    return prefix + artist + sep1 + album + sep2 + lib + suffix
+  def getSummary(self, songs):
+    songLen = 0
+    artists = dict()
+    albums = dict()
+    libs = dict()
+
     for s in songs:
-      if line > self.height-1:
+      if s['artist'] not in artists:
+        artists[s['artist']] = True
+      if s['album'] not in albums:
+        albums[s['album']] = True
+      if s['library'] not in libs:
+        libs[s['artist']] = True
+      songLen += 1
+    return "%d Songs  %d Artists  %d Albums" %(songLen, len(artists), len(albums))
+  def update(self, songs):
+    self.clear()
+ 
+    buckets = dict()
+    bucketDisplays = dict()
+    bucketOrder = []
+
+    count = 0
+    limit = self.height - 1
+    for song in songs[:limit]:
+      b = self.getSongBucket(song)
+      if b not in buckets:
+        buckets[b] = []
+        bucketDisplays[b] = self.formatSongBucket(song)
+        bucketOrder.append(b)
+      buckets[b].append(song)
+
+    self.printLine(self.getSummary(songs))
+    for bucket in bucketOrder:
+      if self.screenFull():
         break
-      fmt = (
-        s['title'] + " | " +
-        s['album'] + " | " +
-        s['artist'])
-      try:
-        self.win.addstr(line, 0, fmt)
-      except curses.error:
-        pass
-      line+=1
+      self.printLine(bucketDisplays[bucket])
+      for song in buckets[bucket]:
+        self.printLine(self.formatSong(song))
     self.win.noutrefresh()
 
 def readProc(cmdArr):
