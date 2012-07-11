@@ -13,6 +13,8 @@ locale.setlocale(locale.LC_ALL,"")
 
 uiLock = threading.RLock()
 
+klompList = os.environ['HOME'] + "/.klomplist"
+
 def main(args):
   sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
   try:
@@ -24,6 +26,10 @@ def main(args):
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
 
+def readProc(cmdArr):
+  out, err = subprocess.Popen(cmdArr, stdout=subprocess.PIPE).communicate()
+  return out
+
 class KeyReaderThread(threading.Thread):
   def __init__(self, stdscr, onGetSomeKeys):
     threading.Thread.__init__(self)
@@ -33,15 +39,18 @@ class KeyReaderThread(threading.Thread):
     while True:
       keys = self.getSomeKeysBlocking()
       self.onGetSomeKeys(keys)
+  def getch(self):
+    key = self.stdscr.getch()
+    return curses.KEY_ENTER if key == ord('\n') else key
   def getSomeKeysBlocking(self):
     keys = []
 
     self.stdscr.nodelay(0)
-    keys.append(self.stdscr.getch())
+    keys.append(self.getch())
 
     self.stdscr.nodelay(1)
     while True:
-      key = self.stdscr.getch()
+      key = self.getch()
       if key == -1:
         break
       keys.append(key)
@@ -75,12 +84,11 @@ class TextEdit(LinePrinter):
     self.postText = u""
   def handleKeys(self, keys):
     text = ""
+    cmds = []
     for key in keys:
       c = curses
-      key = c.KEY_ENTER if key == 10 else key
-
       if key in [c.KEY_ENTER, c.KEY_UP, c.KEY_DOWN, c.KEY_PPAGE, c.KEY_NPAGE]:
-        self.onCommandKey(key)
+        cmds.append(key)
       elif key == c.KEY_HOME:
         self.postText = self.preText + self.postText
         self.preText = u""
@@ -100,6 +108,8 @@ class TextEdit(LinePrinter):
       elif key < 256:
         text += chr(key)
     self.preText += text.decode('utf8')
+    for key in cmds:
+      self.onCommandKey(key)
   def getCursorPos(self):
     length = len(self.preText)
     tabwidth = 8
@@ -132,16 +142,80 @@ class TextEdit(LinePrinter):
     self.win.move(0, pos)
     curses.setsyx(self.y, pos)
 
+class Prompt(LinePrinter):
   def __init__(self, height, width):
-    self.height = height
-    self.width = width
-    self.win = curses.newwin(height-1,width,1,0)
+    LinePrinter.__init__(self, height, width, 2, 0)
+    self.shuffle = True
+  def setTmpFile(self, tmpFile):
+    self.tmpFile = tmpFile
+  def setSongCount(self, songCount):
+    self.songCount = songCount
+  def update(self):
+    self.clear()
+    map(self.printLine, [
+      "wrote %d files to %s" % (self.songCount, self.tmpFile),
+      "",
+      "enter - prepend files to KLOMPLIST",
+      "a     - append files to KLOMPLIST",
+      "o     - overwrite KLOMPLIST with files",
+      "  notyet:"
+      "  s     - intersperse files into KLOMPLIST, keeps order unless shuffle",
+      "  r     - REMOVE these files from KLOMPLIST",
+      "",
+      "shuffle => " + str(self.shuffle) + "  {space to toggle}"])
+    self.win.noutrefresh()
+  def maybeShuffleTmpFile(self):
+    if self.shuffle:
+      os.system("sort -R " + self.tmpFile + " -o " + self.tmpFile)
+  def appendTmpFile(self):
+    os.system("cat " + self.tmpFile + " >> " + klompList)
+  def prependTmpFile(self):
+    os.system("cat " + klompList + " >> " + self.tmpFile)
+    self.replaceTmpFile()
+  def replaceTmpFile(self):
+    os.system("mv " + self.tmpFile + " " + klompList)
+  def handleKeys(self, keys):
+    c = curses
+    for key in keys:
+      if key == c.KEY_ENTER:
+        self.maybeShuffleTmpFile()
+        self.prependTmpFile()
+        return True
+      elif key == ord('a'):
+        self.maybeShuffleTmpFile()
+        self.appendTmpFile()
+        return True
+      elif key == ord('o'):
+        self.maybeShuffleTmpFile()
+        self.replaceTmpFile()
+        return True
+      elif key == ord(' '):
+        self.shuffle = not self.shuffle
+    return False
+
 class SongDisplay(LinePrinter):
   def __init__(self, height, width):
     LinePrinter.__init__(self, height, width, 1, 0)
     self.offset = 0
   def setSongs(self, songs):
     self.songs = songs
+  def getSongEntries(self, query):
+    entries = []
+    sep = "///\\\\\\"
+    libPaths = {}
+    for s in self.songs:
+      lib = s['library']
+      if lib not in libPaths:
+        libPaths[lib] = readProc(["klomp-lib", "-l", lib]).rstrip()
+      path = libPaths[lib] + "/" + s['relpath']
+      entries.append(
+        path +
+        sep + "artist=" + s['artist'] +
+        sep + "album=" + s['album'] +
+        sep + "number=" + s['number'] +
+        sep + "title=" + s['title'] +
+        sep + "query=" + query + "\n")
+    return entries
   def addOffset(self, offset):
     prevOffset = self.offset
     self.offset += offset
@@ -233,7 +307,7 @@ class SongDisplay(LinePrinter):
 
     self.printLine(self.getSummary(self.songs) + self.getOffsetDisplay())
     for bucket in bucketOrder:
-      if self.screenFull():
+      if self.isWindowFull():
         break
       self.printLine(bucketDisplays[bucket])
       bucketSongs = buckets[bucket]
@@ -252,9 +326,6 @@ class KlompQuery():
       cmd.append("--col")
       cmd.append(col)
     return cmd
-  def readProc(self, cmdArr):
-    out, err = subprocess.Popen(cmdArr, stdout=subprocess.PIPE).communicate()
-    return out
   def parseCsv(self, string, colNames):
     return list(csv.DictReader(string.split("\n"), fieldnames=colNames,
       delimiter=',', quotechar='"'))
@@ -265,25 +336,41 @@ class KlompQuery():
     else:
       return None
   def performQuery(self):
-    return self.parseCsv(self.readProc(self.buildQueryCmd()), self.cols)
+    return self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
 
 class KlompUI():
   def __init__(self):
     self.klompQuery = KlompQuery()
+    self.promptMode = False
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
     self.textEdit = TextEdit(0, width, self.onCommandKey)
     self.songDisplay = SongDisplay(height, width)
+    self.prompt = Prompt(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     while True:
-      self.updateSongs()
+      if not self.promptMode:
+        self.updateSongs()
       time.sleep(1)
   def updateSongs(self):
     songs = self.klompQuery.maybePerformQuery(self.textEdit.getText())
     if songs != None:
       self.songDisplay.setSongs(songs)
       self.updateSongDisplay()
+  def setupPrompt(self):
+    self.promptMode = True
+    self.updateSongs()
+    ms = int(round(time.time() * 1000))
+    tmpFile = "/tmp/klomplist_" + str(ms)
+
+    songEntries = self.songDisplay.getSongEntries(self.klompQuery.query)
+    with open(tmpFile, 'w') as f:
+      f.writelines(songEntries)
+    self.prompt.setTmpFile(tmpFile)
+    self.prompt.setSongCount(len(songEntries))
+    self.clear()
+    self.updatePrompt()
   def onCommandKey(self, key):
     c = curses
     offsetKeys = {
@@ -293,13 +380,27 @@ class KlompUI():
       c.KEY_NPAGE: 10}
 
     if key == c.KEY_ENTER:
-      pass
+      self.setupPrompt()
     elif key in offsetKeys:
       if self.songDisplay.addOffset(offsetKeys[key]):
         self.updateSongDisplay()
   def onGetSomeKeys(self, keys):
+    if self.promptMode:
+      if self.prompt.handleKeys(keys):
+        self.promptMode = False
+        self.clear()
+        self.updateSongDisplay()
+        self.updateTextEditDisplay()
+      else:
+        self.updatePrompt()
+    else:
       self.textEdit.handleKeys(keys)
       self.updateTextEditDisplay()
+  def clear(self):
+    with uiLock:
+      self.textEdit.clear()
+      self.songDisplay.clear()
+      self.prompt.clear()
   def updateTextEditDisplay(self):
     with uiLock:
       self.textEdit.updateText()
@@ -308,7 +409,11 @@ class KlompUI():
   def updateSongDisplay(self):
     with uiLock:
       self.songDisplay.update()
-        self.textEdit.updateCursor()
+      self.textEdit.updateCursor()
+      curses.doupdate()
+  def updatePrompt(self):
+    with uiLock:
+      self.prompt.update()
       curses.doupdate()
 
 if __name__ == "__main__":
