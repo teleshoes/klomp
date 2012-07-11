@@ -125,14 +125,23 @@ class SongDisplay():
     self.height = height
     self.width = width
     self.win = curses.newwin(height-1,width,1,0)
-  def clear(self):
-    self.win.erase()
-    self.line = 0
+    self.offset = 0
+  def setSongs(self, songs):
+    self.songs = songs
+  def addOffset(self, offset):
+    prevOffset = self.offset
+    self.offset += offset
+    
+    limit = len(self.songs) - self.height/3
+    limit = 0 if limit < 0 else limit
+    if self.offset < 0:
+      self.offset = 0
+    elif self.offset > limit:
+      self.offset = limit
+
+    return self.offset != prevOffset
   def screenFull(self):
     return self.line >= self.height
-  def printLine(self, msg):
-    addstr(self.win, self.line, 0, msg)
-    self.line += 1
   def getSongBucket(self, s):
     return s['artist'] + '###' + s['album'] + '###' + s['library']
   def trimMid(self, s, lim, ellip):
@@ -189,16 +198,25 @@ class SongDisplay():
         libs[s['artist']] = True
       songLen += 1
     return "%d Songs  %d Artists  %d Albums" %(songLen, len(artists), len(albums))
-  def update(self, songs):
+  def getOffsetDisplay(self):
+    return '' if self.offset == 0 else " offset=%d" % self.offset
+  def printLine(self, msg):
+    addstr(self.win, self.line, 0, msg)
+    self.line += 1
+  def clear(self):
+    self.win.erase()
+    self.line = 0
+  def update(self):
     self.clear()
  
     buckets = dict()
     bucketDisplays = dict()
     bucketOrder = []
 
+    self.addOffset(0)
     count = 0
     limit = self.height - 1
-    for song in songs[:limit]:
+    for song in self.songs[self.offset:self.offset+limit]:
       b = self.getSongBucket(song)
       if b not in buckets:
         buckets[b] = []
@@ -206,14 +224,14 @@ class SongDisplay():
         bucketOrder.append(b)
       buckets[b].append(song)
 
-    self.printLine(self.getSummary(songs))
+    self.printLine(self.getSummary(self.songs) + self.getOffsetDisplay())
     for bucket in bucketOrder:
       if self.screenFull():
         break
       self.printLine(bucketDisplays[bucket])
-      songs = buckets[bucket]
-      self.padNumbers(songs)
-      for fmtSong in sorted([self.formatSong(s) for s in songs]):
+      bucketSongs = buckets[bucket]
+      self.padNumbers(bucketSongs)
+      for fmtSong in sorted([self.formatSong(s) for s in bucketSongs]):
         self.printLine(fmtSong)
     self.win.noutrefresh()
 
@@ -257,17 +275,28 @@ class KlompUI():
   def updateSongs(self):
     songs = self.klompQuery.maybePerformQuery(self.lineEditor.getText())
     if songs != None:
-      self.songs = songs
-      with uiLock:
-        self.songDisplay.update(self.songs)
-        self.lineEditor.updateCursor()
-        curses.doupdate()
+      self.songDisplay.setSongs(songs)
+      self.updateSongDisplay()
   def onCommandKey(self, key):
     c = curses
+    offsetKeys = {c.KEY_UP: -1, c.KEY_DOWN: 1, c.KEY_PPAGE: -10, c.KEY_NPAGE: 10}
+
+    if key == c.KEY_ENTER:
+      pass
+    elif key in offsetKeys:
+      if self.songDisplay.addOffset(offsetKeys[key]):
+        self.updateSongDisplay()
   def onGetSomeKeys(self, keys):
     self.lineEditor.handleKeys(keys)
+    self.updateLineEditorDisplay()
+  def updateLineEditorDisplay(self):
     with uiLock:
       self.lineEditor.updateText()
+      self.lineEditor.updateCursor()
+      curses.doupdate()
+  def updateSongDisplay(self):
+    with uiLock:
+      self.songDisplay.update()
       self.lineEditor.updateCursor()
       curses.doupdate()
 
