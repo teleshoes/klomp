@@ -11,7 +11,7 @@ if(-e $PID_FILE){
 }
 if(fork){
   system "echo $$ > $PID_FILE";
-  exec "term -e 'klomp' --class 'klomp' -t 'KLOMP' --disable-factory";
+  exec "term -e 'klomp-curses' --class 'klomp' -t 'KLOMP' --disable-factory";
 }else{
   exec "sleep 1; xdotool search --name 'KLOMP' set_window --classname klomp %@ ";
 }
