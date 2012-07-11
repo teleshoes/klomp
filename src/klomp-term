@@ -16,7 +16,7 @@ if(fork){
   exec 'term', '-title', 'KLOMP',
     '-e', $KLOMP_CLI_CMD;
 }else{
-  system "sh -c command -v xdotool > /dev/null 2>&1";
+  system "bash -c 'command -v xdotool' > /dev/null 2>&1";
   if($? == 0){
     sleep 1;
     exec 'xdotool',
