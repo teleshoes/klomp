@@ -54,33 +54,36 @@ class KeyReaderThread(threading.Thread):
     return keys
 
 class LineEditor():
-  def __init__(self, line, width, onEnterKey):
+  def __init__(self, line, width, onCommandKey):
     self.line = line
     self.width = width
-    self.onEnterKey = onEnterKey
+    self.onCommandKey = onCommandKey
     self.win = curses.newwin(1, self.width, self.line, 0)
     self.preText = u""
     self.postText = u""
   def handleKeys(self, keys):
     text = ""
     for key in keys:
-      if key == curses.KEY_ENTER or key == 10:
-        self.onEnterKey()
-      elif key == curses.KEY_HOME:
+      c = curses
+      key = c.KEY_ENTER if key == 10 else key
+
+      if key in [c.KEY_ENTER, c.KEY_UP, c.KEY_DOWN, c.KEY_PPAGE, c.KEY_NPAGE]:
+        self.onCommandKey(key)
+      elif key == c.KEY_HOME:
         self.postText = self.preText + self.postText
         self.preText = u""
-      elif key == curses.KEY_END:
+      elif key == c.KEY_END:
         self.preText += self.postText
         self.postText = u""
-      elif key == curses.KEY_LEFT:
+      elif key == c.KEY_LEFT:
         self.postText = self.preText[-1:] + self.postText
         self.preText = self.preText[:-1]
-      elif key == curses.KEY_RIGHT:
+      elif key == c.KEY_RIGHT:
         self.preText += self.postText[:1]
         self.postText = self.postText[1:]
-      elif key == curses.KEY_BACKSPACE:
+      elif key == c.KEY_BACKSPACE:
         self.preText = self.preText[:-1]
-      elif key == curses.KEY_DC: #delete
+      elif key == c.KEY_DC: #delete
         self.postText = self.postText[1:]
       elif key < 256:
         text += chr(key)
@@ -245,7 +248,7 @@ class KlompUI():
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
-    self.lineEditor = LineEditor(0, width, self.onEnterKey)
+    self.lineEditor = LineEditor(0, width, self.onCommandKey)
     self.songDisplay = SongDisplay(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     while True:
@@ -259,8 +262,8 @@ class KlompUI():
         self.songDisplay.update(self.songs)
         self.lineEditor.updateCursor()
         curses.doupdate()
-  def onEnterKey(self):
-    self.updateSongs()
+  def onCommandKey(self, key):
+    c = curses
   def onGetSomeKeys(self, keys):
     self.lineEditor.handleKeys(keys)
     with uiLock:
