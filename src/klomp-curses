@@ -24,12 +24,6 @@ def main(args):
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
 
-def addstr(win, y, x, s):
-  try:
-    win.addstr(y, x, s)
-  except curses.error:
-    pass
-
 class KeyReaderThread(threading.Thread):
   def __init__(self, stdscr, onGetSomeKeys):
     threading.Thread.__init__(self)
@@ -53,12 +47,30 @@ class KeyReaderThread(threading.Thread):
       keys.append(key)
     return keys
 
-class LineEditor():
-  def __init__(self, line, width, onCommandKey):
-    self.line = line
+class LinePrinter():
+  def __init__(self, height, width, y, x):
+    self.line = 0
+    self.y = y
+    self.x = x
+    self.height = height
     self.width = width
+    self.win = curses.newwin(height, width, y, x)
+  def isWindowFull(self):
+    return self.line >= self.height
+  def printLine(self, msg):
+    try:
+      self.win.addstr(self.line, 0, msg)
+    except curses.error:
+      pass
+    self.line += 1
+  def clear(self):
+    self.win.erase()
+    self.line = 0
+
+class TextEdit(LinePrinter):
+  def __init__(self, line, width, onCommandKey):
+    LinePrinter.__init__(self, 1, width, line, 0)
     self.onCommandKey = onCommandKey
-    self.win = curses.newwin(1, self.width, self.line, 0)
     self.preText = u""
     self.postText = u""
   def handleKeys(self, keys):
@@ -112,19 +124,21 @@ class LineEditor():
   def getText(self):
     return self.preText.encode('utf8') + self.postText.encode('utf8')
   def updateText(self):
-    self.win.erase()
-    addstr(self.win, 0, 0, self.getText())
+    self.clear()
+    self.printLine(self.getText())
     self.win.noutrefresh()
   def updateCursor(self):
     pos = self.getCursorPos()
-    self.win.move(self.line, pos)
-    curses.setsyx(self.line, pos)
+    self.win.move(0, pos)
+    curses.setsyx(self.y, pos)
 
-class SongDisplay():
   def __init__(self, height, width):
     self.height = height
     self.width = width
     self.win = curses.newwin(height-1,width,1,0)
+class SongDisplay(LinePrinter):
+  def __init__(self, height, width):
+    LinePrinter.__init__(self, height, width, 1, 0)
     self.offset = 0
   def setSongs(self, songs):
     self.songs = songs
@@ -140,8 +154,6 @@ class SongDisplay():
       self.offset = limit
 
     return self.offset != prevOffset
-  def screenFull(self):
-    return self.line >= self.height
   def getSongBucket(self, s):
     return s['artist'] + '###' + s['album'] + '###' + s['library']
   def trimMid(self, s, lim, ellip):
@@ -197,15 +209,10 @@ class SongDisplay():
       if s['library'] not in libs:
         libs[s['artist']] = True
       songLen += 1
-    return "%d Songs  %d Artists  %d Albums" %(songLen, len(artists), len(albums))
+    return "%d Songs  %d Artists  %d Albums" % (
+      songLen, len(artists), len(albums))
   def getOffsetDisplay(self):
     return '' if self.offset == 0 else " offset=%d" % self.offset
-  def printLine(self, msg):
-    addstr(self.win, self.line, 0, msg)
-    self.line += 1
-  def clear(self):
-    self.win.erase()
-    self.line = 0
   def update(self):
     self.clear()
  
@@ -266,20 +273,24 @@ class KlompUI():
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
-    self.lineEditor = LineEditor(0, width, self.onCommandKey)
+    self.textEdit = TextEdit(0, width, self.onCommandKey)
     self.songDisplay = SongDisplay(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     while True:
       self.updateSongs()
       time.sleep(1)
   def updateSongs(self):
-    songs = self.klompQuery.maybePerformQuery(self.lineEditor.getText())
+    songs = self.klompQuery.maybePerformQuery(self.textEdit.getText())
     if songs != None:
       self.songDisplay.setSongs(songs)
       self.updateSongDisplay()
   def onCommandKey(self, key):
     c = curses
-    offsetKeys = {c.KEY_UP: -1, c.KEY_DOWN: 1, c.KEY_PPAGE: -10, c.KEY_NPAGE: 10}
+    offsetKeys = {
+      c.KEY_UP: -1,
+      c.KEY_DOWN: 1,
+      c.KEY_PPAGE: -10,
+      c.KEY_NPAGE: 10}
 
     if key == c.KEY_ENTER:
       pass
@@ -287,17 +298,17 @@ class KlompUI():
       if self.songDisplay.addOffset(offsetKeys[key]):
         self.updateSongDisplay()
   def onGetSomeKeys(self, keys):
-    self.lineEditor.handleKeys(keys)
-    self.updateLineEditorDisplay()
-  def updateLineEditorDisplay(self):
+      self.textEdit.handleKeys(keys)
+      self.updateTextEditDisplay()
+  def updateTextEditDisplay(self):
     with uiLock:
-      self.lineEditor.updateText()
-      self.lineEditor.updateCursor()
+      self.textEdit.updateText()
+      self.textEdit.updateCursor()
       curses.doupdate()
   def updateSongDisplay(self):
     with uiLock:
       self.songDisplay.update()
-      self.lineEditor.updateCursor()
+        self.textEdit.updateCursor()
       curses.doupdate()
 
 if __name__ == "__main__":
