@@ -7,21 +7,8 @@ my $KLOMP_CLI_CMD = 'klomp-curses';
 my $PID_FILE = '/tmp/klomp_term_pid';
 if(-e $PID_FILE){
   system "kill -0 `cat $PID_FILE` > /dev/null 2>/dev/null";
-  if($? == 0){
-    exit 0;
-  }
+  die "Already running!\n" if $? == 0;
 }
-if(fork){
-  system "echo $$ > $PID_FILE";
-  exec 'term', '-title', 'KLOMP',
-    '-e', $KLOMP_CLI_CMD;
-}else{
-  system "bash -c 'command -v xdotool' > /dev/null 2>&1";
-  if($? == 0){
-    sleep 1;
-    exec 'xdotool',
-      'search', '--name', 'KLOMP',
-      'set_window', '--classname', 'klomp', '%@';
-  }
-}
+system "echo $$ > $PID_FILE";
 
+system 'term', '-title', 'KLOMP', $KLOMP_CLI_CMD;
