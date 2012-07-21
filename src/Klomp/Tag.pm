@@ -71,6 +71,16 @@ sub guess($$$){
     }
   }
 
+  if($col eq 'number'){
+    #guess should be integral and contain exactly five digits if possible
+    my $num;
+    if($guess =~ /^(\d+)/){
+      $num = $1;
+    }elsif($valueHint =~ /^(\d+)/){
+      $num = $1;
+    }
+    $guess = ('0' x (5 - length $num)) . $num if defined $num;
+  }
   return $guess;
 }
 
