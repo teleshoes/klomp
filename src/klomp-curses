@@ -20,7 +20,7 @@ def main(args):
   try:
     curses.wrapper(KlompUI().start)
   finally:
-    if len(args) == 2 and args[1] != "--debug":
+    if not(len(args) == 2 and args[1] == "--debug"):
       os._exit(0)
     os.system("rm out")
 
