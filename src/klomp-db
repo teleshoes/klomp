@@ -282,7 +282,11 @@ sub search($$$$$){
     }
     push @guessCols, $guessCol;
     push @namedCols, "$guessCol $col";
+    if($col eq 'number'){
+      push @orderCols, "number_guess";
+    }else{
       push @orderCols, $guessCol;
+    }
   }
 
   my $orderBy = "ORDER BY\n" . join(",\n      ", @orderCols);
