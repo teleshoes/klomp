@@ -317,7 +317,7 @@ class SongDisplay(LinePrinter):
       self.printLine(bucketDisplays[bucket])
       bucketSongs = buckets[bucket]
       self.padNumbers(bucketSongs)
-      for fmtSong in sorted([self.formatSong(s) for s in bucketSongs]):
+      for fmtSong in [self.formatSong(s) for s in bucketSongs]:
         self.printLine(fmtSong)
     self.win.noutrefresh()
 
