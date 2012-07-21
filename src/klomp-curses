@@ -64,6 +64,9 @@ class LinePrinter():
     self.height = height
     self.width = width
     self.win = curses.newwin(height, width, y, x)
+  def updateSize(self):
+    y, x = self.win.getmaxyx()
+    self.height, self.width = y - self.y, x - self.x
   def isWindowFull(self):
     return self.line >= self.height
   def printLine(self, msg):
@@ -289,6 +292,7 @@ class SongDisplay(LinePrinter):
     return '' if self.offset == 0 else " offset=%d" % self.offset
   def update(self):
     self.clear()
+    self.updateSize()
  
     buckets = dict()
     bucketDisplays = dict()
