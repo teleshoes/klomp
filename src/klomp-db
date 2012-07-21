@@ -272,6 +272,7 @@ sub search($$$$$){
 
   my @guessCols;
   my @namedCols;
+  my @orderCols;
   for my $col(@cols){
     my $guessCol;
     if(defined $isTagCol{$col}){
@@ -281,10 +282,10 @@ sub search($$$$$){
     }
     push @guessCols, $guessCol;
     push @namedCols, "$guessCol $col";
+      push @orderCols, $guessCol;
   }
 
-  my $orderCols = join ",\n      ", @guessCols;
-  my $orderBy = "ORDER BY\n      $orderCols";
+  my $orderBy = "ORDER BY\n" . join(",\n      ", @orderCols);
 
   my $lim = $limit > 0 ? "LIMIT $limit" : '';
 
