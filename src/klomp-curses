@@ -20,7 +20,8 @@ def main(args):
   try:
     curses.wrapper(KlompUI().start)
   finally:
-    os._exit(0)
+    if args[1] != "--debug":
+      os._exit(0)
     os.system("rm out")
 
 def msg(s):
