@@ -51,30 +51,28 @@ class Attrs():
   def __init__(self):
     c = curses
     REAL_BLACK = -1
-    self.attrs = {
+    self.attrMap = {
       'textEdit': [c.COLOR_RED, c.COLOR_WHITE, [c.A_BOLD]],
       'query': [c.COLOR_GREEN, REAL_BLACK, []],
       'playList': [c.COLOR_GREEN, c.COLOR_BLACK, []],
       'prompt': [c.COLOR_MAGENTA, c.COLOR_WHITE, [c.A_BOLD]]
     }
-    self.colorPairs = {}
-    self.colorPairsInitialized = False
-  def initColorPairs(self):
+    self.attrs = None
+  def ensureAttrs(self):
     colorPairIndex = 1
-    if not self.colorPairsInitialized:
+    if self.attrs == None:
+      self.attrs = {}
       curses.use_default_colors()
-      for name in self.attrs.keys():
-        fg, bg, attrs = self.attrs[name]
+      for name, (fg, bg, otherAttrs) in self.attrMap.items():
         curses.init_pair(colorPairIndex, fg, bg)
-        self.colorPairs[name] = curses.color_pair(colorPairIndex)
+        nameAttrs = curses.color_pair(colorPairIndex)
         colorPairIndex += 1
-      colorPairsInitialized = True
+        for attr in otherAttrs:
+          nameAttrs |= attr
+        self.attrs[name] = nameAttrs
   def get(self, name):
-    self.initColorPairs()
-    atts = self.colorPairs[name]
-    for att in self.attrs[name][2]:
-      atts |= att
-    return atts
+    self.ensureAttrs()
+    return self.attrs[name]
 attrs = Attrs()
 
 def millisNow():
