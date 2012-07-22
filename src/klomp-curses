@@ -50,10 +50,10 @@ def main(args):
 class Attrs():
   def __init__(self):
     c = curses
-    REAL_BLACK = -1
+    NONE = -1
     self.attrMap = {
       'textEdit': [c.COLOR_RED, c.COLOR_WHITE, [c.A_BOLD]],
-      'query': [c.COLOR_GREEN, REAL_BLACK, []],
+      'query': [c.COLOR_GREEN, NONE, []],
       'playList': [c.COLOR_GREEN, c.COLOR_BLACK, []],
       'prompt': [c.COLOR_MAGENTA, c.COLOR_WHITE, [c.A_BOLD]]
     }
