@@ -359,6 +359,18 @@ class QueryDisplay(LinePrinter):
         self.printLine(fmtSong)
     self.win.noutrefresh()
 
+class PlayListDisplay(LinePrinter):
+  def __init__(self, height, width):
+    LinePrinter.__init__(self, height, width, 1, 0)
+    self.offset = 0
+  def addOffset(self, thing):
+    pass
+  def update(self):
+    self.clear()
+    self.updateSize()
+    self.printLine('klomplist')
+    self.win.noutrefresh()
+
 class KlompQuery():
   def __init__(self):
     self.cols = ['artist', 'album', 'number', 'title', 'relpath', 'library']
@@ -381,7 +393,7 @@ class KlompQuery():
   def performQuery(self):
     return self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
 
-class Mode: Query, Prompt = range(2)
+class Mode: Query, PlayList, Prompt = range(3)
 
 class KlompUI():
   def __init__(self, initialQuery):
@@ -393,6 +405,7 @@ class KlompUI():
     height, width = self.stdscr.getmaxyx()
     self.textEdit = TextEdit(0, width)
     self.queryDisplay = QueryDisplay(height, width)
+    self.playListDisplay = PlayListDisplay(height, width)
     self.prompt = Prompt(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     if self.initialQuery != None and len(self.initialQuery) > 0:
@@ -402,6 +415,8 @@ class KlompUI():
     while True:
       if self.mode == Mode.Query:
         self.updateSongs()
+      elif self.mode == Mode.PlayList:
+        self.updatePlayListDisplay()
       time.sleep(1)
   def updateSongs(self):
     songs = self.klompQuery.maybePerformQuery(self.textEdit.getText())
@@ -414,6 +429,11 @@ class KlompUI():
     self.clear()
     self.updateQueryDisplay()
     self.updateTextEditDisplay()
+  def enterPlayListMode(self):
+    self.updateSongs()
+    self.mode = Mode.PlayList
+    self.clear()
+    self.updatePlayListDisplay()
   def enterPromptMode(self):
     self.updateSongs()
     self.mode = Mode.Prompt 
@@ -429,23 +449,36 @@ class KlompUI():
       c.KEY_PPAGE: -10,
       c.KEY_NPAGE: 10}
 
-    if key == c.KEY_ENTER:
-      self.enterPromptMode()
-    elif key in offsetKeys:
-      if self.queryDisplay.addOffset(offsetKeys[key]):
-        self.updateQueryDisplay()
-  def onGetSomeKeys(self, keys):
     if self.mode == Mode.Query:
-      cmdKeys, otherKeys = self.splitCmdKeys(keys)
-      self.textEdit.handleKeys(otherKeys)
-      for cmd in cmdKeys:
-        self.onCommandKey(cmd)
-      self.updateTextEditDisplay()
-    elif self.mode == Mode.Prompt:
+      if key == ord('\t'):
+        self.enterPlayListMode()
+      elif key == c.KEY_ENTER:
+        self.enterPromptMode()
+      elif key in offsetKeys:
+        if self.queryDisplay.addOffset(offsetKeys[key]):
+          self.updateQueryDisplay()
+    elif self.mode == Mode.PlayList:
+      if key == ord('\t'):
+        self.enterQueryMode()
+      elif key in offsetKeys:
+        if self.playListDisplay.addOffset(offsetKeys[key]):
+          self.updatePlayListDisplay()
+  def onGetSomeKeys(self, keys):
+    if self.mode == Mode.Prompt:
       if self.prompt.handleKeys(keys):
         self.enterQueryMode()
       else:
         self.updatePrompt()
+    else:
+      cmdKeys, otherKeys = self.splitCmdKeys(keys)
+      if self.mode == Mode.Query:
+        self.textEdit.handleKeys(otherKeys)
+        for cmd in cmdKeys:
+          self.onCommandKey(cmd)
+        self.updateTextEditDisplay()
+      elif self.mode == Mode.PlayList:
+        for cmd in cmdKeys:
+          self.onCommandKey(cmd)
   def splitCmdKeys(self, keys):
     c = curses
     commands = [c.KEY_ENTER, ord('\t'),
@@ -463,15 +496,19 @@ class KlompUI():
       self.textEdit.clear()
       self.queryDisplay.clear()
       self.prompt.clear()
+  def updateQueryDisplay(self):
+    with uiLock:
+      self.queryDisplay.update()
+      self.textEdit.updateCursor()
+      curses.doupdate()
   def updateTextEditDisplay(self):
     with uiLock:
       self.textEdit.updateText()
       self.textEdit.updateCursor()
       curses.doupdate()
-  def updateQueryDisplay(self):
+  def updatePlayListDisplay(self):
     with uiLock:
-      self.queryDisplay.update()
-      self.textEdit.updateCursor()
+      self.playListDisplay.update()
       curses.doupdate()
   def updatePrompt(self):
     with uiLock:
