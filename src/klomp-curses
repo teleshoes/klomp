@@ -304,8 +304,6 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       right = length - lim/2 - lim%2 + ellipLen
       return s[:left] + ellip + s[right:]
   def padNumbers(self, songs):
-    for s in songs:
-      s['number'] = re.sub(r'^0+', '', s['number'])
     maxLen = max([len(s['number']) for s in songs])
     for s in songs:
       numLen = len(s['number'])
@@ -435,6 +433,7 @@ class KlompQuery():
     songs = self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
     for s in songs:
       s['query'] = self.query
+      s['number'] = re.sub('^0+', '', s['number'])
     return songs
 
 class Mode: Query, PlayList, Prompt = range(3)
