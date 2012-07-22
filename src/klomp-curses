@@ -367,16 +367,37 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
         self.printLine(fmtSong)
     self.win.noutrefresh()
 
-class PlayListDisplay(LinePrinter):
+class PlayListDisplay(LinePrinter, OffsetListDisplay):
   def __init__(self, height, width):
     LinePrinter.__init__(self, height, width, 1, 0)
-    self.offset = 0
-  def addOffset(self, thing):
-    pass
+    OffsetListDisplay.__init__(self)
+  def getOffsetLimit(self):
+    if self.last == True:
+      return self.lastIndex - self.height/2
+    else:
+      return sys.maxint
+  def getLines(self, n):
+    lines = []
+    self.last = False
+    with open(klompList, 'r') as f:
+      while n > 0:
+        line = f.readline()
+        if not line:
+          self.last = True
+          self.lastIndex = len(lines)-1
+          break
+        else:
+          lines.append(line)
+          n -= 1
+    return lines
   def update(self):
     self.clear()
     self.updateSize()
-    self.printLine('klomplist')
+    lines = self.getLines(self.height + self.offset)[self.offset:]
+    msg(len(lines))
+    for line in lines:
+      self.printLine(line)
+    msg("=======")
     self.win.noutrefresh()
 
 class KlompQuery():
