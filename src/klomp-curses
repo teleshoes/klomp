@@ -251,7 +251,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
     return len(self.songs) - self.height/3
   def setSongs(self, songs):
     self.songs = songs
-  def getSongEntries(self, query):
+  def getSongEntries(self):
     entries = []
     sep = "///\\\\\\"
     libPaths = {}
@@ -276,7 +276,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
         sep + "album=" + s['album'] +
         sep + "number=" + s['number'] +
         sep + "title=" + s['title'] +
-        sep + "query=" + query + "\n")
+        sep + "query=" + s['query'] + "\n")
     return entries
   def getSongBucket(self, s):
     return s['artist'] + '###' + s['album'] + '###' + s['library']
@@ -418,7 +418,10 @@ class KlompQuery():
     else:
       return None
   def performQuery(self):
-    return self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
+    songs = self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
+    for s in songs:
+      s['query'] = self.query
+    return songs
 
 class Mode: Query, PlayList, Prompt = range(3)
 
@@ -464,7 +467,7 @@ class KlompUI():
   def enterPromptMode(self):
     self.updateSongs()
     self.mode = Mode.Prompt 
-    songEntries = self.queryDisplay.getSongEntries(self.klompQuery.query)
+    songEntries = self.queryDisplay.getSongEntries()
     self.prompt.setSongEntries(songEntries)
     self.clear()
     self.updatePrompt()
