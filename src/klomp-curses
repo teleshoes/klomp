@@ -18,10 +18,13 @@ klompList = os.environ['HOME'] + "/.klomplist"
 
 def main(args):
   sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
+  debug = False
+  if len(args) >= 2 and args[1] == "--debug":
+    debug = True
   try:
     curses.wrapper(KlompUI().start)
   finally:
-    if not(len(args) == 2 and args[1] == "--debug"):
+    if not debug:
       os._exit(0)
     os.system("rm out")
 
