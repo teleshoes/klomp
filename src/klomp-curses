@@ -47,6 +47,9 @@ def main(args):
     else:
       os._exit(0)
 
+def millisNow():
+  return int(round(time.time() * 1000))
+
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
 
@@ -176,10 +179,12 @@ class Prompt(LinePrinter):
   def __init__(self, height, width):
     LinePrinter.__init__(self, height, width, 2, 0)
     self.shuffle = True
-  def setTmpFile(self, tmpFile):
-    self.tmpFile = tmpFile
-  def setSongCount(self, songCount):
-    self.songCount = songCount
+  def setSongEntries(self, songEntries):
+    self.songCount = len(songEntries)
+    self.tmpFile = "/tmp/klomplist_" + str(millisNow())
+
+    with open(self.tmpFile, 'w') as f:
+      f.writelines(songEntries)
   def update(self):
     self.clear()
     map(self.printLine, [
@@ -411,14 +416,8 @@ class KlompUI():
   def setupPrompt(self):
     self.mode = Mode.Prompt
     self.updateSongs()
-    ms = int(round(time.time() * 1000))
-    tmpFile = "/tmp/klomplist_" + str(ms)
-
-    with open(tmpFile, 'w') as f:
-      f.writelines(songEntries)
-    self.prompt.setTmpFile(tmpFile)
-    self.prompt.setSongCount(len(songEntries))
     songEntries = self.queryDisplay.getSongEntries(self.klompQuery.query)
+    self.prompt.setSongEntries(songEntries)
     self.clear()
     self.updatePrompt()
   def onCommandKey(self, key):
