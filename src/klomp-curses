@@ -223,7 +223,7 @@ class Prompt(LinePrinter):
         self.shuffle = not self.shuffle
     return False
 
-class SongDisplay(LinePrinter):
+class QueryDisplay(LinePrinter):
   def __init__(self, height, width):
     LinePrinter.__init__(self, height, width, 1, 0)
     self.offset = 0
@@ -392,7 +392,7 @@ class KlompUI():
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
     self.textEdit = TextEdit(0, width, self.onCommandKey)
-    self.songDisplay = SongDisplay(height, width)
+    self.queryDisplay = QueryDisplay(height, width)
     self.prompt = Prompt(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     if self.initialQuery != None and len(self.initialQuery) > 0:
@@ -406,19 +406,19 @@ class KlompUI():
   def updateSongs(self):
     songs = self.klompQuery.maybePerformQuery(self.textEdit.getText())
     if songs != None:
-      self.songDisplay.setSongs(songs)
-      self.updateSongDisplay()
+      self.queryDisplay.setSongs(songs)
+      self.updateQueryDisplay()
   def setupPrompt(self):
     self.mode = Mode.Prompt
     self.updateSongs()
     ms = int(round(time.time() * 1000))
     tmpFile = "/tmp/klomplist_" + str(ms)
 
-    songEntries = self.songDisplay.getSongEntries(self.klompQuery.query)
     with open(tmpFile, 'w') as f:
       f.writelines(songEntries)
     self.prompt.setTmpFile(tmpFile)
     self.prompt.setSongCount(len(songEntries))
+    songEntries = self.queryDisplay.getSongEntries(self.klompQuery.query)
     self.clear()
     self.updatePrompt()
   def onCommandKey(self, key):
@@ -432,14 +432,13 @@ class KlompUI():
     if key == c.KEY_ENTER:
       self.setupPrompt()
     elif key in offsetKeys:
-      if self.songDisplay.addOffset(offsetKeys[key]):
-        self.updateSongDisplay()
+      if self.queryDisplay.addOffset(offsetKeys[key]):
+        self.updateQueryDisplay()
   def onGetSomeKeys(self, keys):
     if self.mode == Mode.Prompt:
       if self.prompt.handleKeys(keys):
         self.mode = Mode.Query
         self.clear()
-        self.updateSongDisplay()
         self.updateTextEditDisplay()
       else:
         self.updatePrompt()
@@ -449,16 +448,16 @@ class KlompUI():
   def clear(self):
     with uiLock:
       self.textEdit.clear()
-      self.songDisplay.clear()
+      self.queryDisplay.clear()
       self.prompt.clear()
   def updateTextEditDisplay(self):
     with uiLock:
       self.textEdit.updateText()
       self.textEdit.updateCursor()
       curses.doupdate()
-  def updateSongDisplay(self):
+  def updateQueryDisplay(self):
     with uiLock:
-      self.songDisplay.update()
+      self.queryDisplay.update()
       self.textEdit.updateCursor()
       curses.doupdate()
   def updatePrompt(self):
