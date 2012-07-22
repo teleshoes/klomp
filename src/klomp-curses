@@ -205,6 +205,7 @@ class Prompt(LinePrinter):
     map(self.printLine, [
       "wrote %d files to %s" % (self.songCount, self.tmpFile),
       "",
+      "q     - do nothing with these files"
       "enter - prepend files to KLOMPLIST",
       "a     - append files to KLOMPLIST",
       "o     - overwrite KLOMPLIST with files",
@@ -227,7 +228,9 @@ class Prompt(LinePrinter):
   def handleKeys(self, keys):
     c = curses
     for key in keys:
-      if key == c.KEY_ENTER:
+      if key == ord('q'):
+        return True
+      elif key == c.KEY_ENTER:
         self.maybeShuffleTmpFile()
         self.prependTmpFile()
         return True
