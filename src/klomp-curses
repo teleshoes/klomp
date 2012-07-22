@@ -413,9 +413,14 @@ class KlompUI():
     if songs != None:
       self.queryDisplay.setSongs(songs)
       self.updateQueryDisplay()
-  def setupPrompt(self):
-    self.mode = Mode.Prompt
+  def enterQueryMode(self):
+    self.mode = Mode.Query
+    self.clear()
+    self.updateQueryDisplay()
+    self.updateTextEditDisplay()
+  def enterPromptMode(self):
     self.updateSongs()
+    self.mode = Mode.Prompt 
     songEntries = self.queryDisplay.getSongEntries(self.klompQuery.query)
     self.prompt.setSongEntries(songEntries)
     self.clear()
@@ -429,21 +434,19 @@ class KlompUI():
       c.KEY_NPAGE: 10}
 
     if key == c.KEY_ENTER:
-      self.setupPrompt()
+      self.enterPromptMode()
     elif key in offsetKeys:
       if self.queryDisplay.addOffset(offsetKeys[key]):
         self.updateQueryDisplay()
   def onGetSomeKeys(self, keys):
-    if self.mode == Mode.Prompt:
-      if self.prompt.handleKeys(keys):
-        self.mode = Mode.Query
-        self.clear()
-        self.updateTextEditDisplay()
-      else:
-        self.updatePrompt()
-    else:
+    if self.mode == Mode.Query:
       self.textEdit.handleKeys(keys)
       self.updateTextEditDisplay()
+    elif self.mode == Mode.Prompt:
+      if self.prompt.handleKeys(keys):
+        self.enterQueryMode()
+      else:
+        self.updatePrompt()
   def clear(self):
     with uiLock:
       self.textEdit.clear()
