@@ -22,7 +22,7 @@ usage = """Usage:
   %(exec)s [--debug]  [word word ..]
     interactive curses ui
     initial query = "word word .."
-    --debug means exceptions dont exit
+    --debug means exceptions dont exit, and the tmp file './out' will be rm'd
 """ % {'exec': __file__}
 
 def main(args):
@@ -42,9 +42,10 @@ def main(args):
   try:
     curses.wrapper(KlompUI(initialQuery).start)
   finally:
-    if not debug:
+    if debug:
+      os.system("rm out")
+    else:
       os._exit(0)
-    os.system("rm out")
 
 def msg(s):
   os.system("echo '" + str(s) + "' >> out")
