@@ -235,7 +235,7 @@ class Prompt(LinePrinter):
   def update(self):
     self.clear()
     map(self.printLine, [
-      "wrote %d files to %s" % (self.songCount, self.tmpFile),
+      "wrote %d -> %s" % (self.songCount, self.tmpFile),
       "",
       "q     - do nothing with these files"
       "enter - prepend files to KLOMPLIST",
