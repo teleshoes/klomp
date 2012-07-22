@@ -356,10 +356,12 @@ class KlompQuery():
   def performQuery(self):
     return self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
 
+class Mode: Query, Prompt = range(2)
+
 class KlompUI():
   def __init__(self):
     self.klompQuery = KlompQuery()
-    self.promptMode = False
+    self.mode = Mode.Query
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
@@ -368,7 +370,7 @@ class KlompUI():
     self.prompt = Prompt(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     while True:
-      if not self.promptMode:
+      if self.mode == Mode.Query:
         self.updateSongs()
       time.sleep(1)
   def updateSongs(self):
@@ -377,7 +379,7 @@ class KlompUI():
       self.songDisplay.setSongs(songs)
       self.updateSongDisplay()
   def setupPrompt(self):
-    self.promptMode = True
+    self.mode = Mode.Prompt
     self.updateSongs()
     ms = int(round(time.time() * 1000))
     tmpFile = "/tmp/klomplist_" + str(ms)
@@ -403,9 +405,9 @@ class KlompUI():
       if self.songDisplay.addOffset(offsetKeys[key]):
         self.updateSongDisplay()
   def onGetSomeKeys(self, keys):
-    if self.promptMode:
+    if self.mode == Mode.Prompt:
       if self.prompt.handleKeys(keys):
-        self.promptMode = False
+        self.mode = Mode.Query
         self.clear()
         self.updateSongDisplay()
         self.updateTextEditDisplay()
