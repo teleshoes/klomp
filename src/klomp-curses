@@ -243,6 +243,42 @@ class Prompt(LinePrinter):
         self.shuffle = not self.shuffle
     return False
 
+class KlompLibs():
+  def __init__(self):
+    self.libPaths = {}
+    self.flacmirrorPaths = {}
+    self.initialized = False
+    self.sep = "///\\\\\\"
+  def initLibs(self):
+    if self.initialized == False:
+      for lib in readProc(["klomp-lib"]).splitlines():
+        self.libPaths[lib] = readProc(["klomp-lib", "-l", lib]).rstrip()
+        self.flacmirrorPaths[lib] = readProc(["klomp-lib", "-f", lib]).rstrip()
+      self.initialized = True
+  def toString(self, song):
+    path = self.toAbsPath(song)
+    return (
+        path +
+        self.sep + "artist=" + song['artist'] +
+        self.sep + "album=" + song['album'] +
+        self.sep + "number=" + song['number'] +
+        self.sep + "title=" + song['title'] +
+        self.sep + "query=" + song['query'] + "\n")
+  def toAbsPath(self, song):
+    self.initLibs()
+    lib = song['library']
+    relpath = song['relpath']
+    path = self.libPaths[lib] + "/" + song['relpath']
+    if not os.path.exists(path):
+      flacmirrorPath = self.flacmirrorPaths[lib] + "/" + song['relpath']
+      flacmirrorPath = self.flacToOgg(flacmirrorPath)
+      if os.path.exists(flacmirrorPath):
+        path = flacmirrorPath
+    return path
+  def flacToOgg(self, s):
+    return re.sub(r'\.flac$', '.ogg', s)
+klompLibs = KlompLibs()
+    
 class QueryDisplay(LinePrinter, OffsetListDisplay):
   def __init__(self, height, width):
     LinePrinter.__init__(self, height, width, 1, 0)
@@ -252,32 +288,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
   def setSongs(self, songs):
     self.songs = songs
   def getSongEntries(self):
-    entries = []
-    sep = "///\\\\\\"
-    libPaths = {}
-    flacmirrorPaths = {}
-    for s in self.songs:
-      lib = s['library']
-      if lib not in libPaths:
-        libPaths[lib] = readProc(["klomp-lib", "-l", lib]).rstrip()
-      path = libPaths[lib] + "/" + s['relpath']
-
-      if not os.path.exists(path):
-        if lib not in flacmirrorPaths:
-          flacmirrorPaths[lib] = readProc(["klomp-lib", "-f", lib]).rstrip()
-        flacmirrorPath = flacmirrorPaths[lib] + "/" + s['relpath']
-        flacmirrorPath = re.sub(r'\.flac$', '.ogg', flacmirrorPath)
-        if os.path.exists(flacmirrorPath):
-          path = flacmirrorPath
-
-      entries.append(
-        path +
-        sep + "artist=" + s['artist'] +
-        sep + "album=" + s['album'] +
-        sep + "number=" + s['number'] +
-        sep + "title=" + s['title'] +
-        sep + "query=" + s['query'] + "\n")
-    return entries
+    return map(klompLibs.toString, self.songs)
   def getSongBucket(self, s):
     return s['artist'] + '###' + s['album'] + '###' + s['library']
   def trimMid(self, s, lim, ellip):
