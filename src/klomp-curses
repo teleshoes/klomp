@@ -261,22 +261,24 @@ class Prompt(LinePrinter):
   def handleKeys(self, keys):
     c = curses
     for key in keys:
-      if key == ord('q'):
-        return True
-      elif key == c.KEY_ENTER:
+      if key == c.KEY_ENTER:
         self.maybeShuffleTmpFile()
         self.prependTmpFile()
         return True
-      elif key == ord('a'):
-        self.maybeShuffleTmpFile()
-        self.appendTmpFile()
-        return True
-      elif key == ord('o'):
-        self.maybeShuffleTmpFile()
-        self.replaceTmpFile()
-        return True
-      elif key == ord(' '):
-        self.shuffle = not self.shuffle
+      elif key > 0 and key < 256:
+        ch = chr(key).lower()
+        if ch == 'q':
+          return True
+        elif ch == 'a':
+          self.maybeShuffleTmpFile()
+          self.appendTmpFile()
+          return True
+        elif ch == 'o':
+          self.maybeShuffleTmpFile()
+          self.replaceTmpFile()
+          return True
+        elif ch == ' ':
+          self.shuffle = not self.shuffle
     return False
 
 class KlompLibs():
