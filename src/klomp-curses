@@ -448,7 +448,8 @@ class KlompUI():
         self.updatePrompt()
   def splitCmdKeys(self, keys):
     c = curses
-    commands = [c.KEY_ENTER, c.KEY_UP, c.KEY_DOWN, c.KEY_PPAGE, c.KEY_NPAGE]
+    commands = [c.KEY_ENTER, ord('\t'),
+      c.KEY_UP, c.KEY_DOWN, c.KEY_PPAGE, c.KEY_NPAGE]
     cmdKeys, otherKeys = [], []
 
     for key in keys:
