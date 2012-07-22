@@ -402,8 +402,8 @@ class KlompUI():
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     if self.initialQuery != None and len(self.initialQuery) > 0:
       self.textEdit.setText(self.initialQuery)
-      self.updateSongs()
-      self.updateTextEditDisplay()
+
+    self.enterQueryMode()
     while True:
       if self.mode == Mode.Query:
         self.updateSongs()
@@ -414,6 +414,7 @@ class KlompUI():
       self.queryDisplay.setSongs(songs)
       self.updateQueryDisplay()
   def enterQueryMode(self):
+    self.updateSongs()
     self.mode = Mode.Query
     self.clear()
     self.updateQueryDisplay()
