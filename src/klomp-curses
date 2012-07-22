@@ -54,8 +54,8 @@ class Attrs():
     self.attrMap = {
       'textEdit': [c.COLOR_RED, c.COLOR_WHITE, [c.A_BOLD]],
       'query': [c.COLOR_GREEN, NONE, []],
-      'playList': [c.COLOR_GREEN, c.COLOR_BLACK, []],
-      'prompt': [c.COLOR_MAGENTA, c.COLOR_WHITE, [c.A_BOLD]]
+      'playList': [c.COLOR_BLUE, c.COLOR_WHITE, []],
+      'prompt': [c.COLOR_MAGENTA, c.COLOR_BLACK, [c.A_BOLD]]
     }
     self.attrs = None
   def ensureAttrs(self):
