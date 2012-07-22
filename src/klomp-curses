@@ -16,8 +16,21 @@ uiLock = threading.RLock()
 
 klompList = os.environ['HOME'] + "/.klomplist"
 
+usage = """Usage:
+  %(exec)s -h | --help
+    show this message
+  %(exec)s [--debug]  [word word ..]
+    interactive curses ui
+    initial query = "word word .."
+    --debug means exceptions dont exit
+""" % {'exec': __file__}
+
 def main(args):
   sys.setrecursionlimit(100000) #HACK BUG WORKAROUND FUCKERS
+  if len(args) == 2 and (args[1] == "-h" or args[1] == "--help"):
+    print usage
+    exit(0)
+
   debug = False
   if len(args) >= 2 and args[1] == "--debug":
     debug = True
