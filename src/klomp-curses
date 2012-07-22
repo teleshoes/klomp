@@ -107,9 +107,8 @@ class LinePrinter():
     self.line = 0
 
 class TextEdit(LinePrinter):
-  def __init__(self, line, width, onCommandKey):
+  def __init__(self, line, width):
     LinePrinter.__init__(self, 1, width, line, 0)
-    self.onCommandKey = onCommandKey
     self.preText = u""
     self.postText = u""
   def handleKeys(self, keys):
@@ -117,9 +116,7 @@ class TextEdit(LinePrinter):
     cmds = []
     for key in keys:
       c = curses
-      if key in [c.KEY_ENTER, c.KEY_UP, c.KEY_DOWN, c.KEY_PPAGE, c.KEY_NPAGE]:
-        cmds.append(key)
-      elif key == c.KEY_HOME:
+      if key == c.KEY_HOME:
         self.postText = self.preText + self.postText
         self.preText = u""
       elif key == c.KEY_END:
@@ -138,8 +135,6 @@ class TextEdit(LinePrinter):
       elif key < 256:
         text += chr(key)
     self.preText += text.decode('utf8')
-    for key in cmds:
-      self.onCommandKey(key)
   def getCursorPos(self):
     length = len(self.preText)
     tabwidth = 8
@@ -396,7 +391,7 @@ class KlompUI():
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
-    self.textEdit = TextEdit(0, width, self.onCommandKey)
+    self.textEdit = TextEdit(0, width)
     self.queryDisplay = QueryDisplay(height, width)
     self.prompt = Prompt(height, width)
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
@@ -441,13 +436,27 @@ class KlompUI():
         self.updateQueryDisplay()
   def onGetSomeKeys(self, keys):
     if self.mode == Mode.Query:
-      self.textEdit.handleKeys(keys)
+      cmdKeys, otherKeys = self.splitCmdKeys(keys)
+      self.textEdit.handleKeys(otherKeys)
+      for cmd in cmdKeys:
+        self.onCommandKey(cmd)
       self.updateTextEditDisplay()
     elif self.mode == Mode.Prompt:
       if self.prompt.handleKeys(keys):
         self.enterQueryMode()
       else:
         self.updatePrompt()
+  def splitCmdKeys(self, keys):
+    c = curses
+    commands = [c.KEY_ENTER, c.KEY_UP, c.KEY_DOWN, c.KEY_PPAGE, c.KEY_NPAGE]
+    cmdKeys, otherKeys = [], []
+
+    for key in keys:
+      if key in commands:
+        cmdKeys.append(key)
+      else:
+        otherKeys.append(key)
+    return (cmdKeys, otherKeys)
   def clear(self):
     with uiLock:
       self.textEdit.clear()
