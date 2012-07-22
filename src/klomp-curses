@@ -228,6 +228,7 @@ class Prompt(LinePrinter):
     self.shuffle = True
   def setSongEntries(self, songEntries):
     self.songCount = len(songEntries)
+    os.system("rm /tmp/klomplist_* 2>/dev/null")
     self.tmpFile = "/tmp/klomplist_" + str(millisNow())
 
     with open(self.tmpFile, 'w') as f:
