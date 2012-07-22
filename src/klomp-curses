@@ -252,6 +252,15 @@ class KlompLibs():
     self.flacmirrorPaths = {}
     self.initialized = False
     self.sep = "///\\\\\\"
+    reSep = self.sep.replace('\\', '\\\\')
+    self.songRe = re.compile(''
+      + '(.*)'
+      + reSep + 'artist=' + '(.*)'
+      + reSep + 'album=' + '(.*)'
+      + reSep + 'number=' + '(.*)'
+      + reSep + 'title=' + '(.*)'
+      + reSep + 'query=' + '(.*)'
+    )
   def initLibs(self):
     if self.initialized == False:
       for lib in readProc(["klomp-lib"]).splitlines():
@@ -267,6 +276,21 @@ class KlompLibs():
         self.sep + "number=" + song['number'] +
         self.sep + "title=" + song['title'] +
         self.sep + "query=" + song['query'] + "\n")
+  def fromString(self, s):
+    song = {}
+    m = self.songRe.match(s)
+    if m:
+      library, relpath = self.fromAbsPath(m.group(1))
+      song['library'] = library
+      song['relpath'] = relpath
+      song['artist'] = m.group(2)
+      song['album'] = m.group(3)
+      song['number'] = m.group(4)
+      song['title'] = m.group(5)
+      song['query'] = m.group(6)
+      return song
+    else:
+      return None
   def toAbsPath(self, song):
     self.initLibs()
     lib = song['library']
@@ -278,10 +302,27 @@ class KlompLibs():
       if os.path.exists(flacmirrorPath):
         path = flacmirrorPath
     return path
+  def fromAbsPath(self, path):
+    self.initLibs()
+    for lib in self.libPaths.keys():
+      libPath = self.libPaths[lib]
+      if path.startswith(libPath):
+        library = lib
+        relpath = path.replace(libPath, '', 1)
+        return library, relpath
+      flacmirrorPath = self.flacmirrorPaths[lib]
+      if path.startswith(flacmirrorPath):
+        library = lib
+        relpath = path.replace(flacmirrorPath, '', 1)
+        relpath = self.oggToFlac(relpath)
+        return library, relpath
+    return None, None
   def flacToOgg(self, s):
     return re.sub(r'\.flac$', '.ogg', s)
+  def oggToFlac(self, s):
+    return re.sub(r'\.ogg$', '.flac', s)
 klompLibs = KlompLibs()
-    
+
 class QueryDisplay(LinePrinter, OffsetListDisplay):
   def __init__(self, height, width):
     LinePrinter.__init__(self, height, width, 1, 0)
@@ -402,12 +443,21 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
           lines.append(line)
           n -= 1
     return lines
+  def formatSong(self, s):
+    song = klompLibs.fromString(s)
+    sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
+    sep = ' ' + sep + ' '
+    return (''
+      + song['title'] + sep
+      + song['artist'] + sep
+      + song['album']
+    )
   def update(self):
     self.clear()
     self.updateSize()
     lines = self.getLines(self.height + self.offset)[self.offset:]
     for line in lines:
-      self.printLine(line)
+      self.printLine(self.formatSong(line))
     self.win.noutrefresh()
 
 class KlompQuery():
