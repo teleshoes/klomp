@@ -208,11 +208,21 @@ class SongDisplay(LinePrinter):
     entries = []
     sep = "///\\\\\\"
     libPaths = {}
+    flacmirrorPaths = {}
     for s in self.songs:
       lib = s['library']
       if lib not in libPaths:
         libPaths[lib] = readProc(["klomp-lib", "-l", lib]).rstrip()
       path = libPaths[lib] + "/" + s['relpath']
+
+      if not os.path.exists(path):
+        if lib not in flacmirrorPaths:
+          flacmirrorPaths[lib] = readProc(["klomp-lib", "-f", lib]).rstrip()
+        flacmirrorPath = flacmirrorPaths[lib] + "/" + s['relpath']
+        flacmirrorPath = re.sub(r'\.flac$', '.ogg', flacmirrorPath)
+        if os.path.exists(flacmirrorPath):
+          path = flacmirrorPath
+
       entries.append(
         path +
         sep + "artist=" + s['artist'] +
