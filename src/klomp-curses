@@ -47,6 +47,36 @@ def main(args):
     else:
       os._exit(0)
 
+class Attrs():
+  def __init__(self):
+    c = curses
+    REAL_BLACK = -1
+    self.attrs = {
+      'textEdit': [c.COLOR_RED, c.COLOR_WHITE, [c.A_BOLD]],
+      'query': [c.COLOR_GREEN, REAL_BLACK, []],
+      'playList': [c.COLOR_GREEN, c.COLOR_BLACK, []],
+      'prompt': [c.COLOR_MAGENTA, c.COLOR_WHITE, [c.A_BOLD]]
+    }
+    self.colorPairs = {}
+    self.colorPairsInitialized = False
+  def initColorPairs(self):
+    colorPairIndex = 1
+    if not self.colorPairsInitialized:
+      curses.use_default_colors()
+      for name in self.attrs.keys():
+        fg, bg, attrs = self.attrs[name]
+        curses.init_pair(colorPairIndex, fg, bg)
+        self.colorPairs[name] = curses.color_pair(colorPairIndex)
+        colorPairIndex += 1
+      colorPairsInitialized = True
+  def get(self, name):
+    self.initColorPairs()
+    atts = self.colorPairs[name]
+    for att in self.attrs[name][2]:
+      atts |= att
+    return atts
+attrs = Attrs()
+
 def millisNow():
   return int(round(time.time() * 1000))
 
@@ -84,12 +114,13 @@ class KeyReaderThread(threading.Thread):
     return keys
 
 class LinePrinter():
-  def __init__(self, height, width, y, x):
+  def __init__(self, height, width, y, x, attrs=None):
     self.line = 0
     self.y = y
     self.x = x
     self.height = height
     self.width = width
+    self.attrs = attrs
     self.win = curses.newwin(height, width, y, x)
   def updateSize(self):
     y, x = self.win.getmaxyx()
@@ -98,7 +129,10 @@ class LinePrinter():
     return self.line >= self.height
   def printLine(self, msg):
     try:
-      self.win.addstr(self.line, 0, msg)
+      if self.attrs != None:
+        self.win.addstr(self.line, 0, msg, self.attrs)
+      else:
+        self.win.addstr(self.line, 0, msg)
     except curses.error:
       pass
     self.line += 1
@@ -127,8 +161,8 @@ class OffsetListDisplay():
     return -1
 
 class TextEdit(LinePrinter):
-  def __init__(self, line, width):
-    LinePrinter.__init__(self, 1, width, line, 0)
+  def __init__(self, line, width, attrs = None):
+    LinePrinter.__init__(self, 1, width, line, 0, attrs)
     self.preText = u""
     self.postText = u""
   def handleKeys(self, keys):
@@ -191,8 +225,8 @@ class TextEdit(LinePrinter):
     curses.setsyx(self.y, pos)
 
 class Prompt(LinePrinter):
-  def __init__(self, height, width):
-    LinePrinter.__init__(self, height, width, 2, 0)
+  def __init__(self, height, width, attrs=None):
+    LinePrinter.__init__(self, height, width, 2, 0, attrs)
     self.shuffle = True
   def setSongEntries(self, songEntries):
     self.songCount = len(songEntries)
@@ -324,8 +358,8 @@ class KlompLibs():
 klompLibs = KlompLibs()
 
 class QueryDisplay(LinePrinter, OffsetListDisplay):
-  def __init__(self, height, width):
-    LinePrinter.__init__(self, height, width, 1, 0)
+  def __init__(self, height, width, attrs=None):
+    LinePrinter.__init__(self, height, width, 1, 0, attrs)
     OffsetListDisplay.__init__(self)
   def getOffsetLimit(self):
     return len(self.songs) - self.height/3
@@ -421,8 +455,8 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
     self.win.noutrefresh()
 
 class PlayListDisplay(LinePrinter, OffsetListDisplay):
-  def __init__(self, height, width):
-    LinePrinter.__init__(self, height, width, 1, 0)
+  def __init__(self, height, width, attrs=None):
+    LinePrinter.__init__(self, height, width, 1, 0, attrs)
     OffsetListDisplay.__init__(self)
   def getOffsetLimit(self):
     if self.last == True:
@@ -496,10 +530,10 @@ class KlompUI():
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
-    self.textEdit = TextEdit(0, width)
-    self.queryDisplay = QueryDisplay(height, width)
-    self.playListDisplay = PlayListDisplay(height, width)
-    self.prompt = Prompt(height, width)
+    self.textEdit = TextEdit(0, width, attrs.get('textEdit'))
+    self.queryDisplay = QueryDisplay(height, width, attrs.get('query'))
+    self.playListDisplay = PlayListDisplay(height, width, attrs.get('playList'))
+    self.prompt = Prompt(height, width, attrs.get('prompt'))
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     if self.initialQuery != None and len(self.initialQuery) > 0:
       self.textEdit.setText(self.initialQuery)
