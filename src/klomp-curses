@@ -394,10 +394,8 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
     self.clear()
     self.updateSize()
     lines = self.getLines(self.height + self.offset)[self.offset:]
-    msg(len(lines))
     for line in lines:
       self.printLine(line)
-    msg("=======")
     self.win.noutrefresh()
 
 class KlompQuery():
