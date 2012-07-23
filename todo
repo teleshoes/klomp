@@ -1,1 +1,2 @@
 1) bug: on n9 ui, despite nohup, when term quits song stops
+2) bug: long items in playlist display bleed over to the next line in the bg
