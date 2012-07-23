@@ -14,7 +14,7 @@ locale.setlocale(locale.LC_ALL,"")
 
 uiLock = threading.RLock()
 
-klompList = os.environ['HOME'] + "/.klomplist"
+KLOMP_LIST = os.environ['HOME'] + "/.klomplist"
 
 usage = """Usage:
   %(exec)s -h | --help
@@ -261,12 +261,12 @@ class Prompt(LinePrinter):
     if self.shuffle:
       os.system("sort -R " + self.tmpFile + " -o " + self.tmpFile)
   def appendTmpFile(self):
-    os.system("cat " + self.tmpFile + " >> " + klompList)
+    os.system("cat " + self.tmpFile + " >> " + KLOMP_LIST)
   def prependTmpFile(self):
-    os.system("cat " + klompList + " >> " + self.tmpFile)
+    os.system("cat " + KLOMP_LIST + " >> " + self.tmpFile)
     self.replaceTmpFile()
   def replaceTmpFile(self):
-    os.system("mv " + self.tmpFile + " " + klompList)
+    os.system("mv " + self.tmpFile + " " + KLOMP_LIST)
   def handleKeys(self, keys):
     c = curses
     for key in keys:
@@ -476,7 +476,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
   def getLines(self, n):
     lines = []
     self.last = False
-    with open(klompList, 'r') as f:
+    with open(KLOMP_LIST, 'r') as f:
       while n > 0:
         line = f.readline()
         if not line:
