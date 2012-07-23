@@ -611,6 +611,8 @@ class KlompUI():
         self.enterPlayListMode()
       elif key == c.KEY_ENTER:
         self.enterPromptMode()
+      elif key == ESCAPE:
+        quitSlowly()
       elif key in offsetKeys:
         if self.queryDisplay.addOffset(offsetKeys[key]):
           self.updateQueryDisplay()
