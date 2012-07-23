@@ -511,7 +511,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
           quitSlowly()
         elif ch in klompcmds:
           klompcmd = klompcmds[ch]
-          os.system('klomp-cmd ' + klompcmd)
+          os.system('nohup klomp-cmd ' + klompcmd + ' 1>/dev/null 2>&1 &')
   def update(self):
     self.clear()
     self.updateSize()
