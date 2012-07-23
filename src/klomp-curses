@@ -496,6 +496,22 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       + song['artist'] + sep
       + song['album']
     )
+  def handleKeys(self, keys):
+    c = curses
+    klompcmds = {
+      ' ': 'pause',
+      'z': 'prev',
+      'x': 'next',
+      'a': 'seek -60',
+      's': 'seek 60'}
+    for key in keys:
+      if key > 0 and key < 256:
+        ch = chr(key).lower()
+        if ch == 'q':
+          quitSlowly()
+        elif ch in klompcmds:
+          klompcmd = klompcmds[ch]
+          os.system('klomp-cmd ' + klompcmd)
   def update(self):
     self.clear()
     self.updateSize()
@@ -617,6 +633,7 @@ class KlompUI():
       elif self.mode == Mode.PlayList:
         for cmd in cmdKeys:
           self.onCommandKey(cmd)
+        self.playListDisplay.handleKeys(otherKeys)
   def splitCmdKeys(self, keys):
     c = curses
     commands = [c.KEY_ENTER, ord('\t'),
