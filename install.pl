@@ -22,11 +22,9 @@ my @execs = qw(
   klomp
   klomp-call-handler
   klomp-cmd
-  klomp-curses
   klomp-db
   klomp-fifo-writer
   klomp-lib
-  klomp-search
   klomp-size
   klomp-sync
   klomp-tag
