@@ -47,6 +47,15 @@ def main(args):
     else:
       os._exit(0)
 
+quit = False
+def quitSlowly():
+  global quit
+  quit = True
+def maybeQuit():
+  global quit
+  if quit:
+    exit(0)
+
 class Attrs():
   def __init__(self):
     c = curses
@@ -541,6 +550,7 @@ class KlompUI():
 
     self.enterQueryMode()
     while True:
+      maybeQuit()
       if self.mode == Mode.Query:
         self.updateSongs()
       elif self.mode == Mode.PlayList:
