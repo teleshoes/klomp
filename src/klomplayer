@@ -8,6 +8,8 @@ my @mplayerOptions = (
 );
 
 my $FIFO = '/tmp/klomplayer_fifo';
+system "rm", "-f", $FIFO;
+system "mkfifo", $FIFO;
 fork or exec "klomp-fifo-writer";
 
 my $klompCmdExec = 'klomp-cmd';

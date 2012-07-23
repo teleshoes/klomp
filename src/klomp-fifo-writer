@@ -14,9 +14,6 @@ sub main(@){
   my $pid = getPid;
   system "kill", "-9", $pid if defined $pid;
 
-  system "rm", "-f", $FIFO;
-  system "mkfifo", $FIFO;
-
   setPid;
 
   while(1){
