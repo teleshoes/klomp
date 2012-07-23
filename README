@@ -17,14 +17,14 @@ Works nicely on the N900.
 **** Features ****
 -Stateless: if you delete the db, it can be 100% automatically rebuilt
   never modifies song files: very nice, robust tagging utilities already exist
--Modular: well-defined, non-interactive commands
--Quasi-portable: as long as you use gnu/linux, you should be good
+-Modular: well-defined, non-interactive cli
+-Quasi-portable: most features depend only on gnu/linux
   very few dependencies {apart from tagging when db building}
-  installs anywhere you damn well please, these are executable perl scripts
+  all perl/python scripts, not compiled
 -Powerful query language {really powerful, but not well-documented}
 -Flacmirror:
   lossless audio on your computer, tiny oggs on your phone, transparently
--optional CLI interactive interface that invokes the same commands
+-optional curses interface that invokes the same modular commands
 -resume playback from the position you quit in the current song
 -moderate resource consumption {runs smoothly on N900 - 256MB ram, 600mhz cpu}
 -separation of db-building and playback/playlists;
@@ -41,15 +41,19 @@ everything else can do anything mplayer can
 COPYING - GPLv3
 README - ?????? wtf is this thing?
 flacmirror - rsync style ogg->flac conversion util {parallel dir structure}
-klomp - interactive current-playlist viewer and editor {calls klomp-search}
-klomp-search - interactive frontend to klomp-db for querying
-klomp-cmd - sends messages to mplayer, and modifies playlist
-klomp-db - manages and queries a sqlite database. reads tags. {central script}
-klomp-lib - turns library names into absolute paths
+klomp - interactive python curses ui; query db, view/edit playlist
 klomp-call-handler - N900-specific: kill klomplayer when recieving a phone call
-klomp-term - launches klomp in a terminal, modifies WM props
+klomp-cmd - sends messages to mplayer, and modifies playlist
+klomp-db - manages and queries the main klomp sqlite database {main backend}
 klomp-fifo-writer - repeatedly query for song pos by writing to mplayer fifo
+klomp-lib - turns library names into absolute paths
+klomp-size - cli frontend to print a summary of disk space, not used internally
+klomp-sync - syncs another computer's klomp libraries using rsync
+klomp-tag - cli frontend to Klomp/Tag.pm, not used internally
+klomp-term - launches klomp using term cmd, and ensures only one instance
+klomp-update - cli frontend to klomp-db, updates klomp libraries
 klomplayer - mplayer wrapper that updates a file with time position
+Klomp/Tag.pm - perl module for actually reading tags from media files
 
 $HOME/.klompdb - default location for sqlite db
 $HOME/.klomplib - default location for library path definitions
