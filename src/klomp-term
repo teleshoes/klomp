@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-my $KLOMP_CLI_CMD = 'klomp-curses';
+my $KLOMP_CLI_CMD = 'klomp';
 
 my $PID_FILE = '/tmp/klomp_term_pid';
 if(-e $PID_FILE){
