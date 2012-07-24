@@ -137,12 +137,14 @@ class LinePrinter():
     self.height, self.width = y - self.y, x - self.x
   def isWindowFull(self):
     return self.line >= self.height
-  def printLine(self, msg):
+  def printLine(self, line, attrs=None):
+    if attrs == None:
+      attrs = self.attrs
     try:
-      if self.attrs != None:
-        self.win.addstr(self.line, 0, msg, self.attrs)
+      if attrs != None:
+        self.win.addstr(self.line, 0, line, attrs)
       else:
-        self.win.addstr(self.line, 0, msg)
+        self.win.addstr(self.line, 0, line)
     except curses.error:
       pass
     self.line += 1
