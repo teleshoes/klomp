@@ -15,6 +15,7 @@ locale.setlocale(locale.LC_ALL,"")
 uiLock = threading.RLock()
 
 KLOMP_LIST = os.environ['HOME'] + "/.klomplist"
+KLOMP_CUR = os.environ['HOME'] + "/.klompcur"
 
 usage = """Usage:
   %(exec)s -h | --help
@@ -66,6 +67,7 @@ class Attrs():
     self.attrMap = {
       'textEdit': [c.COLOR_RED, c.COLOR_WHITE, [c.A_BOLD]],
       'query': [c.COLOR_GREEN, NONE, []],
+      'cur': [c.COLOR_GREEN, c.COLOR_BLACK, []],
       'playList': [c.COLOR_BLUE, c.COLOR_WHITE, []],
       'prompt': [c.COLOR_MAGENTA, c.COLOR_BLACK, [c.A_BOLD]]
     }
@@ -342,6 +344,20 @@ class KlompLibs():
       return song
     else:
       return None
+  def fromCurString(self, cur):
+    curM = re.match(r'(\d+\.\d+) (\d+\.\d+) (.*)', cur, re.DOTALL)
+    if curM:
+      pos = curM.group(1)
+      length = curM.group(2)
+      curStr = curM.group(3)
+      curStr = curStr.rstrip()
+      curStr = curStr.replace('\n', self.sep)
+      song = self.fromString(curStr)
+      if song:
+        song['len'] = length
+        song['pos'] = pos
+        return song
+    return None
   def toAbsPath(self, song):
     self.initLibs()
     lib = song['library']
@@ -526,9 +542,24 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
     if song:
       return self.formatSong(song)
     return 'COULD NOT FORMAT SONG: ' + s
+  def maybeFormatCur(self):
+    song = {}
+    try:
+      with open(KLOMP_CUR, 'r') as f:
+        cur = f.read()
+    except:
+      return 'NO CUR'
+    song = klompLibs.fromCurString(cur)
+    if song:
+      return "%.0f/%.0f '%s' %s\n%s" % (
+        float(song['pos']), float(song['len']),
+        song['library'], song['relpath'],
+        self.formatSong(song))
+    return 'INVALID CUR'
   def update(self):
     self.clear()
     self.updateSize()
+    self.printLines(self.maybeFormatCur(), attrs.get('cur'))
     lines = self.getLines(self.height + self.offset)[self.offset:]
     for line in lines:
       self.printLine(self.maybeFormatSongString(line))
