@@ -356,7 +356,7 @@ class KlompLibs():
   def fromAbsPath(self, path):
     self.initLibs()
     for lib in self.libPaths.keys():
-      libPath = self.libPaths[lib]
+      libPath = self.libPaths[lib] + '/'
       if path.startswith(libPath):
         library = lib
         relpath = path.replace(libPath, '', 1)
