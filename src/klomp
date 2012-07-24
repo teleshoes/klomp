@@ -483,17 +483,20 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
   def getLines(self, n):
     lines = []
     self.last = False
-    with open(KLOMP_LIST, 'r') as f:
-      while n > 0:
-        line = f.readline()
-        if not line:
-          self.last = True
-          self.lastIndex = len(lines)-1
-          break
-        else:
-          lines.append(line)
-          n -= 1
-    return lines
+    try:
+      with open(KLOMP_LIST, 'r') as f:
+        while n > 0:
+          line = f.readline()
+          if not line:
+            self.last = True
+            self.lastIndex = len(lines)-1
+            break
+          else:
+            lines.append(line)
+            n -= 1
+      return lines
+    except:
+      return []
   def formatSong(self, s):
     song = klompLibs.fromString(s)
     sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
