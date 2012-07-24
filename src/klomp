@@ -137,6 +137,8 @@ class LinePrinter():
     self.height, self.width = y - self.y, x - self.x
   def isWindowFull(self):
     return self.line >= self.height
+  def printLines(self, strLines, attrs=None):
+    map(lambda line: self.printLine(line, attrs), strLines.splitlines())
   def printLine(self, line, attrs=None):
     if attrs == None:
       attrs = self.attrs
