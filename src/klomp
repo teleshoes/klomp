@@ -497,15 +497,6 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       return lines
     except:
       return []
-  def formatSong(self, s):
-    song = klompLibs.fromString(s)
-    sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
-    sep = ' ' + sep + ' '
-    return (''
-      + song['title'] + sep
-      + song['artist'] + sep
-      + song['album']
-    )
   def handleKeys(self, keys):
     c = curses
     klompcmds = {
@@ -522,12 +513,25 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
         elif ch in klompcmds:
           klompcmd = klompcmds[ch]
           os.system('nohup klomp-cmd ' + klompcmd + ' 1>/dev/null 2>&1 &')
+  def formatSong(self, song):
+    sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
+    sep = ' ' + sep + ' '
+    return (''
+      + song['title'] + sep
+      + song['artist'] + sep
+      + song['album']
+    )
+  def maybeFormatSongString(self, s):
+    song = klompLibs.fromString(s)
+    if song:
+      return self.formatSong(song)
+    return 'COULD NOT FORMAT SONG: ' + s
   def update(self):
     self.clear()
     self.updateSize()
     lines = self.getLines(self.height + self.offset)[self.offset:]
     for line in lines:
-      self.printLine(self.formatSong(line))
+      self.printLine(self.maybeFormatSongString(line))
     self.win.noutrefresh()
 
 class KlompQuery():
