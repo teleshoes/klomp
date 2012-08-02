@@ -3,8 +3,8 @@ use strict;
 use warnings;
 
 my @mplayerOptions = (
-  '-cache', '8192',
-  '-cache-min', '20',
+#  '-cache', '8192',
+#  '-cache-min', '20',
 );
 
 my $FIFO = '/tmp/klomplayer_fifo';
