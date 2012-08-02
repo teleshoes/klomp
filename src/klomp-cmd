@@ -159,7 +159,7 @@ sub stop(){
     system "rm $PID_FILE";
   }
   system "killall -9 mplayer" if isPhone;
-  system "rm /tmp/klomplayer*";
+  system "rm -f /tmp/klomplayer*";
 }
 sub isRunning(){
   if(-e $PID_FILE){
