@@ -18,6 +18,7 @@ my $usage = "Usage:
      if main exists and HOME does not:
        HOME => NAME
        MAIN => HOME
+  $0 playlist-main - if a named playlist is set, unset it
   $0 start - start
   $0 stop  - stop
   $0 pause - play/pause
@@ -87,6 +88,11 @@ sub main(@){
       backupPlaylist $main;
       restorePlaylist $alt if -e $alt;
       setPlaylistName $name;
+    }
+  }elsif($cmd eq 'playlist-main'){
+    my $name = getPlaylistName;
+    if(defined $name){
+      system $0, 'playlist', $name;
     }
   }elsif($cmd eq 'start'){
     stop;
