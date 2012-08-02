@@ -232,10 +232,17 @@ sub getCur(){
 
 sub setCur($){
   my $item = shift;
-  $item =~ s/\/\/\/\\\\\\/\n/g;
-  open FH, "> $KLOMPCUR";
-  print FH "0.0 0.0 $item\n";
-  close FH;
+  if($item =~ /^!klomp-cmd (.*)$/si){
+    print "running klomp-cmd: $1\n";
+    system "$0 $1";
+    return 0;
+  }else{
+    $item =~ s/\/\/\/\\\\\\/\n/g;
+    open FH, "> $KLOMPCUR";
+    print FH "0.0 0.0 $item\n";
+    close FH;
+    return 1;
+  }
 }
 
 sub addCurTimestamp($){
@@ -263,8 +270,7 @@ sub prevnext($$){
     if(defined $oldCur){
       pushFile $destFile, $oldCur;
     }
-    setCur $cur;
-    return 1;
+    return setCur $cur;
   }else{
     return 0;
   }
