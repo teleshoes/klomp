@@ -60,6 +60,13 @@ def maybeQuit():
   if quit:
     exit(0)
 
+def intersperse(sep, xs):
+  itr = iter(xs)
+  yield next(itr)
+  for x in xs:
+    yield sep
+    yield x
+
 class Attrs():
   def __init__(self):
     c = curses
@@ -245,6 +252,7 @@ class Prompt(LinePrinter):
   def __init__(self, height, width, attrs=None):
     LinePrinter.__init__(self, height, width, 2, 0, attrs)
     self.shuffle = True
+    self.intersperseStops = False
   def setSongEntries(self, songEntries):
     self.songCount = len(songEntries)
     os.system("rm /tmp/klomplist_* 2>/dev/null")
@@ -265,11 +273,19 @@ class Prompt(LinePrinter):
       "  s     - intersperse files into KLOMPLIST, keeps order unless shuffle",
       "  r     - REMOVE these files from KLOMPLIST",
       "",
-      "shuffle => " + str(self.shuffle) + "  {space to toggle}"])
+      "shuffle => " + str(self.shuffle) + "  {space to toggle}",
+      "intersperseStops => " + str(self.intersperseStops) + "  {x to toggle}"])
     self.win.noutrefresh()
   def maybeShuffleTmpFile(self):
     if self.shuffle:
       os.system("sort -R " + self.tmpFile + " -o " + self.tmpFile)
+  def maybeIntersperseStopsTmpFile(self):
+    if self.intersperseStops:
+      with open(self.tmpFile, 'r') as f:
+        items = f.readlines()
+      items = intersperse("!klomp-cmd stop\n", items)
+      with open(self.tmpFile, 'w') as f:
+        f.writelines(items)
   def appendTmpFile(self):
     os.system("cat " + self.tmpFile + " >> " + KLOMP_LIST)
   def prependTmpFile(self):
@@ -282,6 +298,7 @@ class Prompt(LinePrinter):
     for key in keys:
       if key == c.KEY_ENTER:
         self.maybeShuffleTmpFile()
+        self.maybeIntersperseStopsTmpFile()
         self.prependTmpFile()
         return True
       elif key > 0 and key < 256:
@@ -290,14 +307,18 @@ class Prompt(LinePrinter):
           return True
         elif ch == 'a':
           self.maybeShuffleTmpFile()
+          self.maybeIntersperseStopsTmpFile()
           self.appendTmpFile()
           return True
         elif ch == 'o':
           self.maybeShuffleTmpFile()
+          self.maybeIntersperseStopsTmpFile()
           self.replaceTmpFile()
           return True
         elif ch == ' ':
           self.shuffle = not self.shuffle
+        elif ch == 'x':
+          self.intersperseStops = not self.intersperseStops
     return False
 
 class KlompLibs():
