@@ -76,6 +76,7 @@ sub main(@){
     }elsif(-e $main and -e $alt){
       die "it seems that another playlist {not main or $name} is active\n";
     }
+    system "rmdir $main $alt 2>/dev/null";
   }elsif($cmd eq 'start'){
     stop;
     start;
