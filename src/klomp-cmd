@@ -49,9 +49,9 @@ if(isPhone and `whoami` =~ /^root(\n|$)/){
 }
 
 my $klomplayerExec = 'klomplayer';
-my $KLOMPCUR = `echo -n \$HOME/.klompcur`;
-my $KLOMPLIST = `echo -n \$HOME/.klomplist`;
-my $KLOMPHIST = `echo -n \$HOME/.klomphistory`;
+my $KLOMPCUR = "$ENV{HOME}/.klompcur";
+my $KLOMPLIST = "$ENV{HOME}/.klomplist";
+my $KLOMPHIST = "$ENV{HOME}/.klomphistory";
 my $FIFO = '/tmp/klomplayer_fifo';
 my $PID_FILE = '/tmp/klomplayer_pid';
 
