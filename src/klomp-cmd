@@ -4,6 +4,19 @@ use warnings;
 use Sys::Hostname;
 
 my $usage = "Usage:
+  $0 playlist NAME - toggle between playlist NAME and the main playlist
+     .klompcur and .klomplist are moved between three dirs
+       HOME
+       MAIN {\"HOME/.klomplist-main/\"}
+       NAME {\"HOME/.klomplist-NAME/\"}
+     if neither NAME nor MAIN exist:
+       HOME => MAIN
+     if NAME exists and MAIN does not:
+       HOME => MAIN
+       NAME => HOME
+     if main exists and HOME does not:
+       HOME => NAME
+       MAIN => HOME
   $0 start - start
   $0 stop  - stop
   $0 pause - play/pause
@@ -27,6 +40,8 @@ sub nextItem();
 sub prevItem();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
+sub backupPlaylist($);
+sub restorePlaylist($);
 
 if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
@@ -45,6 +60,22 @@ sub main(@){
   if($cmd eq '-h'){
     print $usage;
     exit 0;
+  }elsif($cmd eq 'playlist' and @_ == 1){
+    stop();
+    my $name = shift;
+    my $main = "$ENV{HOME}/.klomplist-main";
+    my $alt = "$ENV{HOME}/.klomplist-$name";
+    if(not -e $alt and not -e $main){
+      backupPlaylist $main;
+    }elsif(-e $alt and not -e $main){
+      backupPlaylist $main;
+      restorePlaylist $alt;
+    }elsif(-e $main and not -e $alt){
+      backupPlaylist $alt;
+      restorePlaylist $main;
+    }elsif(-e $main and -e $alt){
+      die "it seems that another playlist {not main or $name} is active\n";
+    }
   }elsif($cmd eq 'start'){
     stop;
     start;
@@ -81,6 +112,23 @@ sub main(@){
       die $usage;
     }
   }
+}
+
+sub backupPlaylist($){
+  my $dir = shift;
+  die "error: $dir already exists!\n" if -e $dir;
+  system "mkdir", "-p", $dir;
+  die "error: could not create $dir!\n" if not -e $dir;
+
+  system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $dir;
+}
+
+sub restorePlaylist($){
+  my $dir = shift;
+  die "error: $dir doesnt exist!\n" if not -e $dir;
+  system "mv", "--no-clobber", "$dir/.klompcur", "$dir/.klomplist", $ENV{HOME};
+  system "rmdir", $dir;
+  die "error: $dir still exists!\n" if -e $dir;
 }
 
 sub getAvailableInputCommands(){
