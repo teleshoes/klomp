@@ -5,6 +5,7 @@ use Sys::Hostname;
 
 my $usage = "Usage:
   $0 playlist NAME - toggle between playlist NAME and the main playlist
+     NAME cannot be 'main', and may contain only letters, numbers, or _s
      .klompcur and .klomplist are moved between three dirs
        HOME
        MAIN {\"HOME/.klomplist-main/\"}
@@ -63,6 +64,9 @@ sub main(@){
   }elsif($cmd eq 'playlist' and @_ == 1){
     stop();
     my $name = shift;
+    if($name eq 'main' or $name !~ /^[a-zA-Z0-9_]+$/){
+      die "Invalid playlist name: '$name'\n"
+    }
     my $main = "$ENV{HOME}/.klomplist-main";
     my $alt = "$ENV{HOME}/.klomplist-$name";
     if(not -e $alt and not -e $main){
