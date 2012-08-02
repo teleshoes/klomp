@@ -24,7 +24,6 @@ my $usage = "Usage:
   $0 pause - play/pause
   $0 next  - skip song
   $0 prev  - previous song
-  $0 reset - clear song list and history
   $0 -h    - show this message
   $0 <mplayer slave input command>
      see: mplayer -input cmdlist
@@ -119,9 +118,6 @@ sub main(@){
   }elsif($cmd eq 'prev'){
     stop;
     start if prevItem();
-  }elsif($cmd eq 'reset'){
-    system "echo -n > $KLOMPLIST";
-    system "echo -n > $KLOMPHIST";
   }else{
     my %okCmds = getAvailableInputCommands();
     if(defined $okCmds{$cmd}){
