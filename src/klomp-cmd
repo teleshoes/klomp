@@ -43,6 +43,8 @@ sub addCurTimestamp($);
 sub removeCurTimestamp($);
 sub backupPlaylist($);
 sub restorePlaylist($);
+sub getPlaylistName();
+sub setPlaylistName($);
 
 if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
@@ -53,6 +55,7 @@ my $klomplayerExec = 'klomplayer';
 my $KLOMPCUR = "$ENV{HOME}/.klompcur";
 my $KLOMPLIST = "$ENV{HOME}/.klomplist";
 my $KLOMPHIST = "$ENV{HOME}/.klomphistory";
+my $KLOMPLISTNAME = "$ENV{HOME}/.klomplist-name";
 my $FIFO = '/tmp/klomplayer_fifo';
 my $PID_FILE = '/tmp/klomplayer_pid';
 
@@ -69,18 +72,22 @@ sub main(@){
     }
     my $main = "$ENV{HOME}/.klomplist-main";
     my $alt = "$ENV{HOME}/.klomplist-$name";
-    if(not -e $alt and not -e $main){
+
+    my $oldName = getPlaylistName;
+    if(defined $oldName){
+      if($oldName eq $name){
+        backupPlaylist $alt;
+        restorePlaylist $main if -e $main;
+        setPlaylistName undef;
+        system "rmdir $alt 2>/dev/null";
+      }else{
+        die "must turn off playlist $oldName before toggling $name\n";
+      }
+    }else{
       backupPlaylist $main;
-    }elsif(-e $alt and not -e $main){
-      backupPlaylist $main;
-      restorePlaylist $alt;
-    }elsif(-e $main and not -e $alt){
-      backupPlaylist $alt;
-      restorePlaylist $main;
-    }elsif(-e $main and -e $alt){
-      die "it seems that another playlist {not main or $name} is active\n";
+      restorePlaylist $alt if -e $alt;
+      setPlaylistName $name;
     }
-    system "rmdir $main $alt 2>/dev/null";
   }elsif($cmd eq 'start'){
     stop;
     start;
@@ -119,6 +126,26 @@ sub main(@){
   }
 }
 
+sub getPlaylistName(){
+  my $name;
+  if(-e $KLOMPLISTNAME){
+    $name = `cat $KLOMPLISTNAME`;
+    chomp $name;
+  }
+  $name = undef if defined $name and length $name == 0;
+  return $name;
+}
+sub setPlaylistName($){
+  my $name = shift;
+  $name = '' if not defined $name;
+  system "rm", "-f", $KLOMPLISTNAME;
+  if(length $name > 0){
+    open FH, "> $KLOMPLISTNAME" or die "Couldn't write $KLOMPLISTNAME\n";
+    print FH "$name\n";
+    close FH;
+  }
+}
+
 sub backupPlaylist($){
   my $dir = shift;
   die "error: $dir already exists!\n" if -e $dir;
@@ -127,7 +154,6 @@ sub backupPlaylist($){
 
   system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $dir;
 }
-
 sub restorePlaylist($){
   my $dir = shift;
   die "error: $dir doesnt exist!\n" if not -e $dir;
