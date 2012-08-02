@@ -256,7 +256,7 @@ sub prevnext($$){
   my $destFile = shift;
   
   my $oldCur = getCur;
-  $oldCur = addCurTimestamp $oldCur;
+  $oldCur = addCurTimestamp $oldCur if defined $oldCur;
   my $cur = popFile $srcFile;
   $cur = removeCurTimestamp $cur;
   if(defined $cur){
