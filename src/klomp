@@ -541,6 +541,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       ' ': 'pause',
       'z': 'prev',
       'x': 'next',
+      'b': 'breaks toggle',
       'a': 'seek -60',
       's': 'seek 60'}
     for key in keys:
