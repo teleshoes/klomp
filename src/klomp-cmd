@@ -26,6 +26,11 @@ my $usage = "Usage:
   $0 next - skip song
   $0 prev - previous song
   $0 shuffle - shuffle klomplist randomly
+  $0 breaks [on|off|toggle] - add/remove '!klomp-cmd stop's in klomplist
+     {e.g.: for sleeping with a book and not losing more than a chapter}
+     on: remove all stops, and place a stop after each song except the last
+     off: remove all stops
+     toggle: if any stops are present, same as off, else same as on
   $0 <mplayer slave input command>
      see: mplayer -input cmdlist
      for complete command list
@@ -46,6 +51,7 @@ sub backupPlaylist($);
 sub restorePlaylist($);
 sub getPlaylistName();
 sub setPlaylistName($);
+sub setBreaks($);
 
 if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
@@ -119,6 +125,10 @@ sub main(@){
     start if prevItem();
   }elsif($cmd eq 'shuffle' and @_ == 0){
     system "sort -R $KLOMPLIST -o $KLOMPLIST";
+  }elsif($cmd eq 'breaks' and @_ == 1){
+    my $arg = shift;
+    die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
+    setBreaks $arg;
   }else{
     my %okCmds = getAvailableInputCommands();
     if(defined $okCmds{$cmd}){
@@ -163,6 +173,25 @@ sub restorePlaylist($){
   system "mv", "--no-clobber", "$dir/.klompcur", "$dir/.klomplist", $ENV{HOME};
   system "rmdir", $dir;
   die "error: $dir still exists!\n" if -e $dir;
+}
+
+sub setBreaks($){
+  my $arg = shift;
+  my $breakLine = "!klomp-cmd stop\n";
+  my @lines = `cat $KLOMPLIST 2>/dev/null`;
+  my @nonBreakLines = grep {$_ ne $breakLine} @lines;
+  my @newLines;
+  if($arg eq 'on' or ($arg eq 'toggle' and @nonBreakLines == @lines)){
+    for(my $i=0; $i<@nonBreakLines; $i++){
+      push @newLines, $nonBreakLines[$i];
+      push @newLines, $breakLine if $i ne $#nonBreakLines;
+    }
+  }else{
+    @newLines = @nonBreakLines;
+  }
+  open FH, "> $KLOMPLIST" or die "Couldn't write $KLOMPLIST\n";
+  print FH @newLines;
+  close FH;
 }
 
 sub getAvailableInputCommands(){
