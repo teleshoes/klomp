@@ -462,6 +462,9 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
     self.clear()
     self.updateSize()
     self.printLines("""
+      TAB to view playlist
+      ENTER prompts what to do with songs selected by query
+        {all songs in default libs are selected by default}
       Searching is case insensitive against title, album or artist.
       Guess columns allow for unicode transforms and script transliteration.
        Query syntax:
