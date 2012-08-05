@@ -694,6 +694,7 @@ class KlompUI():
       if key == TAB:
         self.enterPlayListMode()
       elif key == c.KEY_ENTER:
+        self.initialMessage = False
         self.enterPromptMode()
       elif key == ESCAPE:
         quitSlowly()
