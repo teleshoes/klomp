@@ -4,6 +4,7 @@ use warnings;
 use Sys::Hostname;
 
 my $usage = "Usage:
+  $0 -h    - show this message
   $0 playlist NAME - toggle between playlist NAME and the main playlist
      NAME cannot be 'main', and may contain only letters, numbers, or _s
      .klompcur and .klomplist are moved between three dirs
@@ -24,7 +25,6 @@ my $usage = "Usage:
   $0 pause - play/pause
   $0 next  - skip song
   $0 prev  - previous song
-  $0 -h    - show this message
   $0 <mplayer slave input command>
      see: mplayer -input cmdlist
      for complete command list
@@ -93,12 +93,12 @@ sub main(@){
     if(defined $name){
       system $0, 'playlist', $name;
     }
-  }elsif($cmd eq 'start'){
+  }elsif($cmd eq 'start' and @_ == 0){
     stop;
     start;
-  }elsif($cmd eq 'stop'){
+  }elsif($cmd eq 'stop' and @_ == 0){
     stop;
-  }elsif($cmd eq 'pause'){
+  }elsif($cmd eq 'pause' and @_ == 0){
     if(not isRunning){
       stop;
       defaultPlaylist;
@@ -110,12 +110,12 @@ sub main(@){
         system "echo pause > $FIFO";
       }
     }
-  }elsif($cmd eq 'next'){
+  }elsif($cmd eq 'next' and @_ == 0){
     stop;
     start if nextItem();
-  }elsif($cmd eq 'shuffle'){
+  }elsif($cmd eq 'shuffle' and @_ == 0){
     system "sort -R $KLOMPLIST -o $KLOMPLIST";
-  }elsif($cmd eq 'prev'){
+  }elsif($cmd eq 'prev' and @_ == 0){
     stop;
     start if prevItem();
   }else{
