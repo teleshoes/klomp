@@ -22,7 +22,7 @@ usage = """Usage:
     show this message
   %(exec)s [--debug]  [word word ..]
     interactive curses ui
-    initial query = "word word .."
+    the textbox is initially set to "word word ..", if passed in
     --debug means exceptions dont exit, and the tmp file './out' will be rm'd
 """ % {'exec': __file__}
 
