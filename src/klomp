@@ -41,10 +41,10 @@ def main(args):
     queryArgs = args[2:]
   else:
     queryArgs = args[1:]
-  initialQuery = ' '.join(queryArgs)
+  startingQuery = ' '.join(queryArgs)
 
   try:
-    curses.wrapper(KlompUI(initialQuery).start)
+    curses.wrapper(KlompUI(startingQuery).start)
   finally:
     if debug:
       os.system("rm out")
@@ -597,10 +597,10 @@ class KlompQuery():
 class Mode: Query, PlayList, Prompt = range(3)
 
 class KlompUI():
-  def __init__(self, initialQuery):
+  def __init__(self, startingQuery):
     self.klompQuery = KlompQuery()
     self.mode = Mode.Query
-    self.initialQuery = initialQuery
+    self.startingQuery = startingQuery
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
@@ -609,8 +609,8 @@ class KlompUI():
     self.playListDisplay = PlayListDisplay(height, width, attrs.get('playList'))
     self.prompt = Prompt(height, width, attrs.get('prompt'))
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
-    if self.initialQuery != None and len(self.initialQuery) > 0:
-      self.textEdit.setText(self.initialQuery)
+    if self.startingQuery != None and len(self.startingQuery) > 0:
+      self.textEdit.setText(self.startingQuery)
 
     self.enterQueryMode()
     while True:
