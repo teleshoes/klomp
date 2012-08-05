@@ -458,6 +458,37 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       songLen += 1
     return "%d Songs  %d Artists  %d Albums" % (
       songLen, len(artists), len(albums))
+  def updateInitialMessage(self):
+    self.clear()
+    self.updateSize()
+    self.printLines("""
+      Searching is case insensitive against title, album or artist.
+      Guess columns allow for unicode transforms and script transliteration.
+       Query syntax:
+       WORD: double-quoted string or non-whitespace, non-special string
+        ["a snack"] => a snack
+        ["@l^""$"] => @l^"$   {"" is a literal " in quoted string}
+       NOT: a ! at the start of a WORD
+        [love !"the beatles"] => love AND NOT(the beatles)
+       COLS: @ followed by any of tlagpn at the start of a WORD
+        t:title  l:album  a:artist  g:genre  p:path  n:number
+        [@ap"the beatles"] => COLS{ARTIST, PATH}(the beatles)
+       AND: whitespace or &&
+        [white && album , the] => white AND album AND , AND the
+       OR: || or ++
+        [regina || spektor ++ the beatles] =>
+          regina OR spektor OR (the AND beatles)
+       START: ^ at the beginning of a WORD
+        [^"come together" ^abbey] => START(come together) AND START(abbey)
+       END: ^ at the end of a WORD
+        [beatles love$ can't "a hard day's night"$] =>
+          beatles AND END(love) AND can't AND END(a hard day's night)
+       LIBRARY: @all or @ followed by a library name at the query start
+        [@all neil gaiman] => LIBRARY(ALL) neil AND gaiman
+        [@books neil gaiman] => LIBRARY(books) neil AND gaiman
+        [neil @d gaiman] => LIBRARY(ALL) neil AND @d AND gaiman
+      """)
+    self.win.noutrefresh()
   def update(self):
     self.clear()
     self.updateSize()
@@ -601,11 +632,13 @@ class KlompUI():
     self.klompQuery = KlompQuery()
     self.mode = Mode.Query
     self.startingQuery = startingQuery
+    self.initialMessage = True
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
     self.textEdit = TextEdit(0, width, attrs.get('textEdit'))
     self.queryDisplay = QueryDisplay(height, width, attrs.get('query'))
+    self.queryDisplay.setSongs([])
     self.playListDisplay = PlayListDisplay(height, width, attrs.get('playList'))
     self.prompt = Prompt(height, width, attrs.get('prompt'))
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
@@ -621,10 +654,16 @@ class KlompUI():
         self.updatePlayListDisplay()
       time.sleep(1)
   def updateSongs(self):
-    songs = self.klompQuery.maybePerformQuery(self.textEdit.getText())
-    if songs != None:
-      self.queryDisplay.setSongs(songs)
-      self.updateQueryDisplay()
+    text = self.textEdit.getText()
+    if text != "":
+      self.initialMessage = False
+    if self.initialMessage:
+      self.updateInitialMessage()
+    else:
+      songs = self.klompQuery.maybePerformQuery(self.textEdit.getText())
+      if songs != None:
+        self.queryDisplay.setSongs(songs)
+        self.updateQueryDisplay()
   def enterQueryMode(self):
     self.updateSongs()
     self.mode = Mode.Query
@@ -704,6 +743,11 @@ class KlompUI():
   def updateQueryDisplay(self):
     with uiLock:
       self.queryDisplay.update()
+      self.textEdit.updateCursor()
+      curses.doupdate()
+  def updateInitialMessage(self):
+    with uiLock:
+      self.queryDisplay.updateInitialMessage()
       self.textEdit.updateCursor()
       curses.doupdate()
   def updateTextEditDisplay(self):
