@@ -25,6 +25,7 @@ my $usage = "Usage:
   $0 pause - play/pause
   $0 next - skip song
   $0 prev - previous song
+  $0 shuffle - shuffle klomplist randomly
   $0 <mplayer slave input command>
      see: mplayer -input cmdlist
      for complete command list
@@ -113,11 +114,11 @@ sub main(@){
   }elsif($cmd eq 'next' and @_ == 0){
     stop;
     start if nextItem();
-  }elsif($cmd eq 'shuffle' and @_ == 0){
-    system "sort -R $KLOMPLIST -o $KLOMPLIST";
   }elsif($cmd eq 'prev' and @_ == 0){
     stop;
     start if prevItem();
+  }elsif($cmd eq 'shuffle' and @_ == 0){
+    system "sort -R $KLOMPLIST -o $KLOMPLIST";
   }else{
     my %okCmds = getAvailableInputCommands();
     if(defined $okCmds{$cmd}){
