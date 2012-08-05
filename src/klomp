@@ -265,6 +265,7 @@ class Prompt(LinePrinter):
       "  r     - REMOVE these files from KLOMPLIST",
       "",
       "shuffle => " + str(self.shuffle) + "  {space to toggle}",
+      ""])
     self.win.noutrefresh()
   def maybeShuffleTmpFile(self):
     if self.shuffle:
