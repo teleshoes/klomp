@@ -21,10 +21,10 @@ my $usage = "Usage:
        MAIN => HOME
   $0 playlist-main - if a named playlist is set, unset it
   $0 start - start
-  $0 stop  - stop
+  $0 stop - stop
   $0 pause - play/pause
-  $0 next  - skip song
-  $0 prev  - previous song
+  $0 next - skip song
+  $0 prev - previous song
   $0 <mplayer slave input command>
      see: mplayer -input cmdlist
      for complete command list
