@@ -23,8 +23,8 @@ my $usage = "Usage:
   $0 start - start
   $0 stop - stop
   $0 pause - play/pause
-  $0 next - skip song
   $0 prev - previous song
+  $0 next - skip song
   $0 shuffle - shuffle klomplist randomly
   $0 breaks [on|off|toggle] - add/remove '!klomp-cmd stop's in klomplist
      {e.g.: for sleeping with a book and not losing more than a chapter}
@@ -43,8 +43,8 @@ sub start();
 sub stop();
 sub isRunning();
 sub shellQuiet(@);
-sub nextItem();
 sub prevItem();
+sub nextItem();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
 sub backupPlaylist($);
@@ -117,12 +117,12 @@ sub main(@){
         system "echo pause > $FIFO";
       }
     }
-  }elsif($cmd eq 'next' and @_ == 0){
-    stop;
-    start if nextItem();
   }elsif($cmd eq 'prev' and @_ == 0){
     stop;
     start if prevItem();
+  }elsif($cmd eq 'next' and @_ == 0){
+    stop;
+    start if nextItem();
   }elsif($cmd eq 'shuffle' and @_ == 0){
     system "sort -R $KLOMPLIST -o $KLOMPLIST";
   }elsif($cmd eq 'breaks' and @_ == 1){
@@ -338,12 +338,12 @@ sub prevnext($$){
   }
 }
 
-sub nextItem(){
-  return prevnext $KLOMPLIST, $KLOMPHIST;
-}
-
 sub prevItem(){
   return prevnext $KLOMPHIST, $KLOMPLIST;
+}
+
+sub nextItem(){
+  return prevnext $KLOMPLIST, $KLOMPHIST;
 }
 
 &main(@ARGV);
