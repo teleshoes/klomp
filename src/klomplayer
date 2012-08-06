@@ -2,13 +2,11 @@
 use strict;
 use warnings;
 
+sub update($$);
 sub getSongAbsPath($$);
-my @mplayerOptions = (
-#  '-cache', '8192',
-#  '-cache-min', '20',
-);
 
 my $FIFO = '/tmp/klomplayer_fifo';
+my $PID_FILE = '/tmp/klomplayer_pid';
 system "rm", "-f", $FIFO;
 system "mkfifo", $FIFO;
 fork or exec "klomp-fifo-writer";
@@ -28,7 +26,6 @@ my ($initPos, $len, $lib, $relpath) = ($1, $2, $3, $4);
 my $songAbsPath = getSongAbsPath $lib, $relpath;
 die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
 
-my $PID_FILE = '/tmp/klomplayer_pid';
 if(-e $PID_FILE){
   my $pid = `cat $PID_FILE 2>/dev/null`;
   chomp $pid;
@@ -37,7 +34,7 @@ if(-e $PID_FILE){
 }
 
 my $pid = open FH, '-|',
-  'mplayer', @mplayerOptions,
+  'mplayer',
   '-quiet',
   '-input', "file=$FIFO",
   '-ss', $initPos,
@@ -48,29 +45,11 @@ system "echo $pid > $PID_FILE";
 my $line = '';
 while($line !~ /^Starting playback.../){
   $line = <FH>;
-  if(not defined $line){
-    die "Error starting mplayer\n";
-  }
+  die "Error starting mplayer\n" if not defined $line;
 }
 
 my $sexPos = undef;
 my $sexLen = undef;
-
-sub update($$){
-  my $pos = shift;
-  my $len = shift;
-  my $cur = `cat $KLOMPCUR`;
-  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) ([^@]*)\@(.*)/$pos $len $lib\@$relpath/){
-    die "Current file $KLOMPCUR malformed";
-  }
-  if($3 ne $lib or $4 ne $relpath){
-    die "Klomplayer thinks a different file is playing than whats in $KLOMPCUR\n";
-  }
-  open CURFILE, "> $KLOMPCUR";
-
-  print CURFILE $cur;
-  close CURFILE;
-}
 
 while(1){
   if(not -e $PID_FILE){
@@ -101,6 +80,22 @@ while(1){
     $sexPos = $1;
     update $sexPos, $sexLen if defined $sexPos and defined $sexLen;
   }
+}
+
+sub update($$){
+  my $pos = shift;
+  my $len = shift;
+  my $cur = `cat $KLOMPCUR`;
+  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) ([^@]*)\@(.*)/$pos $len $lib\@$relpath/){
+    die "Current file $KLOMPCUR malformed";
+  }
+  if($3 ne $lib or $4 ne $relpath){
+    die "Klomplayer thinks a different file is playing than whats in $KLOMPCUR\n";
+  }
+  open CURFILE, "> $KLOMPCUR";
+
+  print CURFILE $cur;
+  close CURFILE;
 }
 
 sub getSongAbsPath($$){
