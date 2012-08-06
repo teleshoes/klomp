@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+sub getSongAbsPath($$);
 my @mplayerOptions = (
 #  '-cache', '8192',
 #  '-cache-min', '20',
@@ -19,14 +20,13 @@ if(not -e $KLOMPCUR){
   die "$KLOMPCUR does not exist\n";
 }
 my $cur = `cat $KLOMPCUR`;
-my ($initPos, $len, $file);
-if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (.*)/){
+if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) ([^@]*)@(.*)/){
   die "Current file $KLOMPCUR malformed";
 }
 
-$initPos = $1;
-$len = $2;
-$file = $3;
+my ($initPos, $len, $lib, $relpath) = ($1, $2, $3, $4);
+my $songAbsPath = getSongAbsPath $lib, $relpath;
+die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
 
 my $PID_FILE = '/tmp/klomplayer_pid';
 if(-e $PID_FILE){
@@ -41,7 +41,7 @@ my $pid = open FH, '-|',
   '-quiet',
   '-input', "file=$FIFO",
   '-ss', $initPos,
-  $file;
+  $songAbsPath;
 
 system "echo $pid > $PID_FILE";
 
@@ -60,10 +60,10 @@ sub update($$){
   my $pos = shift;
   my $len = shift;
   my $cur = `cat $KLOMPCUR`;
-  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) (.*)/$pos $len $file/){
+  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) ([^@]*)\@(.*)/$pos $len $lib\@$relpath/){
     die "Current file $KLOMPCUR malformed";
   }
-  if($3 ne $file){
+  if($3 ne $lib or $4 ne $relpath){
     die "Klomplayer thinks a different file is playing than whats in $KLOMPCUR\n";
   }
   open CURFILE, "> $KLOMPCUR";
@@ -103,3 +103,19 @@ while(1){
   }
 }
 
+sub getSongAbsPath($$){
+  my ($lib, $relpath) = @_;
+  chomp(my $libPath = `klomp-lib -l $lib`);
+  my $absPath = "$libPath/$relpath";
+  if(-e $absPath){
+    return $absPath;
+  }
+  chomp(my $flacLibPath = `klomp-lib -f $lib`);
+  my $flacrelpath = $relpath;
+  $flacrelpath =~ s/\.flac$/\.ogg/i;
+  my $flacAbsPath = "$flacLibPath/$flacrelpath";
+  if(-e $flacAbsPath){
+    return $flacAbsPath;
+  }
+  return undef;
+}

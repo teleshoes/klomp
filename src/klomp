@@ -302,29 +302,19 @@ class Prompt(LinePrinter):
 
 class KlompLibs():
   def __init__(self):
-    self.libPaths = {}
-    self.flacmirrorPaths = {}
-    self.initialized = False
     self.sep = "///\\\\\\"
     reSep = self.sep.replace('\\', '\\\\')
     self.songRe = re.compile(''
-      + '(.*)'
+      + '([^@]*)@(.*)'
       + reSep + 'artist=' + '(.*)'
       + reSep + 'album=' + '(.*)'
       + reSep + 'number=' + '(.*)'
       + reSep + 'title=' + '(.*)'
       + reSep + 'query=' + '(.*)'
     )
-  def initLibs(self):
-    if self.initialized == False:
-      for lib in readProc(["klomp-lib"]).splitlines():
-        self.libPaths[lib] = readProc(["klomp-lib", "-l", lib]).rstrip()
-        self.flacmirrorPaths[lib] = readProc(["klomp-lib", "-f", lib]).rstrip()
-      self.initialized = True
   def toString(self, song):
-    path = self.toAbsPath(song)
     return (
-        path +
+        song['library'] + '@' + song['relpath'] +
         self.sep + "artist=" + song['artist'] +
         self.sep + "album=" + song['album'] +
         self.sep + "number=" + song['number'] +
@@ -334,14 +324,13 @@ class KlompLibs():
     song = {}
     m = self.songRe.match(s)
     if m:
-      library, relpath = self.fromAbsPath(m.group(1))
-      song['library'] = library
-      song['relpath'] = relpath
-      song['artist'] = m.group(2)
-      song['album'] = m.group(3)
-      song['number'] = m.group(4)
-      song['title'] = m.group(5)
-      song['query'] = m.group(6)
+      song['library'] = m.group(1)
+      song['relpath'] = m.group(2)
+      song['artist'] = m.group(3)
+      song['album'] = m.group(4)
+      song['number'] = m.group(5)
+      song['title'] = m.group(6)
+      song['query'] = m.group(7)
       return song
     else:
       return None
@@ -359,36 +348,6 @@ class KlompLibs():
         song['pos'] = pos
         return song
     return None
-  def toAbsPath(self, song):
-    self.initLibs()
-    lib = song['library']
-    relpath = song['relpath']
-    path = self.libPaths[lib] + "/" + song['relpath']
-    if not os.path.exists(path):
-      flacmirrorPath = self.flacmirrorPaths[lib] + "/" + song['relpath']
-      flacmirrorPath = self.flacToOgg(flacmirrorPath)
-      if os.path.exists(flacmirrorPath):
-        path = flacmirrorPath
-    return path
-  def fromAbsPath(self, path):
-    self.initLibs()
-    for lib in self.libPaths.keys():
-      libPath = self.libPaths[lib] + '/'
-      if path.startswith(libPath):
-        library = lib
-        relpath = path.replace(libPath, '', 1)
-        return library, relpath
-      flacmirrorPath = self.flacmirrorPaths[lib]
-      if path.startswith(flacmirrorPath):
-        library = lib
-        relpath = path.replace(flacmirrorPath, '', 1)
-        relpath = self.oggToFlac(relpath)
-        return library, relpath
-    return None, None
-  def flacToOgg(self, s):
-    return re.sub(r'\.flac$', '.ogg', s)
-  def oggToFlac(self, s):
-    return re.sub(r'\.ogg$', '.flac', s)
 klompLibs = KlompLibs()
 
 class QueryDisplay(LinePrinter, OffsetListDisplay):
