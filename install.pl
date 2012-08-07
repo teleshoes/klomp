@@ -18,6 +18,7 @@ if(`whoami` ne "root\n"){
 
 my @execs = qw(
   flacmirror
+  presync
   klomplayer
   klomp
   klomp-call-handler
