@@ -22,6 +22,7 @@ my $usage = "Usage:
   $0 playlist-main - if a named playlist is set, unset it
   $0 start - start
   $0 stop - stop
+  $0 restart - if klomplayer is running, stops and then starts
   $0 pause - play/pause
   $0 prev - previous song
   $0 next - skip song
@@ -104,6 +105,12 @@ sub main(@){
     start;
   }elsif($cmd eq 'stop' and @_ == 0){
     stop;
+  }elsif($cmd eq 'restart' and @_ == 0){
+    system "kill -0 `cat /tmp/klomplayer_pid` 1>/dev/null 2>/dev/null";
+    if($? == 0){
+      stop;
+      start 1;
+    }
   }elsif($cmd eq 'pause' and @_ == 0){
     if(not isRunning){
       stop;
