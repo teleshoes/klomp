@@ -516,7 +516,9 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       ord('r'):    'shuffle',
       ord('b'):    'breaks toggle',
       ord('a'):    'seek -60',
-      ord('s'):    'seek 60'}
+      ord('s'):    'seek 60',
+      c.KEY_LEFT:  'seek -10',
+      c.KEY_RIGHT: 'seek 10'}
     for key in keys:
       if key > 0 and key < 256:
         ch = chr(key).lower()
