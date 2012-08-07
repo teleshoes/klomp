@@ -510,21 +510,22 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
   def handleKeys(self, keys):
     c = curses
     klompcmds = {
-      ' ': 'pause',
-      'z': 'prev',
-      'x': 'next',
-      'r': 'shuffle',
-      'b': 'breaks toggle',
-      'a': 'seek -60',
-      's': 'seek 60'}
+      ord(' '):    'pause',
+      ord('z'):    'prev',
+      ord('x'):    'next',
+      ord('r'):    'shuffle',
+      ord('b'):    'breaks toggle',
+      ord('a'):    'seek -60',
+      ord('s'):    'seek 60'}
     for key in keys:
       if key > 0 and key < 256:
         ch = chr(key).lower()
-        if ch == 'q':
-          quitSlowly()
-        elif ch in klompcmds:
-          klompcmd = klompcmds[ch]
-          os.system('nohup klomp-cmd ' + klompcmd + ' 1>/dev/null 2>&1 &')
+        key = ord(ch)
+      if key == ord('q'):
+        quitSlowly()
+      elif key in klompcmds:
+        klompcmd = klompcmds[key]
+        os.system('nohup klomp-cmd ' + klompcmd + ' 1>/dev/null 2>&1 &')
   def formatSong(self, song):
     sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
     sep = ' ' + sep + ' '
