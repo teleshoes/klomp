@@ -23,6 +23,7 @@ sub main(@){
     open FIFO, "> $FIFO" or die "Couldn't open FIFO $FIFO for writing";
     print FIFO "pausing_keep_force get_time_length\n";
     print FIFO "pausing_keep_force get_time_pos\n";
+    print FIFO "pausing_keep_force get_property pause\n";
     close FIFO;
   }
 }
