@@ -38,7 +38,6 @@ my $usage = "Usage:
 ";
 
 sub isPhone();
-sub defaultPlaylist();
 sub start();
 sub stop();
 sub isRunning();
@@ -108,7 +107,6 @@ sub main(@){
   }elsif($cmd eq 'pause' and @_ == 0){
     if(not isRunning){
       stop;
-      defaultPlaylist;
       start;
     }else{
       if(isPhone){
@@ -205,12 +203,6 @@ sub getAvailableInputCommands(){
 
 sub isPhone(){
   return hostname() =~ /(n9|n900)$/i ? 1 : 0;
-}
-sub defaultPlaylist(){
-  my @KLOMPLIST = -e $KLOMPLIST ? `cat $KLOMPLIST` : ();
-  if(@KLOMPLIST == 0){
-    system "$0 -a";
-  }
 }
 sub start(){
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
