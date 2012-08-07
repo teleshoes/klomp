@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-sub update($$);
+sub update($$$);
 sub getSongAbsPath($$);
 
 my $FIFO = '/tmp/klomplayer_fifo';
@@ -18,11 +18,11 @@ if(not -e $KLOMPCUR){
   die "$KLOMPCUR does not exist\n";
 }
 my $cur = `cat $KLOMPCUR`;
-if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) ([^@]*)@(.*)/){
+if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
   die "Current file $KLOMPCUR malformed";
 }
 
-my ($initPos, $len, $lib, $relpath) = ($1, $2, $3, $4);
+my ($initPos, $len, $paused, $lib, $relpath) = ($1, $2, $3, $4, $5);
 my $songAbsPath = getSongAbsPath $lib, $relpath;
 die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
 
@@ -40,6 +40,8 @@ my $pid = open FH, '-|',
   '-ss', $initPos,
   $songAbsPath;
 
+system "echo pause > $FIFO" if $paused =~ /^paused/;
+
 system "echo $pid > $PID_FILE";
 
 my $line = '';
@@ -50,6 +52,7 @@ while($line !~ /^Starting playback.../){
 
 my $sexPos = undef;
 my $sexLen = undef;
+my $paused = 'no';
 
 while(1){
   if(not -e $PID_FILE){
@@ -75,21 +78,27 @@ while(1){
   }
   if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
     $sexLen = $1;
-    update $sexPos, $sexLen if defined $sexPos and defined $sexLen;
+    update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
   }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
     $sexPos = $1;
-    update $sexPos, $sexLen if defined $sexPos and defined $sexLen;
+    update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+  }elsif($line =~ /^ANS_pause=(yes|no)$/){
+    $paused = $1;
+    update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
   }
 }
 
-sub update($$){
+sub update($$$){
   my $pos = shift;
   my $len = shift;
+  my $paused = shift;
   my $cur = `cat $KLOMPCUR`;
-  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) ([^@]*)\@(.*)/$pos $len $lib\@$relpath/){
+  my $pausedDisplay = $paused eq 'yes' ? 'paused ' : '';
+  my $new = "$pos $len $pausedDisplay$lib\@$relpath";
+  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)\@(.*)/$new/){
     die "Current file $KLOMPCUR malformed";
   }
-  if($3 ne $lib or $4 ne $relpath){
+  if($4 ne $lib or $5 ne $relpath){
     die "Klomplayer thinks a different file is playing than whats in $KLOMPCUR\n";
   }
   open CURFILE, "> $KLOMPCUR";
