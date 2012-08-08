@@ -52,7 +52,7 @@ while($line !~ /^Starting playback.../){
 
 my $sexPos = undef;
 my $sexLen = undef;
-my $paused = 'no';
+$paused = 'no';
 
 while(1){
   if(not -e $PID_FILE){
