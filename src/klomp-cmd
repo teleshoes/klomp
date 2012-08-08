@@ -215,9 +215,7 @@ sub start(;$){
   my $keepPaused = shift;
   $keepPaused = 0 if not defined $keepPaused;
   if(not $keepPaused){
-    system "cat $KLOMPCUR";
     system "sed -i 's/^\\([0-9.]\\+ [0-9.]\\+\\) paused/\\1/' $KLOMPCUR";
-    system "cat $KLOMPCUR";
   }
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
 }
