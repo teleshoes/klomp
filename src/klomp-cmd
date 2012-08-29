@@ -187,9 +187,9 @@ sub setBreaks($){
   my @nonBreakLines = grep {$_ ne $breakLine} @lines;
   my @newLines;
   if($arg eq 'on' or ($arg eq 'toggle' and @nonBreakLines == @lines)){
-    for(my $i=0; $i<@nonBreakLines; $i++){
-      push @newLines, $nonBreakLines[$i];
-      push @newLines, $breakLine if $i ne $#nonBreakLines;
+    for my $line(@nonBreakLines){
+      push @newLines, $breakLine;
+      push @newLines, $line;
     }
   }else{
     @newLines = @nonBreakLines;
