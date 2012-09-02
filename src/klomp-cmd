@@ -52,6 +52,7 @@ sub restorePlaylist($);
 sub getPlaylistName();
 sub setPlaylistName($);
 sub setBreaks($);
+sub lpsmagic();
 
 if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
@@ -95,6 +96,7 @@ sub main(@){
       restorePlaylist $alt if -e $alt;
       setPlaylistName $name;
     }
+    lpsmagic();
   }elsif($cmd eq 'playlist-main'){
     my $name = getPlaylistName;
     if(defined $name){
@@ -212,9 +214,7 @@ sub isPhone(){
   return hostname() =~ /(n9|n900)$/i ? 1 : 0;
 }
 sub start(;$){
-  if(isPhone()){
-    system "lpsmagic", "-once";
-  }
+  lpsmagic();
   my $keepPaused = shift;
   $keepPaused = 0 if not defined $keepPaused;
   if(not $keepPaused){
@@ -351,6 +351,10 @@ sub prevItem(){
 
 sub nextItem(){
   return prevnext $KLOMPLIST, $KLOMPHIST;
+}
+
+sub lpsmagic(){
+  system "lpsmagic -once &" if isPhone();
 }
 
 &main(@ARGV);
