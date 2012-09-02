@@ -212,15 +212,15 @@ sub isPhone(){
   return hostname() =~ /(n9|n900)$/i ? 1 : 0;
 }
 sub start(;$){
+  if(isPhone()){
+    system "lpsmagic", "-once";
+  }
   my $keepPaused = shift;
   $keepPaused = 0 if not defined $keepPaused;
   if(not $keepPaused){
     system "sed -i 's/^\\([0-9.]\\+ [0-9.]\\+\\) paused/\\1/' $KLOMPCUR";
   }
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
-  if(isPhone()){
-    system "lpsmagic", "-once";
-  }
 }
 
 sub stop(){
