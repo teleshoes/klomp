@@ -218,6 +218,9 @@ sub start(;$){
     system "sed -i 's/^\\([0-9.]\\+ [0-9.]\\+\\) paused/\\1/' $KLOMPCUR";
   }
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
+  if(isPhone()){
+    system "lpsmagic", "-once";
+  }
 }
 
 sub stop(){
