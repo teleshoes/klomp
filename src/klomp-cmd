@@ -39,9 +39,10 @@ my $usage = "Usage:
 ";
 
 sub isPhone();
+sub getPid();
+sub isRunning();
 sub start(;$);
 sub stop();
-sub isRunning();
 sub shellQuiet(@);
 sub prevItem();
 sub nextItem();
@@ -213,6 +214,27 @@ sub getAvailableInputCommands(){
 sub isPhone(){
   return hostname() =~ /(n9|n900)$/i ? 1 : 0;
 }
+
+sub getPid(){
+  if(-e $PID_FILE){
+    my $pid = `cat $PID_FILE`;
+    chomp $pid;
+    return $pid;
+  }else{
+    return undef;
+  }
+}
+
+sub isRunning(){
+  my $pid = getPid;
+  if(defined $pid){
+    system "kill", "-0", $pid;
+    return $? == 0 ? 1 : 0;
+  }else{
+    return 0;
+  }
+}
+
 sub start(;$){
   lpsmagic();
   my $keepPaused = shift;
@@ -224,19 +246,14 @@ sub start(;$){
 }
 
 sub stop(){
-  if(-e $PID_FILE){
-    system "kill -9 `cat $PID_FILE`";
+  my $pid = getPid();
+  if(defined $pid){
+    system "kill", "-9", $pid;
     system "rm $PID_FILE";
   }
   system "killall -9 mplayer" if isPhone;
   system "rm -f /tmp/klomplayer*";
 }
-sub isRunning(){
-  if(-e $PID_FILE){
-    system "kill -0 `cat $PID_FILE`";
-    return $? == 0 ? 1 : 0;
-  }else{
-    return 0;
   }
 }
 
