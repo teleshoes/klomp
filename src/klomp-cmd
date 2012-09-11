@@ -97,7 +97,7 @@ sub main(@){
       restorePlaylist $alt if -e $alt;
       setPlaylistName $name;
     }
-    lpsmagic();
+    lpsmagic() if isPhone();
   }elsif($cmd eq 'playlist-main'){
     my $name = getPlaylistName;
     if(defined $name){
@@ -109,17 +109,16 @@ sub main(@){
   }elsif($cmd eq 'stop' and @_ == 0){
     stop;
   }elsif($cmd eq 'restart' and @_ == 0){
-    system "kill -0 `cat /tmp/klomplayer_pid` 1>/dev/null 2>/dev/null";
-    if($? == 0){
+    if(isRunning()){
       stop;
       start 1;
     }
   }elsif($cmd eq 'pause' and @_ == 0){
-    if(not isRunning){
+    if(not isRunning()){
       stop;
       start;
     }else{
-      if(isPhone){
+      if(isPhone()){
         stop;
       }else{
         system "echo pause > $FIFO";
@@ -132,7 +131,7 @@ sub main(@){
     stop;
     start if nextItem();
   }elsif($cmd eq 'shuffle' and @_ == 0){
-    system "sort -R $KLOMPLIST -o $KLOMPLIST";
+    system "sort", "-R", $KLOMPLIST, "-o", $KLOMPLIST;
   }elsif($cmd eq 'breaks' and @_ == 1){
     my $arg = shift;
     die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
@@ -250,6 +249,7 @@ sub removePause(){
 sub start(;$){
   lpsmagic();
   removePause() unless @_ > 0 and $_[0];
+
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
 }
 
@@ -257,9 +257,9 @@ sub stop(){
   my $pid = getPid();
   if(defined $pid){
     system "kill", "-9", $pid;
-    system "rm $PID_FILE";
+    system "rm", $PID_FILE;
   }
-  system "killall -9 mplayer" if isPhone;
+  system "killall", "-9", "mplayer" if isPhone();
   system "rm -f /tmp/klomplayer*";
 }
   }
@@ -379,7 +379,7 @@ sub nextItem(){
 }
 
 sub lpsmagic(){
-  system "lpsmagic -once &" if isPhone();
+  system "lpsmagic -once &";
 }
 
 &main(@ARGV);
