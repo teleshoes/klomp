@@ -235,13 +235,21 @@ sub isRunning(){
   }
 }
 
+sub removePause(){
+  open FH, "< $KLOMPCUR";
+  my @lines = <FH>;
+  close FH;
+
+  $lines[0] =~ s/^([0-9.]+) ([0-9.]+) paused/$1 $2/;
+
+  open FH, "> $KLOMPCUR";
+  print FH @lines;
+  close FH;
+}
+
 sub start(;$){
   lpsmagic();
-  my $keepPaused = shift;
-  $keepPaused = 0 if not defined $keepPaused;
-  if(not $keepPaused){
-    system "sed -i 's/^\\([0-9.]\\+ [0-9.]\\+\\) paused/\\1/' $KLOMPCUR";
-  }
+  removePause() unless @_ > 0 and $_[0];
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
 }
 
