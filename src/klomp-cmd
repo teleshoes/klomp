@@ -43,6 +43,7 @@ sub getPid();
 sub isRunning();
 sub start(;$);
 sub stop();
+sub renice();
 sub shellQuiet(@);
 sub prevItem();
 sub nextItem();
@@ -251,6 +252,10 @@ sub start(;$){
   removePause() unless @_ > 0 and $_[0];
 
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
+  if(isPhone()){
+    sleep 1;
+    renice();
+  }
 }
 
 sub stop(){
@@ -262,6 +267,11 @@ sub stop(){
   system "killall", "-9", "mplayer" if isPhone();
   system "rm -f /tmp/klomplayer*";
 }
+
+sub renice(){
+  my $pid = getPid();
+  if(defined $pid){
+    system "sudo", "renice", "-n", "-12", $pid;
   }
 }
 
