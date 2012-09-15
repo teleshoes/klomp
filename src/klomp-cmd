@@ -138,8 +138,8 @@ sub main(@){
     die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
     setBreaks $arg;
   }else{
-    my %okCmds = getAvailableInputCommands();
-    if(defined $okCmds{$cmd}){
+    my $okCmds = getAvailableInputCommands();
+    if(defined $$okCmds{$cmd}){
       system "echo \"$cmd @_\" > $FIFO";
     }else{
       die $usage;
@@ -204,11 +204,11 @@ sub setBreaks($){
 
 sub getAvailableInputCommands(){
   my %cmds;
-  my $_ = `mplayer -input cmdlist`;
-  while(/^([a-z_]+)\s*(.*)/mg){
-    $cmds{$1} = $2;
+  my $cmdlist = `mplayer -input cmdlist`;
+  while($cmdlist =~ /^([a-z_]+)/mg){
+    $cmds{$1} = 1;
   }
-  return %cmds;
+  return \%cmds;
 }
 
 sub isPhone(){
