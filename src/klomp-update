@@ -2,47 +2,67 @@
 use strict;
 use warnings;
 
-if(@ARGV == 1 and $ARGV[0] =~ /^(-h|--help)$/){
-  die "Usage:\n"
-    . "  $0                        update all libs\n"
-    . "  $0 LIB [LIB LIB ..]       updated specified libs\n";
-}
-my $allLibs = 0;
-$allLibs = 1 if @ARGV == 0;
-my %okLibs = map {$_ => 1} @ARGV;
+my $usage = "Usage:
+  $0                        update all libs
+  $0 LIB [LIB LIB ..]       updated specified libs
+";
 
-my @libs = `klomp-lib`;
-chomp foreach @libs;
+sub ensureDb();
+sub getLibs(@);
 
-if(not -e "$ENV{HOME}/.klompdb"){
-  print "No db file; creating from scratch\n";
-  system 'klomp-db', '-c';
-}
+sub main(@){
+  die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
 
-for my $lib(@libs){
-  if(not $allLibs and not defined $okLibs{$lib}){
-    print "\nSkipped library: $lib\n";
-    next;
+  my @libs = getLibs();
+  ensureDb();
+
+  for my $lib(@libs){
+    print "\nHandling library: $lib\n";
+
+    system 'klomp-db', '-m', $lib;
+    system 'klomp-db', '-u', $lib;
   }
-  print "\nHandling library: $lib\n";
 
-  system 'klomp-db', '-m', $lib;
-  system 'klomp-db', '-u', $lib;
-}
+  for my $lib(@libs){
+    my $dir = `klomp-lib -l $lib`;
+    chomp $dir;
+    my $flacMirrorDir = `klomp-lib -f $lib`;
+    chomp $flacMirrorDir;
+    system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir ne "";
 
-for my $lib(@libs){
-  if(not $allLibs and not defined $okLibs{$lib}){
-    print "\nSkipped flacmirror for: $lib\n";
-    next;
-  }
-  my $dir = `klomp-lib -l $lib`;
-  chomp $dir;
-  my $flacMirrorDir = `klomp-lib -f $lib`;
-  chomp $flacMirrorDir;
-  system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir;
-  
-  if(-e $flacMirrorDir and -e $dir){
-    print "\nflacmirror for: $lib\n";
-    system "flacmirror $dir $flacMirrorDir";
+    if(-e $flacMirrorDir and -e $dir){
+      print "\nflacmirror for: $lib\n";
+      system "flacmirror $dir $flacMirrorDir";
+    }
   }
 }
+
+sub ensureDb(){
+  print "ensuring klomp db\n";
+  system "klomp-db -c 2>/dev/null";
+  print "created db\n" if $? == 0;
+}
+
+sub getLibs(@){
+  my @libs = @_;
+  my @allLibs = split /\n/, `klomp-lib`;
+
+  @libs = @allLibs if @libs == 0;
+
+  my %okLibs = map {$_ => 1} @allLibs;
+  my %givenLibs = map {$_ => 1} @libs;
+  for my $lib(@libs){
+    if(not defined $okLibs{$lib}){
+      die "Unrecognized library name: $lib\nAvailable: @allLibs\n";
+    }
+  }
+  for my $lib(@allLibs){
+    if(not defined $givenLibs{$lib}){
+      print "skipped: $lib\n";
+    }
+  }
+
+  return @libs;
+}
+
+&main(@ARGV);
