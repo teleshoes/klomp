@@ -7,6 +7,7 @@ my $usage = "Usage:
   $0 LIB [LIB LIB ..]       updated specified libs
 ";
 
+sub runOrDie(@);
 sub ensureDb();
 sub getLibs(@);
 
@@ -19,8 +20,8 @@ sub main(@){
   for my $lib(@libs){
     print "\nHandling library: $lib\n";
 
-    system 'klomp-db', '-m', $lib;
-    system 'klomp-db', '-u', $lib;
+    runOrDie 'klomp-db', '-m', $lib;
+    runOrDie 'klomp-db', '-u', $lib;
   }
 
   for my $lib(@libs){
@@ -32,9 +33,15 @@ sub main(@){
 
     if(-e $flacMirrorDir and -e $dir){
       print "\nflacmirror for: $lib\n";
-      system "flacmirror $dir $flacMirrorDir";
+      runOrDie "flacmirror $dir $flacMirrorDir";
     }
   }
+}
+
+sub runOrDie(@){
+  print "@_\n";
+  system @_;
+  die "\n'@_' failed\n" if $? != 0;
 }
 
 sub ensureDb(){
