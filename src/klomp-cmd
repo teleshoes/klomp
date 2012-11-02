@@ -173,12 +173,18 @@ sub backupPlaylist($){
   system "mkdir", "-p", $dir;
   die "error: could not create $dir!\n" if not -e $dir;
 
-  system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $dir;
+  if(-e "$dir/.klompcur" or -e "$dir/.klomplist"){
+    die "$dir should not have klompcur or klomplist";
+  }
+  system "mv", "-b", $KLOMPCUR, $KLOMPLIST, $dir;
 }
 sub restorePlaylist($){
   my $dir = shift;
   die "error: $dir doesnt exist!\n" if not -e $dir;
-  system "mv", "--no-clobber", "$dir/.klompcur", "$dir/.klomplist", $ENV{HOME};
+  if(-e $KLOMPLIST or -e $KLOMPCUR){
+    die "$ENV{HOME} should not have klompcur or klomplist";
+  }
+  system "mv", "-b", "$dir/.klompcur", "$dir/.klomplist", $ENV{HOME};
   system "rmdir", $dir;
   die "error: $dir still exists!\n" if -e $dir;
 }
