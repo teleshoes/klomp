@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import with_statement
 import curses
 import curses.textpad
 import time
