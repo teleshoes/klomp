@@ -242,6 +242,7 @@ sub isRunning(){
 }
 
 sub removePause(){
+  return if not -e $KLOMPCUR;
   open FH, "< $KLOMPCUR";
   my @lines = <FH>;
   close FH;
