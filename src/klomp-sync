@@ -2,6 +2,9 @@
 use strict;
 use warnings;
 
+sub sync($$$);
+sub remoteSync($$);
+
 my $klompDb = "$ENV{HOME}/.klompdb";
 
 my $klompLib = "$ENV{HOME}/.klomplib";
@@ -14,19 +17,24 @@ my %okExts = map {$_ => 1} qw(
   mp3 m4a wma
 );
 
-my $usage = "$0 [user@]host OPTS
+my $usage = "Usage:
+  $0 [user@]host OPTS        get remote klomp lib, and rsync local=>remote
+  $0 --local klomplib OPTS   use another local klomp lib instead of a remote
+  $0 -h|--help               print this message
   OPTS:  --force-flacs, --no-force-flacs
                If a library has a flacmirror on the destination,
                flacs are omitted. This flag makes them never be omitted.
 ";
 
-sub run(@){
+sub runOrDie(@){
   print "@_\n";
   system @_;
+  die "'@_' failed with exit code $?\n" if $? != 0;
 }
 
 sub syncDir($$$@){
   my ($local, $remote, $host, @whitelist) = @_;
+
   my @args;
   #include subdirs
   push @args, "--include=*/";
@@ -40,22 +48,55 @@ sub syncDir($$$@){
   #delete trailing slashes
   $local =~ s/\/$//;
   $remote =~ s/\/$//;
-  run "ssh", "$host", "mkdir -p $remote";
-  run "presync", "$local", "$host:$remote";
-  run "rsync",
+
+  if(defined $host){
+    runOrDie "ssh", "$host", "mkdir -p $remote";
+  }else{
+    runOrDie "mkdir -p $remote";
+  }
+
+  my $dest = defined $host ? "$host:$remote" : $remote;
+
+  runOrDie "presync", "$local", $dest;
+  runOrDie "rsync",
     "--delete-after", "-av",
     "--progress",
     "$local/",
-    "$host:$remote",
+    $dest,
     @args;
 }
 
 
 sub main(@){
+  if(@_ == 1 and $_[0] =~ /^(-h|--help)$/){
+    print $usage;
+    exit 0;
+  }
+  my ($host, $localKlompLib);
+  if(@_ >= 2 and $_[0] eq "--local"){
+    shift;
+    $localKlompLib = shift;
+  }else{
+    $host = shift;
+  }
+
+  my $forceFlacs = 0;
+  if(@_ == 1){
+    my $arg = shift();
+    die $usage if $arg !~ /^(--(no-)?force-flacs)$/;
+    $forceFlacs = $arg eq '--force-flacs' ? 1 : 0;
+  }
+
+  if(defined $host){
+    remoteSync($host, $forceFlacs);
+  }elsif(defined $localKlompLib){
+    sync(undef, $localKlompLib, $forceFlacs);
+  }
+}
+
+sub remoteSync($$){
   my $host = shift;
-  my $forceFlacs = shift() || '--no-force-flacs';
-  die $usage if not defined $host or $forceFlacs !~ /^(--(no-)?force-flacs)$/;
-  $forceFlacs = $forceFlacs eq '--force-flacs' ? 1 : 0;
+  my $forceFlacs = shift;
 
   print "Copying remote .klomplib here to read\n";
   system 'scp', "$host:~/.klomplib", $tmpKlompLib;
@@ -64,8 +105,16 @@ sub main(@){
   print "Overwriting remote .klompdb with local .klompdb\n";
   system 'scp', $klompDb, "$host:~";
 
+  sync($host, $tmpKlompLib, $forceFlacs);
+}
+
+sub sync($$$){
+  my $host = shift;
+  my $klompLib = shift;
+  my $forceFlacs = shift;
+
   my %libs = map {chomp; $_ => 1} `klomp-lib`;
-  my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$tmpKlompLib`;
+  my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$klompLib`;
 
   for my $lib(sort keys %libs){
     print "\n\nSYNCING $lib\n";
@@ -75,13 +124,13 @@ sub main(@){
     }
     my $path = `klomp-lib -l $lib`;
     chomp $path;
-    my $remotePath = `klomp-lib --file=$tmpKlompLib -l $lib`;
+    my $remotePath = `klomp-lib --file=$klompLib -l $lib`;
     chomp $remotePath;
 
     my $flacmirrorPath = `klomp-lib -f $lib`;
     chomp $flacmirrorPath;
     
-    my $remoteFlacmirrorPath = `klomp-lib --file=$tmpKlompLib -f $lib`;
+    my $remoteFlacmirrorPath = `klomp-lib --file=$klompLib -f $lib`;
     chomp $remoteFlacmirrorPath;
 
     my %exts = %okExts;
