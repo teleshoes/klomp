@@ -98,7 +98,7 @@ sub main(@){
       restorePlaylist $alt if -e $alt;
       setPlaylistName $name;
     }
-    lpsmagic() if isPhone();
+    lpsmagic() if isN9();
   }elsif($cmd eq 'playlist-main'){
     my $name = getPlaylistName;
     if(defined $name){
@@ -254,11 +254,11 @@ sub removePause(){
 }
 
 sub start(;$){
-  lpsmagic();
+  lpsmagic() if isN9();
   removePause() unless @_ > 0 and $_[0];
 
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
-  if(isPhone()){
+  if(isN9()){
     sleep 1;
     renice();
   }
