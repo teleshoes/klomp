@@ -256,9 +256,12 @@ sub removePause(){
 }
 
 sub ensureKlompCur(){
-  open FH, "< $KLOMPCUR";
-  my @lines = <FH>;
-  close FH;
+  my @lines;
+  if(-e $KLOMPCUR){
+    open FH, "< $KLOMPCUR";
+    @lines = <FH>;
+    close FH;
+  }
 
   nextItem() if @lines == 0;
 }
