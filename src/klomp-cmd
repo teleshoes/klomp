@@ -284,7 +284,7 @@ sub stop(){
     system "kill", "-9", $pid;
     system "rm", $PID_FILE;
   }
-  system "killall", "-9", "mplayer" if isPhone();
+  system "killall -9 mplayer 2>/dev/null" if isPhone();
   system "rm -f /tmp/klomplayer*";
 }
 
