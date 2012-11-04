@@ -212,7 +212,7 @@ sub getAvailableInputCommands(){
 }
 
 sub isPhone(){
-  return isN9() or isN900();
+  return (isN9() or isN900()) ? 1 : 0;
 }
 sub isN9(){
   return hostname() =~ /n9$/ ? 1 : 0;
