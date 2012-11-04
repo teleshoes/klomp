@@ -254,9 +254,18 @@ sub removePause(){
   close FH;
 }
 
+sub ensureKlompCur(){
+  open FH, "< $KLOMPCUR";
+  my @lines = <FH>;
+  close FH;
+
+  nextItem() if @lines == 0;
+}
+
 sub start(;$){
   lpsmagic() if isN9();
   removePause() unless @_ > 0 and $_[0];
+  ensureKlompCur();
 
   fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
   if(isN9()){
