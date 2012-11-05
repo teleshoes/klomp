@@ -5,11 +5,11 @@ import curses.textpad
 import time
 import sys
 import os
+import os.path
 import subprocess
 import threading
 import csv
 import re
-
 import locale
 locale.setlocale(locale.LC_ALL,"")
 
@@ -248,8 +248,13 @@ class Prompt(LinePrinter):
     self.shuffle = True
   def setSongEntries(self, songEntries):
     self.songCount = len(songEntries)
-    os.system("rm /tmp/klomplist_* 2>/dev/null")
-    self.tmpFile = "/tmp/klomplist_" + str(millisNow())
+    phoneDir = '/home/user/MyDocs'
+    if os.path.isdir(phoneDir):
+      tmpDir = phoneDir
+    else:
+      tmpDir = '/tmp'
+    os.system("rm " + tmpDir + "/klomplist_* 2>/dev/null")
+    self.tmpFile = tmpDir + "/klomplist_" + str(millisNow())
 
     with open(self.tmpFile, 'w') as f:
       f.writelines(songEntries)
