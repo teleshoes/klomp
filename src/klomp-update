@@ -14,7 +14,7 @@ sub getLibs(@);
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
 
-  my @libs = getLibs();
+  my @libs = getLibs(@_);
   ensureDb();
 
   for my $lib(@libs){
