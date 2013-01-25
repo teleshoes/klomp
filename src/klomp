@@ -288,6 +288,7 @@ class Prompt(LinePrinter):
     self.win.noutrefresh()
   def sortSongs(self):
     if self.order == "shuffle":
+      self.songs = list(self.songs)
       shuffle(self.songs)
   def applySongs(self, mode):
     self.sortSongs()
