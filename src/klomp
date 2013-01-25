@@ -1,5 +1,7 @@
 #!/usr/bin/python
 from __future__ import with_statement
+from itertools import cycle
+from random import shuffle
 import curses
 import curses.textpad
 import time
@@ -242,26 +244,36 @@ class TextEdit(LinePrinter):
     self.win.move(0, pos)
     curses.setsyx(self.y, pos)
 
+class KlompListHandler():
+  def readEntries(self):
+    with open(KLOMP_LIST, 'r') as f:
+      return f.readlines()
+  def writeEntries(self, entries, mode):
+    with open(KLOMP_LIST, mode) as f:
+      f.writelines(entries)
+
+  def append(self, entries):
+    self.writeEntries(entries, 'a')
+  def prepend(self, entries):
+    self.writeEntries(entries + self.readEntries(), 'w')
+  def overwrite(self, entries):
+    self.writeEntries(entries, 'w')
+
 class Prompt(LinePrinter):
   def __init__(self, height, width, attrs=None):
     LinePrinter.__init__(self, height, width, 2, 0, attrs)
-    self.shuffle = True
-  def setSongEntries(self, songEntries):
-    self.songCount = len(songEntries)
-    phoneDir = '/home/user/MyDocs'
-    if os.path.isdir(phoneDir):
-      tmpDir = phoneDir
-    else:
-      tmpDir = '/tmp'
-    os.system("rm " + tmpDir + "/klomplist_* 2>/dev/null")
-    self.tmpFile = tmpDir + "/klomplist_" + str(millisNow())
-
-    with open(self.tmpFile, 'w') as f:
-      f.writelines(songEntries)
+    self.klompListHandler = KlompListHandler()
+    self.orders = ["shuffle", "artist/album/tracknum"]
+  def resetOrder(self):
+    self.orderIt = cycle(self.orders)
+    self.order = self.orderIt.next()
+  def setSongs(self, songs):
+    self.resetOrder()
+    self.songs = songs
   def update(self):
     self.clear()
     map(self.printLine, [
-      "wrote %d -> %s" % (self.songCount, self.tmpFile),
+      "selected %d songs" % (len(self.songs)),
       "",
       "q     - do nothing with these files"
       "enter - prepend files to KLOMPLIST",
@@ -270,40 +282,43 @@ class Prompt(LinePrinter):
       "  notyet:"
       "  r     - REMOVE these files from KLOMPLIST",
       "",
-      "shuffle => " + str(self.shuffle) + "  {space to toggle}",
+      "sort => %s" % (self.order),
+      "{space to cycle: %s}" % (str(self.orders)),
       ""])
     self.win.noutrefresh()
-  def maybeShuffleTmpFile(self):
-    if self.shuffle:
-      os.system("sort -R " + self.tmpFile + " -o " + self.tmpFile)
-  def appendTmpFile(self):
-    os.system("cat " + self.tmpFile + " >> " + KLOMP_LIST)
-  def prependTmpFile(self):
-    os.system("cat " + KLOMP_LIST + " >> " + self.tmpFile)
-    self.replaceTmpFile()
-  def replaceTmpFile(self):
-    os.system("mv " + self.tmpFile + " " + KLOMP_LIST)
+  def sortSongs(self):
+    if self.order == "shuffle":
+      shuffle(self.songs)
+  def applySongs(self, mode):
+    self.sortSongs()
+    entries = map(klompLibs.toString, self.songs)
+
+    if mode == "append":
+      self.klompListHandler.append(entries)
+    elif mode == "prepend":
+      self.klompListHandler.prepend(entries)
+    elif mode == "overwrite":
+      self.klompListHandler.overwrite(entries)
+
+    self.songs = []
   def handleKeys(self, keys):
     c = curses
     for key in keys:
       if key == c.KEY_ENTER:
-        self.maybeShuffleTmpFile()
-        self.prependTmpFile()
+        self.applySongs("prepend")
         return True
       elif key > 0 and key < 256:
         ch = chr(key).lower()
         if ch == 'q':
           return True
         elif ch == 'a':
-          self.maybeShuffleTmpFile()
-          self.appendTmpFile()
+          self.applySongs("append")
           return True
         elif ch == 'o':
-          self.maybeShuffleTmpFile()
-          self.replaceTmpFile()
+          self.applySongs("overwrite")
           return True
         elif ch == ' ':
-          self.shuffle = not self.shuffle
+          self.order = self.orderIt.next()
     return False
 
 class KlompLibs():
@@ -364,8 +379,8 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
     return len(self.songs) - self.height/3
   def setSongs(self, songs):
     self.songs = songs
-  def getSongEntries(self):
-    return map(klompLibs.toString, self.songs)
+  def getSongs(self):
+    return self.songs
   def getSongBucket(self, s):
     return s['artist'] + '###' + s['album'] + '###' + s['library']
   def trimMid(self, s, lim, ellip):
@@ -655,8 +670,7 @@ class KlompUI():
   def enterPromptMode(self):
     self.updateSongs()
     self.mode = Mode.Prompt 
-    songEntries = self.queryDisplay.getSongEntries()
-    self.prompt.setSongEntries(songEntries)
+    self.prompt.setSongs(self.queryDisplay.getSongs())
     self.clear()
     self.updatePrompt()
   def onCommandKey(self, key):
