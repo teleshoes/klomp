@@ -275,7 +275,7 @@ class Prompt(LinePrinter):
     map(self.printLine, [
       "selected %d songs" % (len(self.songs)),
       "",
-      "q     - do nothing with these files"
+      "q/esc - do nothing with these files"
       "enter - prepend files to KLOMPLIST",
       "a     - append files to KLOMPLIST",
       "o     - overwrite KLOMPLIST with files",
@@ -306,6 +306,8 @@ class Prompt(LinePrinter):
     for key in keys:
       if key == c.KEY_ENTER:
         self.applySongs("prepend")
+        return True
+      elif key == ESCAPE:
         return True
       elif key > 0 and key < 256:
         ch = chr(key).lower()
