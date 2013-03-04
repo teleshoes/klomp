@@ -21,9 +21,9 @@ my $usage = "Usage:
   $0 [user@]host OPTS        get remote klomp lib, and rsync local=>remote
   $0 --local klomplib OPTS   use another local klomp lib instead of a remote
   $0 -h|--help               print this message
-  OPTS:  --force-flacs, --no-force-flacs
-               If a library has a flacmirror on the destination,
-               flacs are omitted. This flag makes them never be omitted.
+  --flacs
+     Always copy flac files.
+     Normally, if the destination klomplib has a flacmirror, flacs are omitted.
 ";
 
 sub runOrDie(@){
@@ -80,23 +80,22 @@ sub main(@){
     $host = shift;
   }
 
-  my $forceFlacs = 0;
-  if(@_ == 1){
-    my $arg = shift();
-    die $usage if $arg !~ /^(--(no-)?force-flacs)$/;
-    $forceFlacs = $arg eq '--force-flacs' ? 1 : 0;
+  my $includeFlacs = 0;
+  if(@_ > 1 and $_[0] eq '--flacs'){
+    shift;
+    $includeFlacs = 1;
   }
 
   if(defined $host){
-    remoteSync($host, $forceFlacs);
+    remoteSync($host, $includeFlacs);
   }elsif(defined $localKlompLib){
-    sync(undef, $localKlompLib, $forceFlacs);
+    sync(undef, $localKlompLib, $includeFlacs);
   }
 }
 
 sub remoteSync($$){
   my $host = shift;
-  my $forceFlacs = shift;
+  my $includeFlacs = shift;
 
   print "Copying remote .klomplib here to read\n";
   system 'scp', "$host:~/.klomplib", $tmpKlompLib;
@@ -105,13 +104,13 @@ sub remoteSync($$){
   print "Overwriting remote .klompdb with local .klompdb\n";
   system 'scp', $klompDb, "$host:~";
 
-  sync($host, $tmpKlompLib, $forceFlacs);
+  sync($host, $tmpKlompLib, $includeFlacs);
 }
 
 sub sync($$$){
   my $host = shift;
   my $klompLib = shift;
-  my $forceFlacs = shift;
+  my $includeFlacs = shift;
 
   my %libs = map {chomp; $_ => 1} `klomp-lib`;
   my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$klompLib`;
@@ -134,7 +133,7 @@ sub sync($$$){
     chomp $remoteFlacmirrorPath;
 
     my %exts = %okExts;
-    if($forceFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){
+    if($includeFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){
       print "COPYING FLACS\n";
     }else{
       print "ignoring flacs\n";
