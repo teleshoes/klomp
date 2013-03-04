@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use Safe;
 
 sub runOrDie(@);
 sub libMatches($$);
@@ -46,6 +47,7 @@ my $usage = "Usage:
     Default is the empty string, which matches all library names.
     e.g.: '^audio.*books|'
       matches 'audio-booksChildren' and does NOT match 'ReferenceAudioBooks'
+    Note that, for no reason whatsoever, the regex is sandboxed with a Safe.
 ";
 
 sub main(@){
@@ -88,7 +90,9 @@ sub runOrDie(@){
 
 sub libMatches($$){
   my ($lib, $regex) = @_;
-  return $lib =~ /$regex/i;
+  my $compartment = new Safe;
+  my $ok = $compartment->reval("$lib =~ /$regex/i ? 'match' : 'nomatch'");
+  return $ok eq 'match';
 }
 
 sub remoteSync($$$){
