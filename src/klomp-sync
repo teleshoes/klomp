@@ -3,8 +3,9 @@ use strict;
 use warnings;
 
 sub runOrDie(@);
-sub remoteSync($$);
-sub sync($$$);
+sub libMatches($$);
+sub remoteSync($$$);
+sub sync($$$$);
 sub syncDir($$$@);
 
 my $klompDb = "$ENV{HOME}/.klompdb";
@@ -22,11 +23,11 @@ my %okExts = map {$_ => 1} qw(
 my $usage = "Usage:
   $0 -h|--help
     print this message
-  $0 HOST [--flacs]
+  $0 HOST [--flacs] [LIB_REGEX]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in HOST:~/.klomplib
-  $0 --local KLOMP_LIB_FILE [--flacs]
+  $0 --local KLOMP_LIB_FILE [--flacs] [LIB_REGEX]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
@@ -40,6 +41,11 @@ my $usage = "Usage:
     SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
   KLOMP_LIB_FILE
     local file to use when syncing locally
+  LIB_REGEX
+    Only sync libraries that match the regex LIB_REGEX, ignoring case.
+    Default is the empty string, which matches all library names.
+    e.g.: '^audio.*books|'
+      matches 'audio-booksChildren' and does NOT match 'ReferenceAudioBooks'
 ";
 
 sub main(@){
@@ -62,12 +68,15 @@ sub main(@){
     $includeFlacs = 1;
   }
 
+  my $libRegex = '';
+  $libRegex = shift if @_ == 1;
+
   die $usage if @_ > 0;
 
   if(defined $host){
-    remoteSync($host, $includeFlacs);
+    remoteSync($host, $includeFlacs, $libRegex);
   }elsif(defined $localKlompLib){
-    sync(undef, $localKlompLib, $includeFlacs);
+    sync(undef, $localKlompLib, $includeFlacs, $libRegex);
   }
 }
 
@@ -77,9 +86,15 @@ sub runOrDie(@){
   die "'@_' failed with exit code $?\n" if $? != 0;
 }
 
-sub remoteSync($$){
+sub libMatches($$){
+  my ($lib, $regex) = @_;
+  return $lib =~ /$regex/i;
+}
+
+sub remoteSync($$$){
   my $host = shift;
   my $includeFlacs = shift;
+  my $libRegex = shift;
 
   print "Copying remote .klomplib here to read\n";
   system 'scp', "$host:~/.klomplib", $tmpKlompLib;
@@ -88,13 +103,14 @@ sub remoteSync($$){
   print "Overwriting remote .klompdb with local .klompdb\n";
   system 'scp', $klompDb, "$host:~";
 
-  sync($host, $tmpKlompLib, $includeFlacs);
+  sync($host, $tmpKlompLib, $includeFlacs, $libRegex);
 }
 
-sub sync($$$){
+sub sync($$$$){
   my $host = shift;
   my $klompLib = shift;
   my $includeFlacs = shift;
+  my $libRegex = shift;
 
   my %libs = map {chomp; $_ => 1} `klomp-lib`;
   my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$klompLib`;
@@ -103,6 +119,10 @@ sub sync($$$){
     print "\n\nSYNCING $lib\n";
     if(not defined $remoteLibs{$lib}){
       print "skipping $lib: not in remote .klomplib\n";
+      next;
+    }
+    if(not libMatches $lib, $libRegex){
+      print "skipping $lib: does not match regex filter '$libRegex'\n";
       next;
     }
     my $path = `klomp-lib -l $lib`;
