@@ -102,7 +102,7 @@ sub sync($$$){
   for my $lib(sort keys %libs){
     print "\n\nSYNCING $lib\n";
     if(not defined $remoteLibs{$lib}){
-      print "not in remote .klomplib, skipping..\n";
+      print "skipping $lib: not in remote .klomplib\n";
       next;
     }
     my $path = `klomp-lib -l $lib`;
