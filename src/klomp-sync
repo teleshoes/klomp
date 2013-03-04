@@ -2,8 +2,10 @@
 use strict;
 use warnings;
 
-sub sync($$$);
+sub runOrDie(@);
 sub remoteSync($$);
+sub sync($$$);
+sub syncDir($$$@);
 
 my $klompDb = "$ENV{HOME}/.klompdb";
 
@@ -25,47 +27,6 @@ my $usage = "Usage:
      Always copy flac files.
      Normally, if the destination klomplib has a flacmirror, flacs are omitted.
 ";
-
-sub runOrDie(@){
-  print "@_\n";
-  system @_;
-  die "'@_' failed with exit code $?\n" if $? != 0;
-}
-
-sub syncDir($$$@){
-  my ($local, $remote, $host, @whitelist) = @_;
-
-  my @args;
-  #include subdirs
-  push @args, "--include=*/";
-  for my $pattern(@whitelist){
-    push @args, "--include=$pattern";
-    push @args, "--include=" . uc($pattern);
-  }
-  #exclude everything
-  push @args, "--exclude=*";
-
-  #delete trailing slashes
-  $local =~ s/\/$//;
-  $remote =~ s/\/$//;
-
-  if(defined $host){
-    runOrDie "ssh", "$host", "mkdir -p $remote";
-  }else{
-    runOrDie "mkdir -p $remote";
-  }
-
-  my $dest = defined $host ? "$host:$remote" : $remote;
-
-  runOrDie "presync", "$local", $dest;
-  runOrDie "rsync",
-    "--delete-after", "-av",
-    "--progress",
-    "$local/",
-    $dest,
-    @args;
-}
-
 
 sub main(@){
   if(@_ == 1 and $_[0] =~ /^(-h|--help)$/){
@@ -91,6 +52,12 @@ sub main(@){
   }elsif(defined $localKlompLib){
     sync(undef, $localKlompLib, $includeFlacs);
   }
+}
+
+sub runOrDie(@){
+  print "@_\n";
+  system @_;
+  die "'@_' failed with exit code $?\n" if $? != 0;
 }
 
 sub remoteSync($$){
@@ -149,6 +116,40 @@ sub sync($$$){
       print "skipping, flacmirror must to be set in both lib files";
     }
   }
+}
+
+sub syncDir($$$@){
+  my ($local, $remote, $host, @whitelist) = @_;
+
+  my @args;
+  #include subdirs
+  push @args, "--include=*/";
+  for my $pattern(@whitelist){
+    push @args, "--include=$pattern";
+    push @args, "--include=" . uc($pattern);
+  }
+  #exclude everything
+  push @args, "--exclude=*";
+
+  #delete trailing slashes
+  $local =~ s/\/$//;
+  $remote =~ s/\/$//;
+
+  if(defined $host){
+    runOrDie "ssh", "$host", "mkdir -p $remote";
+  }else{
+    runOrDie "mkdir -p $remote";
+  }
+
+  my $dest = defined $host ? "$host:$remote" : $remote;
+
+  runOrDie "presync", "$local", $dest;
+  runOrDie "rsync",
+    "--delete-after", "-av",
+    "--progress",
+    "$local/",
+    $dest,
+    @args;
 }
 
 &main(@ARGV);
