@@ -20,19 +20,34 @@ my %okExts = map {$_ => 1} qw(
 );
 
 my $usage = "Usage:
-  $0 [user@]host OPTS        get remote klomp lib, and rsync local=>remote
-  $0 --local klomplib OPTS   use another local klomp lib instead of a remote
-  $0 -h|--help               print this message
+  $0 -h|--help
+    print this message
+  $0 HOST [--flacs]
+    Overwrite remote klompdb with local klompdb.
+    Sync from the local dirs in $klompLib
+      to the remote dirs in HOST:~/.klomplib
+  $0 --local KLOMP_LIB_FILE [--flacs]
+    Sync from the local dirs in $klompLib
+      to the local dirs in KLOMP_LIB_FILE.
+
   --flacs
      Always copy flac files.
      Normally, if the destination klomplib has a flacmirror, flacs are omitted.
+  --local
+     Specify a local klomplib and copy locally.
+
+  HOST
+    SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
+  KLOMP_LIB_FILE
+    local file to use when syncing locally
 ";
 
 sub main(@){
-  if(@_ == 1 and $_[0] =~ /^(-h|--help)$/){
+  if(@_ == 0 or $_[0] =~ /^(-h|--help)$/){
     print $usage;
     exit 0;
   }
+
   my ($host, $localKlompLib);
   if(@_ >= 2 and $_[0] eq "--local"){
     shift;
@@ -46,6 +61,8 @@ sub main(@){
     shift;
     $includeFlacs = 1;
   }
+
+  die $usage if @_ > 0;
 
   if(defined $host){
     remoteSync($host, $includeFlacs);
