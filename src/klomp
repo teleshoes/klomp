@@ -24,9 +24,10 @@ KLOMP_CUR = os.environ['HOME'] + "/.klompcur"
 usage = """Usage:
   %(exec)s -h | --help
     show this message
-  %(exec)s [--debug]  [word word ..]
+  %(exec)s [--once] [--debug]  [word word ..]
     interactive curses ui
     the textbox is initially set to "word word ..", if passed in
+    --once exits after prompt menu instead of returning to query
     --debug means exceptions dont exit, and the tmp file './out' will be rm'd
 """ % {'exec': __file__}
 
@@ -41,6 +42,11 @@ def main(args):
     print usage
     exit(0)
 
+  once = False
+  if len(args) >= 1 and (args[0] == "--once"):
+    once = True
+    args = args[1:]
+
   debug = False
   if len(args) >= 1 and args[0] == "--debug":
     debug = True
@@ -49,7 +55,7 @@ def main(args):
   startingQuery = ' '.join(args)
 
   try:
-    curses.wrapper(KlompUI(startingQuery).start)
+    curses.wrapper(KlompUI(once, startingQuery).start)
   finally:
     if debug:
       os.system("rm out")
@@ -636,7 +642,8 @@ class KlompQuery():
 class Mode: Query, PlayList, Prompt = range(3)
 
 class KlompUI():
-  def __init__(self, startingQuery):
+  def __init__(self, once, startingQuery):
+    self.once = once
     self.klompQuery = KlompQuery()
     self.mode = Mode.Query
     self.startingQuery = startingQuery
@@ -717,7 +724,10 @@ class KlompUI():
   def onGetSomeKeys(self, keys):
     if self.mode == Mode.Prompt:
       if self.prompt.handleKeys(keys):
-        self.enterQueryMode()
+        if self.once:
+          quitSlowly()
+        else:
+          self.enterQueryMode()
       else:
         self.updatePrompt()
     else:
