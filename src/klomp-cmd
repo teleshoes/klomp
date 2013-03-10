@@ -14,6 +14,8 @@ my $PID_FILE = '/tmp/klomplayer_pid';
 
 my $usage = "Usage:
   $0 -h    - show this message
+  $0 playlist - print active playlist name
+     the contents of $KLOMPLISTNAME if present, otherwise 'main'
   $0 playlist PLNAME - activate/deactivate playlist PLNAME
      PLNAME cannot be 'main', and may contain only letters, numbers, or _s
 
@@ -82,6 +84,8 @@ sub main(@){
   if($cmd eq '-h'){
     print $usage;
     exit 0;
+  }elsif($cmd eq 'playlist' and @_ == 0){
+    print getActivePlaylistName() . "\n";
   }elsif($cmd eq 'playlist' and @_ == 1){
     stop();
     my $name = shift;
