@@ -3,22 +3,37 @@ use strict;
 use warnings;
 use Sys::Hostname;
 
+my $klomplayerExec = 'klomplayer';
+my $KLOMPCUR = "$ENV{HOME}/.klompcur";
+my $KLOMPLIST = "$ENV{HOME}/.klomplist";
+my $KLOMPHIST = "$ENV{HOME}/.klomphistory";
+my $KLOMPLISTNAME = "$ENV{HOME}/.klomplist-name";
+my $plDirPrefix = "$ENV{HOME}/.klomplist-";
+my $FIFO = '/tmp/klomplayer_fifo';
+my $PID_FILE = '/tmp/klomplayer_pid';
+
 my $usage = "Usage:
   $0 -h    - show this message
-  $0 playlist NAME - toggle between playlist NAME and the main playlist
-     NAME cannot be 'main', and may contain only letters, numbers, or _s
-     .klompcur and .klomplist are moved between three dirs
-       HOME
-       MAIN {\"HOME/.klomplist-main/\"}
-       NAME {\"HOME/.klomplist-NAME/\"}
-     if neither NAME nor MAIN exist:
-       HOME => MAIN
-     if NAME exists and MAIN does not:
-       HOME => MAIN
-       NAME => HOME
-     if main exists and HOME does not:
-       HOME => NAME
-       MAIN => HOME
+  $0 playlist PLNAME - activate/deactivate playlist PLNAME
+     PLNAME cannot be 'main', and may contain only letters, numbers, or _s
+
+     A 'playlist' is two files, {CURRENT, LIST}
+     Playlists are stored in three dirs:
+       -active: $ENV{HOME}/
+       -main when non-active: ${plDirPrefix}main/
+       -PLNAME when non-active: ${plDirPrefix}PLNAME/
+
+     The name of the active playlist is stored in $KLOMPLISTNAME.
+     $KLOMPLISTNAME is missing when main is active.
+
+     This command deactivated the current active playlist,
+       and activates main if PLNAME was activated, or else activates PLNAME.
+
+     Activating a playlist named PLNAME means writing it to $KLOMPLISTNAME,
+       and moving from ${plDirPrefix}PLNAME/ to $ENV{HOME}
+     Deactivating a playlist named PLNAME means removing $KLOMPLISTNAME,
+       and moving from $ENV{HOME}/ to ${plDirPrefix}PLNAME/
+
   $0 playlist-main - if a named playlist is set, unset it
   $0 start - start
   $0 stop - stop
@@ -49,10 +64,11 @@ sub prevItem();
 sub nextItem();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
-sub backupPlaylist($);
-sub restorePlaylist($);
-sub getPlaylistName();
-sub setPlaylistName($);
+sub toggleActivePlaylist($);
+sub backupPlaylistFiles($);
+sub restorePlaylistFiles($);
+sub getActivePlaylistName();
+sub setActivePlaylistName($);
 sub setBreaks($);
 sub lpsmagic();
 
@@ -60,14 +76,6 @@ if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
   exec "su -c '$0 @ARGV' user";
 }
-
-my $klomplayerExec = 'klomplayer';
-my $KLOMPCUR = "$ENV{HOME}/.klompcur";
-my $KLOMPLIST = "$ENV{HOME}/.klomplist";
-my $KLOMPHIST = "$ENV{HOME}/.klomphistory";
-my $KLOMPLISTNAME = "$ENV{HOME}/.klomplist-name";
-my $FIFO = '/tmp/klomplayer_fifo';
-my $PID_FILE = '/tmp/klomplayer_pid';
 
 sub main(@){
   my $cmd = shift() || '';
@@ -80,28 +88,11 @@ sub main(@){
     if($name eq 'main' or $name !~ /^[a-zA-Z0-9_]+$/){
       die "Invalid playlist name: '$name'\n"
     }
-    my $main = "$ENV{HOME}/.klomplist-main";
-    my $alt = "$ENV{HOME}/.klomplist-$name";
-
-    my $oldName = getPlaylistName;
-    if(defined $oldName){
-      if($oldName eq $name){
-        backupPlaylist $alt;
-        restorePlaylist $main if -e $main;
-        setPlaylistName undef;
-        system "rmdir $alt 2>/dev/null";
-      }else{
-        die "must turn off playlist $oldName before toggling $name\n";
-      }
-    }else{
-      backupPlaylist $main;
-      restorePlaylist $alt if -e $alt;
-      setPlaylistName $name;
-    }
+    toggleActivePlaylist $name;
     lpsmagic() if isN9();
   }elsif($cmd eq 'playlist-main'){
-    my $name = getPlaylistName;
-    if(defined $name){
+    my $name = getActivePlaylistName;
+    if(defined $name and $name ne "main"){
       system $0, 'playlist', $name;
     }
   }elsif($cmd eq 'start' and @_ == 0){
@@ -147,38 +138,49 @@ sub main(@){
   }
 }
 
-sub getPlaylistName(){
-  my $name;
-  if(-e $KLOMPLISTNAME){
-    $name = `cat $KLOMPLISTNAME`;
-    chomp $name;
-  }
-  $name = undef if defined $name and length $name == 0;
+sub toggleActivePlaylist($){
+  my $name = shift;
+  my $oldName = getActivePlaylistName;
+  $name = 'main' if $oldName eq $name;
+
+  backupPlaylistFiles "$plDirPrefix$oldName";
+  restorePlaylistFiles "$plDirPrefix$name";
+  setActivePlaylistName $name;
+
+  system "rmdir $plDirPrefix* 2>/dev/null";
+}
+sub getActivePlaylistName(){
+  my $name = `cat $KLOMPLISTNAME 2>/dev/null`;
+  chomp $name;
+  $name = 'main' if $name eq '';
   return $name;
 }
-sub setPlaylistName($){
+sub setActivePlaylistName($){
   my $name = shift;
-  $name = '' if not defined $name;
+  $name = 'main' if $name eq '';
   system "rm", "-f", $KLOMPLISTNAME;
-  if(length $name > 0){
+  if($name ne "main"){
     open FH, "> $KLOMPLISTNAME" or die "Couldn't write $KLOMPLISTNAME\n";
     print FH "$name\n";
     close FH;
   }
 }
 
-sub backupPlaylist($){
+sub backupPlaylistFiles($){
   my $dir = shift;
   die "error: $dir already exists!\n" if -e $dir;
   system "mkdir", "-p", $dir;
   die "error: could not create $dir!\n" if not -e $dir;
 
   system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $dir;
+  if(-e $KLOMPCUR or -e $KLOMPLIST){
+    die "error: playlist still present!\n";
+  }
 }
-sub restorePlaylist($){
+sub restorePlaylistFiles($){
   my $dir = shift;
   die "error: $dir doesnt exist!\n" if not -e $dir;
-  system "mv", "--no-clobber", "$dir/.klompcur", "$dir/.klomplist", $ENV{HOME};
+  system "mv --no-clobber $dir/* $dir/.* $ENV{HOME} 2>/dev/null";
   system "rmdir", $dir;
   die "error: $dir still exists!\n" if -e $dir;
 }
