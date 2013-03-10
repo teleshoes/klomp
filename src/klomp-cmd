@@ -19,7 +19,7 @@ my $usage = "Usage:
   $0 playlist PLNAME - activate/deactivate playlist PLNAME
      PLNAME cannot be 'main', and may contain only letters, numbers, or _s
 
-     A 'playlist' is two files, {CURRENT, LIST}
+     A 'playlist' is three files, {CURRENT, LIST, AND HISTORY}
      Playlists are stored in three dirs:
        -active: $ENV{HOME}/
        -main when non-active: ${plDirPrefix}main/
@@ -176,8 +176,8 @@ sub backupPlaylistFiles($){
   system "mkdir", "-p", $dir;
   die "error: could not create $dir!\n" if not -e $dir;
 
-  system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $dir;
-  if(-e $KLOMPCUR or -e $KLOMPLIST){
+  system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $KLOMPHIST, $dir;
+  if(-e $KLOMPCUR or -e $KLOMPLIST or -e $KLOMPHIST){
     die "error: playlist still present!\n";
   }
 }
