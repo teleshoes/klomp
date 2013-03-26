@@ -24,16 +24,16 @@ print "\n\n";
 
 print "optional tag-reading-libs for:\n";
 
-print "\n\n-mp3 {eyed3}\n";
+print "\n  mp3 {eyed3}\n";
 runPrompt qw(apt-get install eyed3);
 
-print "\n\n-ogg and flac {lltag}:\n";
+print "\n  ogg and flac {lltag}:\n";
 runPrompt qw(apt-get install lltag);
 
-print "\n\n-wma {perl module Audio::WMA}\n";
+print "\n  wma {perl module Audio::WMA}\n";
 runPrompt qw(apt-get install libaudio-wma-perl);
 
-print "\n\n-mp4, m4a, m4p, m4v, m4b {AtomicParsley }\n";
+print "\n  mp4, m4a, m4p, m4v, m4b {AtomicParsley}\n";
 runPrompt qw(apt-get install atomicparsley);
 
 print "\n\n";
