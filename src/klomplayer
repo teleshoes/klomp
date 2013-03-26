@@ -1,18 +1,20 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Files;
 
 sub update($$$);
 sub getSongAbsPath($$);
 
-my $FIFO = `klomp-files -n fifo`;
-my $PID_FILE = `klomp-files -n pidfile`;
+my $FIFO = Klomp::Files::klompFile("fifo");
+my $PID_FILE = Klomp::Files::klompFile("pidfile");
 system "rm", "-f", $FIFO;
 system "mkfifo", $FIFO;
 fork or exec "klomp-fifo-writer";
 
 my $klompCmdExec = 'klomp-cmd';
-my $KLOMPCUR = `klomp-files -n cur`;
+my $KLOMPCUR = Klomp::Files::klompFile("cur");
 
 if(not -e $KLOMPCUR){
   die "$KLOMPCUR does not exist\n";

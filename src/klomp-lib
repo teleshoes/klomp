@@ -1,8 +1,10 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Files;
 
-my $defaultKlomplib = `klomp-files -n lib`;
+my $defaultKlomplib = Klomp::Files::klompFile("lib");
 
 my $klomplib;
 if(@ARGV > 0 and $ARGV[0] =~ /^--file=(.*)$/){

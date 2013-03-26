@@ -1,10 +1,12 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Files;
 
 my $KLOMP_CLI_CMD = 'klomp';
 
-my $PID_FILE = `klomp-files -n termpidfile`;
+my $PID_FILE = Klomp::Files::klompFile("termpidfile");
 if(-e $PID_FILE){
   system "kill -0 `cat $PID_FILE` > /dev/null 2>/dev/null";
   die "Already running!\n" if $? == 0;

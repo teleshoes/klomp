@@ -1,13 +1,15 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Files;
 use Time::HiRes qw(sleep);
 
 sub getPid();
 sub setPid();
 
-my $FIFO = `klomp-files -n fifo`;
-my $PID_FILE = `klomp-files -n fifopidfile`;
+my $FIFO = Klomp::Files::klompFile("fifo");
+my $PID_FILE = Klomp::Files::klompFile("fifopidfile");
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;

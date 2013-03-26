@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Files;
 use Safe;
 
 sub runOrDie(@);
@@ -9,9 +11,9 @@ sub remoteSync($$$);
 sub sync($$$$);
 sub syncDir($$$@);
 
-my $klompDb = `klomp-files -n db`;
+my $klompDb = Klomp::Files::klompFile("db");
 
-my $klompLib = `klomp-files -n lib`;
+my $klompLib = Klomp::Files::klompFile("lib");
 my $tmpKlompLib = "/tmp/klomp-sync_" . time();
 
 my %okExts = map {$_ => 1} qw(

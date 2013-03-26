@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
+use Klomp::Files;
 use Klomp::Tag;
 
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
@@ -13,7 +14,7 @@ my @guessTagCols = map{$_ . "_guess"} @tagCols;
 my @searchableCols = (@infoCols, @tagCols);
 my @allCols = (@infoCols, @tagCols, @guessTagCols);
 
-my $defaultDb = `klomp-files -n db`;
+my $defaultDb = Klomp::Files::klompFile("db");
 
 sub getAllLibs();
 sub libpath($);
