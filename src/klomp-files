@@ -29,14 +29,10 @@ my $usage = "Usage:
     Print the absolute path to the file.
   $0 eval
     Print some perl code that evaluates to a hash of all the files.
-
-  arguments are case insensitive and non-letter characters are ignored
 ";
 
 sub main(@){
   my $arg = shift() || '';
-  $arg = lc $arg;
-  $arg =~ s/[^a-z]*//gi;
 
   if($arg =~ /^($okFiles)$/){
     print "$$files{$arg}\n";
