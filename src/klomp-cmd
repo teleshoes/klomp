@@ -2,39 +2,34 @@
 use strict;
 use warnings;
 use Sys::Hostname;
+use Safe;
 
 my $klomplayerExec = 'klomplayer';
-my $KLOMPCUR = "$ENV{HOME}/.klompcur";
-my $KLOMPLIST = "$ENV{HOME}/.klomplist";
-my $KLOMPHIST = "$ENV{HOME}/.klomphistory";
-my $KLOMPLISTNAME = "$ENV{HOME}/.klomp-playlist";
-my $plDirPrefix = "$ENV{HOME}/.klomplist-";
-my $FIFO = '/tmp/klomplayer_fifo';
-my $PID_FILE = '/tmp/klomplayer_pid';
+my $FILES = new Safe->reval(`klomp-files eval`);
 
 my $usage = "Usage:
-  $0 -h    - show this message
+  $0 -h - show this message
   $0 playlist - print active playlist name
-     the contents of $KLOMPLISTNAME if present, otherwise 'main'
+     the contents of $$FILES{plname} if present, otherwise 'main'
   $0 playlist PLNAME - activate/deactivate playlist PLNAME
      PLNAME cannot be 'main', and may contain only letters, numbers, or _s
 
      A 'playlist' is three files, {CURRENT, LIST, AND HISTORY}
      Playlists are stored in three dirs:
        -active: $ENV{HOME}/
-       -main when non-active: ${plDirPrefix}main/
-       -PLNAME when non-active: ${plDirPrefix}PLNAME/
+       -main when non-active: $$FILES{pldir}main/
+       -PLNAME when non-active: $$FILES{pldir}PLNAME/
 
-     The name of the active playlist is stored in $KLOMPLISTNAME.
-     $KLOMPLISTNAME is missing when main is active.
+     The name of the active playlist is stored in $$FILES{plname}.
+     $$FILES{plname} is missing when main is active.
 
      This command deactivated the current active playlist,
        and activates main if PLNAME was activated, or else activates PLNAME.
 
-     Activating a playlist named PLNAME means writing it to $KLOMPLISTNAME,
-       and moving from ${plDirPrefix}PLNAME/ to $ENV{HOME}
-     Deactivating a playlist named PLNAME means removing $KLOMPLISTNAME,
-       and moving from $ENV{HOME}/ to ${plDirPrefix}PLNAME/
+     Activating a playlist named PLNAME means writing it to $$FILES{plname},
+       and moving from $$FILES{pldir}PLNAME/ to $ENV{HOME}
+     Deactivating a playlist named PLNAME means removing $$FILES{plname},
+       and moving from $ENV{HOME}/ to $$FILES{pldir}PLNAME/
 
   $0 playlist-main - if a named playlist is set, unset it
   $0 start - start
@@ -118,7 +113,7 @@ sub main(@){
       if(isPhone()){
         stop;
       }else{
-        system "echo pause > $FIFO";
+        system "echo pause > $$FILES{fifo}";
       }
     }
   }elsif($cmd eq 'prev' and @_ == 0){
@@ -128,7 +123,7 @@ sub main(@){
     stop;
     start if nextItem();
   }elsif($cmd eq 'shuffle' and @_ == 0){
-    system "sort", "-R", $KLOMPLIST, "-o", $KLOMPLIST;
+    system "sort", "-R", $$FILES{list}, "-o", $$FILES{list};
   }elsif($cmd eq 'breaks' and @_ == 1){
     my $arg = shift;
     die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
@@ -136,7 +131,7 @@ sub main(@){
   }else{
     my $okCmds = getAvailableInputCommands();
     if(defined $$okCmds{$cmd}){
-      system "echo \"$cmd @_\" > $FIFO";
+      system "echo \"$cmd @_\" > $$FILES{fifo}";
     }else{
       die $usage;
     }
@@ -148,14 +143,14 @@ sub toggleActivePlaylist($){
   my $oldName = getActivePlaylistName;
   $name = 'main' if $oldName eq $name;
 
-  backupPlaylistFiles "$plDirPrefix$oldName";
-  restorePlaylistFiles "$plDirPrefix$name";
+  backupPlaylistFiles "$$FILES{pldir}$oldName";
+  restorePlaylistFiles "$$FILES{pldir}$name";
   setActivePlaylistName $name;
 
-  system "rmdir $plDirPrefix* 2>/dev/null";
+  system "rmdir $$FILES{pldir}* 2>/dev/null";
 }
 sub getActivePlaylistName(){
-  my $name = `cat $KLOMPLISTNAME 2>/dev/null`;
+  my $name = `cat $$FILES{plname} 2>/dev/null`;
   chomp $name;
   $name = 'main' if $name eq '';
   return $name;
@@ -163,16 +158,17 @@ sub getActivePlaylistName(){
 sub setActivePlaylistName($){
   my $name = shift;
   $name = 'main' if $name eq '';
-  system "rm", "-f", $KLOMPLISTNAME;
+  system "rm", "-f", $$FILES{plname};
   if($name ne "main"){
-    open FH, "> $KLOMPLISTNAME" or die "Couldn't write $KLOMPLISTNAME\n";
+    open FH, "> $$FILES{plname}"
+      or die "Couldn't write $$FILES{plname}\n";
     print FH "$name\n";
     close FH;
   }
 }
 
 sub playlistPresent(){
-  return -e $KLOMPCUR or -e $KLOMPLIST or -e $KLOMPHIST;
+  return -e $$FILES{cur} or -e $$FILES{list} or -e $$FILES{history};
 }
 
 sub backupPlaylistFiles($){
@@ -181,7 +177,8 @@ sub backupPlaylistFiles($){
   system "mkdir", "-p", $dir;
   die "error: could not create $dir!\n" if not -e $dir;
 
-  system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $KLOMPHIST, $dir;
+  system "mv", "--no-clobber",
+    $$FILES{cur}, $$FILES{list}, $$FILES{hist}, $dir;
   die "error: playlist still present!\n" if playlistPresent;
 }
 sub restorePlaylistFiles($){
@@ -197,7 +194,7 @@ sub restorePlaylistFiles($){
 sub setBreaks($){
   my $arg = shift;
   my $breakLine = "!klomp-cmd stop\n";
-  my @lines = `cat $KLOMPLIST 2>/dev/null`;
+  my @lines = `cat $$FILES{list} 2>/dev/null`;
   my @nonBreakLines = grep {$_ ne $breakLine} @lines;
   my @newLines;
   if($arg eq 'on' or ($arg eq 'toggle' and @nonBreakLines == @lines)){
@@ -208,7 +205,7 @@ sub setBreaks($){
   }else{
     @newLines = @nonBreakLines;
   }
-  open FH, "> $KLOMPLIST" or die "Couldn't write $KLOMPLIST\n";
+  open FH, "> $$FILES{list}" or die "Couldn't write $$FILES{list}\n";
   print FH @newLines;
   close FH;
 }
@@ -233,8 +230,8 @@ sub isN900(){
 }
 
 sub getPid(){
-  if(-e $PID_FILE){
-    my $pid = `cat $PID_FILE`;
+  if(-e $$FILES{pidfile}){
+    my $pid = `cat $$FILES{pidfile}`;
     chomp $pid;
     return $pid;
   }else{
@@ -253,23 +250,23 @@ sub isRunning(){
 }
 
 sub removePause(){
-  return if not -e $KLOMPCUR;
-  open FH, "< $KLOMPCUR";
+  return if not -e $$FILES{cur};
+  open FH, "< $$FILES{cur}";
   my @lines = <FH>;
   close FH;
   return if @lines == 0;
 
   $lines[0] =~ s/^([0-9.]+) ([0-9.]+) paused/$1 $2/;
 
-  open FH, "> $KLOMPCUR";
+  open FH, "> $$FILES{cur}";
   print FH @lines;
   close FH;
 }
 
 sub ensureKlompCur(){
   my @lines;
-  if(-e $KLOMPCUR){
-    open FH, "< $KLOMPCUR";
+  if(-e $$FILES{cur}){
+    open FH, "< $$FILES{cur}";
     @lines = <FH>;
     close FH;
   }
@@ -293,7 +290,7 @@ sub stop(){
   my $pid = getPid();
   if(defined $pid){
     system "kill", "-9", $pid;
-    system "rm", $PID_FILE;
+    system "rm", $$FILES{pidfile};
   }
   system "killall -9 mplayer 2>/dev/null" if isPhone();
   system "rm -f /tmp/klomplayer*";
@@ -354,7 +351,7 @@ sub pushFile($$){
 }
 
 sub getCur(){
-  my $cur = -e $KLOMPCUR ? `cat $KLOMPCUR` : '';
+  my $cur = -e $$FILES{cur} ? `cat $$FILES{cur}` : '';
   if($cur =~ /^[0-9\-\.]+ [0-9\-\.]+ (.*)$/s){
     my $item = $1;
     chomp $item;
@@ -373,7 +370,7 @@ sub setCur($){
     return 0;
   }else{
     $item =~ s/\/\/\/\\\\\\/\n/g;
-    open FH, "> $KLOMPCUR";
+    open FH, "> $$FILES{cur}";
     print FH "0.0 0.0 $item\n";
     close FH;
     return 1;
@@ -412,11 +409,11 @@ sub prevnext($$){
 }
 
 sub prevItem(){
-  return prevnext $KLOMPHIST, $KLOMPLIST;
+  return prevnext $$FILES{hist}, $$FILES{list};
 }
 
 sub nextItem(){
-  return prevnext $KLOMPLIST, $KLOMPHIST;
+  return prevnext $$FILES{list}, $$FILES{hist};
 }
 
 sub lpsmagic(){
