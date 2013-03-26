@@ -22,11 +22,6 @@ run qw(apt-get install perl python mplayer sqlite3);
 
 print "\n\n";
 
-print "optional interactive CLI\n  {perl moudle Term::ReadKey}\n";
-runPrompt qw(apt-get install libterm-readkey-perl);
-
-print "\n\n";
-
 print "optional tag-reading-libs for:\n";
 
 print "\n\n-mp3 {eyed3}\n";
