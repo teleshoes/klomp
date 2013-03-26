@@ -18,8 +18,8 @@ locale.setlocale(locale.LC_ALL,"")
 
 uiLock = threading.RLock()
 
-KLOMP_LIST = os.environ['HOME'] + "/.klomplist"
-KLOMP_CUR = os.environ['HOME'] + "/.klompcur"
+KLOMP_LIST = os.popen('klomp-files -n list').read()
+KLOMP_CUR = os.popen('klomp-files -n cur').read()
 
 usage = """Usage:
   %(exec)s -h | --help

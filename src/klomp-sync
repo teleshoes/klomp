@@ -9,9 +9,9 @@ sub remoteSync($$$);
 sub sync($$$$);
 sub syncDir($$$@);
 
-my $klompDb = "$ENV{HOME}/.klompdb";
+my $klompDb = `klomp-files -n db`;
 
-my $klompLib = "$ENV{HOME}/.klomplib";
+my $klompLib = `klomp-files -n lib`;
 my $tmpKlompLib = "/tmp/klomp-sync_" . time();
 
 my %okExts = map {$_ => 1} qw(

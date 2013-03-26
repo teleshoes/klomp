@@ -4,7 +4,7 @@ use warnings;
 
 my $KLOMP_CLI_CMD = 'klomp';
 
-my $PID_FILE = '/tmp/klomp_term_pid';
+my $PID_FILE = `klomp-files -n termpidfile`;
 if(-e $PID_FILE){
   system "kill -0 `cat $PID_FILE` > /dev/null 2>/dev/null";
   die "Already running!\n" if $? == 0;

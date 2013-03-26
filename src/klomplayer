@@ -5,14 +5,14 @@ use warnings;
 sub update($$$);
 sub getSongAbsPath($$);
 
-my $FIFO = '/tmp/klomplayer_fifo';
-my $PID_FILE = '/tmp/klomplayer_pid';
+my $FIFO = `klomp-files -n fifo`;
+my $PID_FILE = `klomp-files pidfile`;
 system "rm", "-f", $FIFO;
 system "mkfifo", $FIFO;
 fork or exec "klomp-fifo-writer";
 
 my $klompCmdExec = 'klomp-cmd';
-my $KLOMPCUR = `echo -n \$HOME/.klompcur`;
+my $KLOMPCUR = `klomp-files -n cur`;
 
 if(not -e $KLOMPCUR){
   die "$KLOMPCUR does not exist\n";

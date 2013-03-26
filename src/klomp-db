@@ -13,7 +13,7 @@ my @guessTagCols = map{$_ . "_guess"} @tagCols;
 my @searchableCols = (@infoCols, @tagCols);
 my @allCols = (@infoCols, @tagCols, @guessTagCols);
 
-my $defaultDb = "$ENV{HOME}/.klompdb";
+my $defaultDb = `klomp-files -n db`;
 
 sub getAllLibs();
 sub libpath($);

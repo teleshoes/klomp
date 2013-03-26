@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-my $defaultKlomplib = "$ENV{HOME}/.klomplib";
+my $defaultKlomplib = `klomp-files -n lib`;
 
 my $klomplib;
 if(@ARGV > 0 and $ARGV[0] =~ /^--file=(.*)$/){
