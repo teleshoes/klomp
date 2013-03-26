@@ -183,9 +183,13 @@ sub backupPlaylistFiles($){
 }
 sub restorePlaylistFiles($){
   my $dir = shift;
-  die "error: $dir doesnt exist!\n" if not -e $dir;
-  system "mv --no-clobber $dir/* $dir/.* $ENV{HOME} 2>/dev/null";
-  system "rmdir", $dir;
+  if(-e $KLOMPCUR or -e $KLOMPLIST or -e $KLOMPHIST){
+    die "error: playlist exists and would be overridden!\n";
+  }
+  if(-e $dir){
+    system "mv --no-clobber $dir/* $dir/.* $ENV{HOME} 2>/dev/null";
+    system "rmdir", $dir;
+  }
   die "error: $dir still exists!\n" if -e $dir;
 }
 
