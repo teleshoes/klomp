@@ -368,6 +368,7 @@ sub setCur($){
   if($item =~ /^!klomp-cmd (.*)$/si){
     print "running klomp-cmd: $1\n";
     system "$0 $1";
+    system "rm", $$FILES{cur};
     return 0;
   }else{
     $item =~ s/\/\/\/\\\\\\/\n/g;
