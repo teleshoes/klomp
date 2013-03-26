@@ -6,7 +6,7 @@ sub update($$$);
 sub getSongAbsPath($$);
 
 my $FIFO = `klomp-files -n fifo`;
-my $PID_FILE = `klomp-files pidfile`;
+my $PID_FILE = `klomp-files -n pidfile`;
 system "rm", "-f", $FIFO;
 system "mkfifo", $FIFO;
 fork or exec "klomp-fifo-writer";
