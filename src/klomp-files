@@ -25,26 +25,35 @@ for my $key(keys %$synonyms){
 my $okFiles = join "|", sort keys %$files;
 
 my $usage = "Usage:
-  $0 $okFiles
+  $0 [-n] $okFiles
     Print the absolute path to the file.
-  $0 eval
+  $0 [-n] eval
     Print some perl code that evaluates to a hash of all the files.
+
+  -n    do not output a trailing newline
 ";
 
 sub main(@){
-  my $arg = shift() || '';
+  my $newline = 1;
+  if(@_ > 0 and $_[0] eq '-n'){
+    $newline = 0;
+    shift;
+  }
 
+  my $arg = shift() || '';
   if($arg =~ /^($okFiles)$/){
-    print "$$files{$arg}\n";
+    print "$$files{$arg}";
   }elsif($arg eq 'eval'){
     print "{";
     for my $key(keys %$files){
       print "\"$key\",\"$$files{$key}\",";
     }
-    print "}\n";
+    print "}";
   }else{
     die $usage;
   }
+
+  print "\n" if $newline;
 }
 
 &main(@ARGV);
