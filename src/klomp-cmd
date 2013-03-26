@@ -67,6 +67,7 @@ sub nextItem();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
 sub toggleActivePlaylist($);
+sub playlistPresent();
 sub backupPlaylistFiles($);
 sub restorePlaylistFiles($);
 sub getActivePlaylistName();
@@ -170,6 +171,10 @@ sub setActivePlaylistName($){
   }
 }
 
+sub playlistPresent(){
+  return -e $KLOMPCUR or -e $KLOMPLIST or -e $KLOMPHIST;
+}
+
 sub backupPlaylistFiles($){
   my $dir = shift;
   die "error: $dir already exists!\n" if -e $dir;
@@ -177,15 +182,11 @@ sub backupPlaylistFiles($){
   die "error: could not create $dir!\n" if not -e $dir;
 
   system "mv", "--no-clobber", $KLOMPCUR, $KLOMPLIST, $KLOMPHIST, $dir;
-  if(-e $KLOMPCUR or -e $KLOMPLIST or -e $KLOMPHIST){
-    die "error: playlist still present!\n";
-  }
+  die "error: playlist still present!\n" if playlistPresent;
 }
 sub restorePlaylistFiles($){
   my $dir = shift;
-  if(-e $KLOMPCUR or -e $KLOMPLIST or -e $KLOMPHIST){
-    die "error: playlist exists and would be overridden!\n";
-  }
+  die "error: playlist exists and would be overridden!\n" if playlistPresent;
   if(-e $dir){
     system "mv --no-clobber $dir/* $dir/.* $ENV{HOME} 2>/dev/null";
     system "rmdir", $dir;
