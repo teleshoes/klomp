@@ -1,11 +1,12 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
 use Sys::Hostname;
-use Safe;
+use Klomp::Files;
 
 my $klomplayerExec = 'klomplayer';
-my $FILES = new Safe->reval(`klomp-files eval`);
+my $FILES = Klomp::Files::allKlompFiles();
 
 my $usage = "Usage:
   $0 -h - show this message

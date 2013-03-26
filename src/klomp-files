@@ -11,8 +11,6 @@ my $okFiles = join "|", sort keys %$files;
 my $usage = "Usage:
   $0 [-n] $okFiles
     Print the absolute path to the file.
-  $0 [-n] eval
-    Print some perl code that evaluates to a hash of all the files.
 
   -n    do not output a trailing newline
 ";
@@ -27,12 +25,6 @@ sub main(@){
   my $arg = shift() || '';
   if($arg =~ /^($okFiles)$/){
     print "$$files{$arg}";
-  }elsif($arg eq 'eval'){
-    print "{";
-    for my $key(keys %$files){
-      print "\"$key\",\"$$files{$key}\",";
-    }
-    print "}";
   }else{
     die $usage;
   }
