@@ -1,0 +1,54 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $files = {
+  db           => "$ENV{HOME}/.klompdb",
+  cur          => "$ENV{HOME}/.klompcur",
+  list         => "$ENV{HOME}/.klomplist",
+  history      => "$ENV{HOME}/.klomphistory",
+  lib          => "$ENV{HOME}/.klomplib",
+  playlistname => "$ENV{HOME}/.klomplist",
+  playlistdir  => "$ENV{HOME}/.klomplist-",
+  fifo         => "/tmp/klomplayer_fifo",
+  pidfile      => "/tmp/klomplayer_pid",
+};
+my $synonyms = {
+  plname => 'playlistname',
+  pldir => 'playlistdir',
+  hist => 'history',
+};
+for my $key(keys %$synonyms){
+  $$files{$key} = $$files{$$synonyms{$key}};
+}
+
+my $okFiles = join "|", sort keys %$files;
+
+my $usage = "Usage:
+  $0 $okFiles
+    Print the absolute path to the file.
+  $0 eval
+    Print some perl code that evaluates to a hash of all the files.
+
+  arguments are case insensitive and non-letter characters are ignored
+";
+
+sub main(@){
+  my $arg = shift() || '';
+  $arg = lc $arg;
+  $arg =~ s/[^a-z]*//gi;
+
+  if($arg =~ /^($okFiles)$/){
+    print "$$files{$arg}\n";
+  }elsif($arg eq 'eval'){
+    print "{";
+    for my $key(keys %$files){
+      print "\"$key\",\"$$files{$key}\",";
+    }
+    print "}\n";
+  }else{
+    die $usage;
+  }
+}
+
+&main(@ARGV);
