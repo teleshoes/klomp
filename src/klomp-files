@@ -1,28 +1,10 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Files;
 
-my $files = {
-  db           => "$ENV{HOME}/.klompdb",
-  cur          => "$ENV{HOME}/.klompcur",
-  list         => "$ENV{HOME}/.klomplist",
-  history      => "$ENV{HOME}/.klomphistory",
-  lib          => "$ENV{HOME}/.klomplib",
-  playlistname => "$ENV{HOME}/.klomplist",
-  playlistdir  => "$ENV{HOME}/.klomplist-",
-  fifo         => "/tmp/klomplayer_fifo",
-  fifopidfile  => "/tmp/klomplayer_fifo_pid",
-  termpidfile  => "/tmp/klomp_term_pid",
-  pidfile      => "/tmp/klomplayer_pid",
-};
-my $synonyms = {
-  plname => 'playlistname',
-  pldir => 'playlistdir',
-  hist => 'history',
-};
-for my $key(keys %$synonyms){
-  $$files{$key} = $$files{$$synonyms{$key}};
-}
+my $files = Klomp::Files::allKlompFiles();
 
 my $okFiles = join "|", sort keys %$files;
 
