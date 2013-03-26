@@ -11,6 +11,7 @@ my $files = {
   playlistname => "$ENV{HOME}/.klomplist",
   playlistdir  => "$ENV{HOME}/.klomplist-",
   fifo         => "/tmp/klomplayer_fifo",
+  fifopidfile  => "/tmp/klomplayer_fifo_pid",
   pidfile      => "/tmp/klomplayer_pid",
 };
 my $synonyms = {
