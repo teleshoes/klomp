@@ -5,12 +5,15 @@ use lib "/opt/klomp/lib";
 use Klomp::Files;
 
 my $KLOMP_CUR = Klomp::Files::klompFile("cur");
+my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 
 my $atts = join "|", qw(album artist number title);
 
 my $usage = "Usage:
   $0 [-n] [ARG ARG ARG ..]
     print values for ARGs, separated by spaces
+    values are read from $KLOMP_CUR, or if its missing,
+    from the first line of $KLOMP_HIST
 
   ARG   [playlist|ended|$atts]
         playlist prints <PLAYLIST_NAME> unless playlist is main
@@ -21,6 +24,10 @@ my $usage = "Usage:
 sub getCur(){
   if(-e $KLOMP_CUR){
     return `cat $KLOMP_CUR`;
+  }elsif(-e $KLOMP_HIST){
+    my $cur = `head -1 $KLOMP_HIST`;
+    $cur =~ s/\/\/\/\\\\\\/\n/g;
+    return $cur;
   }else{
     return "";
   }
