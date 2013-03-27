@@ -66,6 +66,10 @@ klomp-size
   shows local disk space and space with flacmirror instead of flac
   DEPENDS: perl
 
+klomp-info
+  prints information about the current song
+  DEPENDS: perl
+
 klomp-lib
   parse klomplib file and print lib and flacmirror paths from Klomp::Lib module
   DEPENDS: perl
