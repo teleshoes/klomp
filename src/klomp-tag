@@ -4,14 +4,14 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Tag;
 
-sub formatTags($$);
+sub formatTags($$$);
 sub guess($$$);
 
 my @cols = qw(title artist album number date genre);
 my $colUsage = join "|", @cols;
 
 my $usage = "Usage:
-  $0 SONG
+  $0 [-g] SONG
      Reads tags from the file and prints them e.g.:
           > $0 Zoe_Keating/One_Cello_x_16_Natoma/01_Legions_War.flac
           title:Legions (War)
@@ -20,7 +20,16 @@ my $usage = "Usage:
           number:1
           date:2005-01-01
           genre:
-  $0 SONG SONG [SONG ...]
+     If -g is present, also prints guesses if different, split by a ⁞ symbol.
+     Guesses are based on the file path and transliteration of real tag, e.g.:
+          > $0 -g Ponyo/01\ -\ 深海牧場.flac
+          title:深海牧場⁞fukami/shinkaibokujou/makiba
+          artist:久石譲⁞hisaishijou/yuzuri/yuzuru
+          album:崖の上のポニョ [Ghibli]⁞gai/gakenojounoponyo [Ghibli]
+          number:01⁞00001
+          date:2008
+          genre:
+  $0 [-g] SONG SONG [SONG ...]
      Reads tags from the files and prints them as above, except:
      -prepends additional fake tag 'path:SONG'
      -separates files with a newline
@@ -49,22 +58,36 @@ sub main(@){
     my $valueHint = shift;
     print guess($col, $pathHint, $valueHint) . "\n";
   }else{
+    my $showGuesses = 0;
+    if(@_ > 0 and $_[0] eq '-g'){
+      $showGuesses = 1;
+      shift;
+    }
     my $showPath = @_ > 1;
     while(@_ > 0){
-      print formatTags shift(), $showPath;
+      print formatTags shift(), $showPath, $showGuesses;
       print "\n" if @_ > 0;
     }
   }
 }
 
-sub formatTags($$){
-  my ($path, $showPath) = @_;
+sub formatTags($$$){
+  my ($path, $showPath, $showGuesses) = @_;
   if(not -f $path){
     print STDERR "Not a file: $path\n";
     return;
   }
 
   my %tags = Klomp::Tag::readTags $path;
+  if($showGuesses){
+    for my $tag(keys %tags){
+      my $val = $tags{$tag};
+      my $guess = guess $tag, $path, $val;
+      if($val ne $guess and $guess ne ''){
+        $tags{$tag} .= "⁞$guess";
+      }
+    }
+  }
   return ''
     . ($showPath ? "path:$path\n" : '')
     . "title:$tags{title}\n"
