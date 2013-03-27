@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
+use Klomp::Lib;
 use Safe;
 
 sub runOrDie(@);
@@ -118,8 +119,8 @@ sub sync($$$$){
   my $includeFlacs = shift;
   my $libRegex = shift;
 
-  my %libs = map {chomp; $_ => 1} `klomp-lib`;
-  my %remoteLibs = map {chomp; $_ => 1} `klomp-lib --file=$klompLib`;
+  my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
+  my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $klompLib;
 
   for my $lib(sort keys %libs){
     print "\n\nSYNCING $lib\n";
@@ -131,16 +132,11 @@ sub sync($$$$){
       print "skipping $lib: does not match regex filter '$libRegex'\n";
       next;
     }
-    my $path = `klomp-lib -l $lib`;
-    chomp $path;
-    my $remotePath = `klomp-lib --file=$klompLib -l $lib`;
-    chomp $remotePath;
+    my $path = Klomp::Lib::getLibraryPath $lib;
+    my $remotePath = Klomp::Lib::getLibraryPath $lib, $klompLib;
 
-    my $flacmirrorPath = `klomp-lib -f $lib`;
-    chomp $flacmirrorPath;
-    
-    my $remoteFlacmirrorPath = `klomp-lib --file=$klompLib -f $lib`;
-    chomp $remoteFlacmirrorPath;
+    my $flacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib;
+    my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $klompLib;
 
     my %exts = %okExts;
     if($includeFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){

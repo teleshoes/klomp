@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
+use Klomp::Lib;
 
 sub update($$$);
 sub getSongAbsPath($$);
@@ -110,12 +111,12 @@ sub update($$$){
 
 sub getSongAbsPath($$){
   my ($lib, $relpath) = @_;
-  chomp(my $libPath = `klomp-lib -l $lib`);
+  my $libPath = Klomp::Lib::getLibraryPath $lib;
   my $absPath = "$libPath/$relpath";
   if(-e $absPath){
     return $absPath;
   }
-  chomp(my $flacLibPath = `klomp-lib -f $lib`);
+  my $flacLibPath = Klomp::Lib::getFlacmirrorPath $lib;
   my $flacrelpath = $relpath;
   $flacrelpath =~ s/\.flac$/\.ogg/i;
   my $flacAbsPath = "$flacLibPath/$flacrelpath";

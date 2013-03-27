@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Lib;
 
 my $usage = "Usage:
   $0                        update all libs
@@ -25,10 +27,8 @@ sub main(@){
   }
 
   for my $lib(@libs){
-    my $dir = `klomp-lib -l $lib`;
-    chomp $dir;
-    my $flacMirrorDir = `klomp-lib -f $lib`;
-    chomp $flacMirrorDir;
+    my $dir = Klomp::Lib::getLibraryPath $lib;
+    my $flacMirrorDir = Klomp::Lib::getFlacmirrorPath  $lib;
     system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir ne "";
 
     if(-e $flacMirrorDir and -e $dir){
@@ -52,7 +52,7 @@ sub ensureDb(){
 
 sub getLibs(@){
   my @libs = @_;
-  my @allLibs = split /\n/, `klomp-lib`;
+  my @allLibs = Klomp::Lib::getAllLibNames;
 
   @libs = @allLibs if @libs == 0;
 

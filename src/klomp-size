@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use lib "/opt/klomp/lib";
+use Klomp::Lib;
 
 my $unit = "MiB";
 my $unitBytes = 2**20;
@@ -14,8 +16,7 @@ sub convert($);
 sub getSizes($);
 
 sub main(@){
-  my @libs = `klomp-lib`;
-  chomp foreach @libs;
+  my @libs = Klomp::Lib::getAllLibNames;
 
   print "Unit: $unit  ($unitBytes bytes)  format: $numFormat\n";
   print "  {SYNC is the size with flacmirror-oggs, instead of flacs}\n";
@@ -100,10 +101,8 @@ sub fmtAndConvert($){
 sub getSizes($){
   my $lib = shift;
 
-  my $path = `klomp-lib -l $lib`;
-  chomp $path;
-  my $fmPath = `klomp-lib -f $lib`;
-  chomp $fmPath;
+  my $path = Klomp::Lib::getLibraryPath $lib;
+  my $fmPath = Klomp::Lib::getFlacmirrorPath $lib;
   
   my $size = du $path;
   if(defined $fmPath and $fmPath){

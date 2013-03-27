@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
+use Klomp::Lib;
 use Klomp::Tag;
 
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
@@ -16,8 +17,6 @@ my @allCols = (@infoCols, @tagCols, @guessTagCols);
 
 my $defaultDb = Klomp::Files::klompFile("db");
 
-sub getAllLibs();
-sub libpath($);
 sub shell(@);
 sub shellQuiet(@);
 sub runSql($$;@);
@@ -139,7 +138,7 @@ sub update($$){
   my $db = shift;
   my @libs = @{shift()};
   for my $lib(@libs){
-    my $libpath = libpath $lib;
+    my $libpath = Klomp::Lib::getLibraryPath $lib;
     if(not -d $libpath){
       die "Invalid library path $libpath\n";
     }
@@ -236,10 +235,8 @@ sub search($$$$$){
   my @cols = @{shift()};
   my @libs = @{shift()};
 
-  my @allLibs = `klomp-lib`;
-  my @defaultLibs = `klomp-lib -d`;
-  chomp foreach @allLibs;
-  chomp foreach @defaultLibs;
+  my @allLibs = Klomp::Lib::getAllLibNames;
+  my @defaultLibs = Klomp::Lib::getDefaultLibNames;
   my %okLibs = map {$_ => 1} @allLibs;
 
   my $all = 0;
@@ -405,8 +402,8 @@ sub info($$){
   my $songRelPath = shift;
 
   my $libWhere = '1=1';
-  for my $lib(getAllLibs()){
-    my $libpath = libpath $lib;
+  for my $lib(Klomp::Lib::getAllLibNames()){
+    my $libpath = Klomp::Lib::getLibraryPath $lib;
     if($songRelPath =~ s/^$libpath//){
       $libWhere = "library = '$lib'";
       last;
@@ -447,20 +444,6 @@ sub wrapTokens(@){
   return @tokens;
 }
 
-sub getAllLibs(){
-  my @libs = `klomp-lib`;
-  chomp foreach @libs;
-  return @libs;
-}
-sub libpath($){
-  my $lib = shift;
-  my $libpath = `klomp-lib -l $lib`;
-  chomp $libpath;
-  if(not $libpath){
-    die "Error finding library path for $lib\n";
-  }
-  return $libpath;
-}
 sub shellQuiet(@){
   my $cmd = join ' ', wrapTokens(@_);
   return `$cmd 2>/dev/null`;
@@ -520,7 +503,7 @@ sub cols($){
 sub checkMissing($$){
   my $db = shift;
   my $lib = shift;
-  my $libpath = libpath $lib;
+  my $libpath = Klomp::Lib::getLibraryPath $lib;
 
   my @songRelPaths =
     runSql $db, "select relpath from songs where library = '$lib'";
@@ -572,7 +555,7 @@ sub addSongs($$$){
   my $lib = shift;
   my @songRelPaths = @{scalar shift};
 
-  my $libpath = libpath $lib;
+  my $libpath = Klomp::Lib::getLibraryPath $lib;
   
   my %dbInfo;
   for my $line(runSql($db, 'select filesize, modified, relpath from Songs')){
