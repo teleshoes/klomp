@@ -54,7 +54,8 @@ sub getLibArray($;$){
   my ($lib, $klompLib) = @_;
   my $libs = parseLibs $klompLib;
   if(not defined $$libs{$lib}){
-    die "Unknown lib '$lib' (known libs: " . (join ', ', keys %$libs) . ")\n";
+    my $okLibs = join ', ', sort keys %$libs;
+    die "Unknown lib '$lib' (known libs: $okLibs)\n";
   }
   return $$libs{$lib};
 }
