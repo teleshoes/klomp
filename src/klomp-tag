@@ -4,6 +4,9 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Tag;
 
+sub printTags($$);
+sub guess($$$);
+
 my @cols = qw(title artist album number date genre);
 my $colUsage = join "|", @cols;
 
@@ -37,6 +40,23 @@ my $usage = "Usage:
       Print this usage
 ";
 
+sub main(@){
+  die $usage if @_ == 0 or $_[0] eq '-h' or $_[0] eq '--help';
+  if((@_ == 2 or @_ == 3) and $_[0] =~ /^--guess=([a-z]+)$/i){
+    shift;
+    my $col = $1;
+    my $pathHint = shift;
+    my $valueHint = shift;
+    guess $col, $pathHint, $valueHint;
+  }else{
+    my $showPath = @_ > 1;
+    while(@_ > 0){
+      printTags shift(), $showPath;
+      print "\n" if @_ > 0;
+    }
+  }
+}
+
 sub printTags($$){
   my ($path, $showPath) = @_;
   if(not -f $path){
@@ -63,22 +83,6 @@ sub guess($$$){
   $valueHint = '' if not defined $valueHint;
 
   print Klomp::Tag::guess($col, $pathHint, $valueHint) . "\n";
-}
-sub main(@){
-  die $usage if @_ == 0 or $_[0] eq '-h' or $_[0] eq '--help';
-  if((@_ == 2 or @_ == 3) and $_[0] =~ /^--guess=([a-z]+)$/i){
-    shift;
-    my $col = $1;
-    my $pathHint = shift;
-    my $valueHint = shift;
-    guess $col, $pathHint, $valueHint;
-  }else{
-    my $showPath = @_ > 1;
-    while(@_ > 0){
-      printTags shift(), $showPath;
-      print "\n" if @_ > 0;
-    }
-  }
 }
 
 &main(@ARGV);
