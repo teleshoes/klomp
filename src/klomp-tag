@@ -11,7 +11,7 @@ my @cols = qw(title artist album number date genre);
 my $colUsage = join "|", @cols;
 
 my $usage = "Usage:
-  $0 [-g] SONG
+  $0 [--no-guess] SONG
      Reads tags from the file and prints them e.g.:
           > $0 Zoe_Keating/One_Cello_x_16_Natoma/01_Legions_War.flac
           title:Legions (War)
@@ -20,16 +20,16 @@ my $usage = "Usage:
           number:1
           date:2005-01-01
           genre:
-     If -g is present, also prints guesses if different, split by a ⁞ symbol.
+     If --no-guess is not present, print 'tag⁞guess' if guess is different.
      Guesses are based on the file path and transliteration of real tag, e.g.:
-          > $0 -g Ponyo/01\ -\ 深海牧場.flac
+          > $0 -g Ponyo/01/-深海牧場.flac
           title:深海牧場⁞fukami/shinkaibokujou/makiba
           artist:久石譲⁞hisaishijou/yuzuri/yuzuru
           album:崖の上のポニョ [Ghibli]⁞gai/gakenojounoponyo [Ghibli]
           number:01⁞00001
           date:2008
           genre:
-  $0 [-g] SONG SONG [SONG ...]
+  $0 [--no-guess] SONG SONG [SONG ...]
      Reads tags from the files and prints them as above, except:
      -prepends additional fake tag 'path:SONG'
      -separates files with a newline
@@ -58,9 +58,9 @@ sub main(@){
     my $valueHint = shift;
     print guess($col, $pathHint, $valueHint) . "\n";
   }else{
-    my $showGuesses = 0;
-    if(@_ > 0 and $_[0] eq '-g'){
-      $showGuesses = 1;
+    my $showGuesses = 1;
+    if(@_ > 0 and $_[0] eq '--no-guess'){
+      $showGuesses = 0;
       shift;
     }
     my $showPath = @_ > 1;
