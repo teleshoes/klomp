@@ -29,9 +29,9 @@ sub main(@){
   my $lib = shift;
   die $usage if @_ > 0;
 
-  if(not defined $cmd){
+  if(not defined $cmd and not defined $lib){
     print map {"$_\n"} Klomp::Lib::getAllLibNames $klompLib;
-  }elsif($cmd eq "-d"){
+  }elsif($cmd eq "-d" and not defined $lib){
     print map {"$_\n"} Klomp::Lib::getDefaultLibNames $klompLib;
   }elsif($cmd eq "-l" and defined $lib){
     print Klomp::Lib::getLibraryPath($lib, $klompLib) . "\n";
