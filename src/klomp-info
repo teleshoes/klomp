@@ -4,6 +4,8 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
 
+my $KLOMP_CUR = Klomp::Files::klompFile("cur");
+
 my $atts = join "|", qw(album artist number title);
 
 my $usage = "Usage:
@@ -14,6 +16,14 @@ my $usage = "Usage:
   -n    do not output a trailing newline
 ";
 
+sub getCur(){
+  if(-e $KLOMP_CUR){
+    return `cat $KLOMP_CUR`;
+  }else{
+    return "";
+  }
+}
+
 sub main(@){
   my $newline = 1;
   if(@_ > 0 and $_[0] eq '-n'){
@@ -21,9 +31,7 @@ sub main(@){
     shift;
   }
 
-  my $curFile = Klomp::Files::klompFile("cur");
-  my $cur = `cat $curFile`;
-
+  my $cur = getCur();
   my @info;
   for my $arg(@_){
     if($arg eq 'playlist'){
