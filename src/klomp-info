@@ -43,9 +43,10 @@ sub main(@){
     }elsif($arg =~ /^(pos|len|percent)$/){
       if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
         my ($pos, $len) = ($1, $2);
+        my $percent = $len > 0 ? sprintf "%.0f", $pos/$len*100 : 0;
         push @info, formatHMS $pos if $arg eq 'pos';
         push @info, formatHMS $len if $arg eq 'len';
-        push @info, sprintf "%.0f%%", $pos/$len*100 if $arg eq 'percent';
+        push @info, "$percent%" if $arg eq 'percent';
       }
     }elsif($arg =~ /^($atts)$/){
       push @info, $1 if $cur =~ /^$arg=(.*)$/m;
