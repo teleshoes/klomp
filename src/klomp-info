@@ -7,29 +7,37 @@ use Klomp::Files;
 my $atts = join "|", qw(album artist number title);
 
 my $usage = "Usage:
-  $0 [ARG ARG ARG ..]
-    print args separated by spaces
-    ARG is [playlist|$atts]
+  $0 [-n] [ARG ARG ARG ..]
+    print values for ARGs, separated by spaces
+
+  ARG   [playlist|$atts]
+  -n    do not output a trailing newline
 ";
 
 sub main(@){
+  my $newline = 1;
+  if(@_ > 0 and $_[0] eq '-n'){
+    $newline = 0;
+    shift;
+  }
+
   my $curFile = Klomp::Files::klompFile("cur");
   my $cur = `cat $curFile`;
 
-  my $out = '';
-  for my $arg(@ARGV){
-    $out .= ' ' if $out ne '';
+  my @info;
+  for my $arg(@_){
     if($arg eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
-      $out .= "<$pl>" if $pl ne 'main';
+      push @info, "<$pl>" if $pl ne 'main';
     }elsif($arg =~ /^($atts)$/){
-      $out .= $1 if $cur =~ /^$arg=(.*)$/m;
+      push @info, $1 if $cur =~ /^$arg=(.*)$/m;
     }else{
       die "Usage: $0 [arg arg arg]\n\n";
     }
   }
-  print $out;
+  print join ' ', @info;
+  print "\n" if $newline;
 }
 
 &main(@ARGV);
