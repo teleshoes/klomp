@@ -7,7 +7,7 @@ use Klomp::Files;
 my $KLOMP_CUR = Klomp::Files::klompFile("cur");
 my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 
-my $atts = join "|", qw(album artist number title);
+my $atts = join "|", qw(album artist number title pos len percent);
 
 my $usage = "Usage:
   $0 [-n] [ARG ARG ARG ..]
@@ -22,6 +22,7 @@ my $usage = "Usage:
 ";
 
 sub getCur();
+sub formatHMS($);
 
 sub main(@){
   my $newline = 1;
@@ -39,6 +40,13 @@ sub main(@){
       push @info, "<$pl>" if $pl ne 'main';
     }elsif($arg eq 'ended'){
       push @info, "<ended>" if not -e $KLOMP_CUR;
+    }elsif($arg =~ /^(pos|len|percent)$/){
+      if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
+        my ($pos, $len) = ($1, $2);
+        push @info, formatHMS $pos if $arg eq 'pos';
+        push @info, formatHMS $len if $arg eq 'len';
+        push @info, sprintf "%.0f%%", $pos/$len*100 if $arg eq 'percent';
+      }
     }elsif($arg =~ /^($atts)$/){
       push @info, $1 if $cur =~ /^$arg=(.*)$/m;
     }else{
@@ -58,6 +66,22 @@ sub getCur(){
     return $cur;
   }else{
     return "";
+  }
+}
+
+sub formatHMS($){
+  my $time = shift;
+  $time = int(0.5 + $time);
+  my $h = int($time / (60*60));
+  my $m = int($time % (60*60) / (60));
+  my $s = $time - ($m*60) - ($h*60*60);
+  $s = "0$s" if $s < 10;
+
+  if($h == 0){
+    return "$m:$s";
+  }else{
+    $m = "0$m" if $m < 10;
+    return "$h:$m:$s";
   }
 }
 
