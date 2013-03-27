@@ -104,7 +104,7 @@ klomp-fifo-writer
 
 **** Tag Libs ****
 mp3                       => eyeD3 {external executable}
-ogg, flac                 => lltag {external executable}
+ogg, flac                 => lltag {external executable}, flac
 wma                       => Audio::WMA {perl module}
 mp4, m4a, m4p, m4v, m4b   => AtomicParsley {external executable}
 transliteration{most}     => Text::Unidecode {perl Module}
