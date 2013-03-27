@@ -12,7 +12,9 @@ my $usage = "Usage:
   $0 [-n] [ARG ARG ARG ..]
     print values for ARGs, separated by spaces
 
-  ARG   [playlist|$atts]
+  ARG   [playlist|ended|$atts]
+        playlist prints <PLAYLIST_NAME> unless playlist is main
+        ended prints <ended> if klomp cur file is missing
   -n    do not output a trailing newline
 ";
 
@@ -38,6 +40,8 @@ sub main(@){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
       push @info, "<$pl>" if $pl ne 'main';
+    }elsif($arg eq 'ended'){
+      push @info, "<ended>" if not -e $KLOMP_CUR;
     }elsif($arg =~ /^($atts)$/){
       push @info, $1 if $cur =~ /^$arg=(.*)$/m;
     }else{
