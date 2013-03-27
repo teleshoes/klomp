@@ -4,7 +4,7 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Tag;
 
-sub printTags($$);
+sub formatTags($$);
 sub guess($$$);
 
 my @cols = qw(title artist album number date genre);
@@ -47,17 +47,17 @@ sub main(@){
     my $col = $1;
     my $pathHint = shift;
     my $valueHint = shift;
-    guess $col, $pathHint, $valueHint;
+    print guess($col, $pathHint, $valueHint) . "\n";
   }else{
     my $showPath = @_ > 1;
     while(@_ > 0){
-      printTags shift(), $showPath;
+      print formatTags shift(), $showPath;
       print "\n" if @_ > 0;
     }
   }
 }
 
-sub printTags($$){
+sub formatTags($$){
   my ($path, $showPath) = @_;
   if(not -f $path){
     print STDERR "Not a file: $path\n";
@@ -65,7 +65,7 @@ sub printTags($$){
   }
 
   my %tags = Klomp::Tag::readTags $path;
-  print ''
+  return ''
     . ($showPath ? "path:$path\n" : '')
     . "title:$tags{title}\n"
     . "artist:$tags{artist}\n"
@@ -82,7 +82,7 @@ sub guess($$$){
   die $usage if not defined $okCols{$col};
   $valueHint = '' if not defined $valueHint;
 
-  print Klomp::Tag::guess($col, $pathHint, $valueHint) . "\n";
+  return Klomp::Tag::guess $col, $pathHint, $valueHint;
 }
 
 &main(@ARGV);
