@@ -46,7 +46,7 @@ sub main(@){
         my $percent = $len > 0 ? sprintf "%.0f", $pos/$len*100 : 0;
         push @info, formatHMS $pos if $arg eq 'pos';
         push @info, formatHMS $len if $arg eq 'len';
-        push @info, "$percent%" if $arg eq 'percent';
+        push @info, "<$percent>" if $arg eq 'percent';
       }
     }elsif($arg =~ /^($atts)$/){
       push @info, $1 if $cur =~ /^$arg=(.*)$/m;
