@@ -3,54 +3,43 @@ use strict;
 use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
+use Klomp::Lib;
 
 my $defaultKlomplib = Klomp::Files::klompFile("lib");
 
-my $klomplib;
-if(@ARGV > 0 and $ARGV[0] =~ /^--file=(.*)$/){
-  shift;
-  $klomplib = $1;
-}else{
-  $klomplib = $defaultKlomplib;
-}
+my $usage = "Usage:
+  $0 [--file=libfile]
+    print available libs
+  $0 [--file=libfile] -d
+    print default libs
+  $0 [--file=libfile] -l <lib>
+    print library path for <lib>
+  $0 [--file=libfile] -f <lib>
+    print flacmirror path for <lib>
+  --file=libfile is optional, default is $defaultKlomplib\n";
 
-if(not -e $klomplib){
-  die "$klomplib file not found\n";
-}
-
-sub readLib(){
-  open FH, "< $klomplib" or die "Could not read $klomplib";
-  my @lines = grep {/^[^#]/} <FH>;
-  chomp foreach @lines;
-  my %libs = map {my @arr = split ':'; {shift @arr, \@arr}} @lines;
-  close FH;
-  return \%libs;
-}
-
-my $cmd = shift;
-my $lib = shift;
-my $libs = readLib;
-
-if(not defined $cmd){
-  print map {"$_\n"} sort keys %$libs;
-}elsif($cmd =~ /^( -d )$/x){
-  print map {"$_\n"} grep {${$$libs{$_}}[0] eq 'default'} sort keys %$libs;
-}elsif($cmd =~ /^( -l | -f )$/x and defined $lib){
-  if(not defined $$libs{$lib}){
-    die "Unknown lib '$lib' (known libs: " . (join ', ', keys %$libs) . ")\n";
+sub main(@){
+  my $klompLib = undef;
+  if(@_ > 0 and $_[0] =~ /^--file=(.*)$/){
+    $klompLib = $1;
+    shift;
   }
-  my $libArr = $$libs{$lib};
-  print "$$libArr[1]\n" if $cmd eq '-l' and @$libArr >= 2;
-  print "$$libArr[2]\n" if $cmd eq '-f' and @$libArr >= 3;
-}else{
-  die "Usage:
-    $0 [--file=libfile]
-      print available libs
-    $0 [--file=libfile] -d
-      print default libs
-    $0 [--file=libfile] -l <lib>
-      print library path for <lib>
-    $0 [--file=libfile] -f <lib>
-      print flacmirror path for <lib>
-    --file=libfile is optional, default is $defaultKlomplib\n";
+
+  my $cmd = shift;
+  my $lib = shift;
+  die $usage if @_ > 0;
+
+  if(not defined $cmd){
+    print map {"$_\n"} Klomp::Lib::getAllLibNames $klompLib;
+  }elsif($cmd eq "-d"){
+    print map {"$_\n"} Klomp::Lib::getDefaultLibNames $klompLib;
+  }elsif($cmd eq "-l" and defined $lib){
+    print Klomp::Lib::getLibraryPath($lib, $klompLib) . "\n";
+  }elsif($cmd eq "-f" and defined $lib){
+    print Klomp::Lib::getFlacmirrorPath($lib, $klompLib) . "\n";
+  }else{
+    die $usage;
+  }
 }
+
+&main(@ARGV);
