@@ -2,6 +2,10 @@
 use strict;
 use warnings;
 
+my $depsDir = `dirname $0`;
+chomp $depsDir;
+$depsDir .= "/deps";
+
 if(`whoami` ne "root\n"){
   exec 'sudo', $0, @ARGV;
 }
@@ -46,7 +50,7 @@ print "\n\n";
 
 print "improved japanese transliteration for tag parsing\n";
 print "  {perl module Lingua::JA::Romanize::Japanese}\n";
-runPrompt qw(cpan Lingua::JA::Romanize::Japanese);
+runPrompt "dpkg -i $depsDir/liblingua-ja-romanize-japanese-perl*.deb";
 
 print "\n\n";
 
