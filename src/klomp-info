@@ -21,17 +21,7 @@ my $usage = "Usage:
   -n    do not output a trailing newline
 ";
 
-sub getCur(){
-  if(-e $KLOMP_CUR){
-    return `cat $KLOMP_CUR`;
-  }elsif(-e $KLOMP_HIST){
-    my $cur = `head -1 $KLOMP_HIST`;
-    $cur =~ s/\/\/\/\\\\\\/\n/g;
-    return $cur;
-  }else{
-    return "";
-  }
-}
+sub getCur();
 
 sub main(@){
   my $newline = 1;
@@ -57,6 +47,18 @@ sub main(@){
   }
   print join ' ', @info;
   print "\n" if $newline;
+}
+
+sub getCur(){
+  if(-e $KLOMP_CUR){
+    return `cat $KLOMP_CUR`;
+  }elsif(-e $KLOMP_HIST){
+    my $cur = `head -1 $KLOMP_HIST`;
+    $cur =~ s/\/\/\/\\\\\\/\n/g;
+    return $cur;
+  }else{
+    return "";
+  }
 }
 
 &main(@ARGV);
