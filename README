@@ -1,22 +1,22 @@
-Copyright 2011-2012 by Elliot Wolk
+Copyright 2011,2012,2013 by Elliot Wolk
 klomp is free software, released under the GPLv3
 
 ========================
 klomp - CLI music player
 ========================
 
-klomp is a set of perl scripts that manage mplayer in an mpd-like fashion.
+klomp is a set of scripts that manage mplayer in an mpd-like fashion.
 The goal is to have a pure command line music player with powerful searching,
-and to work on portable linux devices {e.g.: maemo/meego/mer}.
+and to work on portable linux devices {e.g.: maemo/meego/mer/android}.
 
 Core requirements are GNU/Linux, mplayer, and perl.
 {plus optional requirements for reading tags from different filetypes}
-Works nicely on the N900.
+Works nicely on the Nokia N900 and Nokia N9.
 
 
 **** Features ****
 -Stateless: if you delete the db, it can be 100% automatically rebuilt
-  never modifies song files: very nice, robust tagging utilities already exist
+  never modifies song files: separate tagging utilities already exist
 -Modular: well-defined, non-interactive cli
 -Quasi-portable: most features depend only on gnu/linux
   very few dependencies {apart from tagging when db building}
@@ -24,12 +24,13 @@ Works nicely on the N900.
 -Powerful query language {really powerful, but not well-documented}
 -Flacmirror:
   lossless audio on your computer, tiny oggs on your phone, transparently
--optional curses interface that invokes the same modular commands
+-optional python curses interface that invokes the same modular commands
 -resume playback from the position you quit in the current song
 -moderate resource consumption {runs smoothly on N900 - 256MB ram, 600mhz cpu}
 -separation of db-building and playback/playlists;
-  you can build the db on one computer,
-  copy it elsewere, and search/play it without installing the tagging deps
+  you can build the db on your desktop and sync to your portable device.
+  the portable device does not need to install the tagging dependencies or do
+  expensive computation
 
 
 **** Limitations ****
@@ -37,47 +38,87 @@ klomp-db tags only: mp3, flac, ogg, m4a, wma, wav
 everything else can do anything mplayer can
 
 
-**** Files ****
+**** Frontend Execs ****
+klomp
+  interactive curses CLI for searching library,
+  viewing and editing playlist, and controlling playback.
+  DEPENDS: python, klomp-cmd, curses
+
+klomp-cmd
+  CLI for manipulating playlists and playback
+  DEPENDS: perl, klomplayer
+
+klomp-tag
+  CLI for reading tags from a file
+  DEPENDS: perl, taglibs
+
+klomp-update
+  CLI to klomp-db and flacmirror for updating the database
+  DEPENDS: perl, taglibs, sqlite, flacmirror
+
+klomp-sync
+  copies remote library file and syncs shared libraries and flacmirrors
+  ignores flacs by default
+  DEPENDS: perl
+
+klomp-size
+  prints a nice table of disk space usage for each library
+  shows local disk space and space with flacmirror instead of flac
+  DEPENDS: perl
+
+klomp-lib
+  parse klomplib file and print lib and flacmirror paths from Klomp::Lib module
+  DEPENDS: perl
+
+klomp-term
+  launch klomp using "term" cmd, and ensure only one instance
+
+
+**** Internal Execs ****
+klomplayer
+  mplayer wrapper that updates a file with time position
+  CALLED BY: klomp-cmd
+  DEPENDS: perl, mplayer, klomp-fifo-writer
+
+klomp-db
+  create, update, and query central sqlite database
+  CALLED BY: klomp {searching} and klomp-update {updating}
+  DEPENDS: perl, taglibs
+
+flacmirror
+  maintain a parallel dir structure of OGGs for your flacs
+  CALLED BY: klomp-update
+  DEPENDS: perl, dir2ogg
+
+klomp-files
+  get klomp file paths from Klomp::Files perl module
+  CALLED BY: klomp
+  DEPENDS: perl
+
+klomp-fifo-writer
+  repeatedly write a query to the mplayer FIFO to output position and length
+  CALLED BY: klomplayer
+  DEPENDS: perl, mplayer
+
+
+**** Tag Libs ****
+mp3                       => eyeD3 {external executable}
+ogg, flac                 => lltag {external executable}
+wma                       => Audio::WMA {perl module}
+mp4, m4a, m4p, m4v, m4b   => AtomicParsley {external executable}
+transliteration{most}     => Text::Unidecode {perl Module}
+transliteration{japanese} => Lingua::JA::Romanize::Japanese {perl module}
+
+
+**** Other Files ****
 COPYING - GPLv3
 README - ?????? wtf is this thing?
-flacmirror - rsync style ogg->flac conversion util {parallel dir structure}
-klomp - interactive python curses ui; query db, view/edit playlist
-klomp-call-handler - N900-specific: kill klomplayer when recieving a phone call
-klomp-cmd - sends messages to mplayer, and modifies playlist
-klomp-db - manages and queries the main klomp sqlite database {main backend}
-klomp-fifo-writer - repeatedly query for song pos by writing to mplayer fifo
-klomp-lib - turns library names into absolute paths
-klomp-size - cli frontend to print a summary of disk space, not used internally
-klomp-sync - syncs another computer's klomp libraries using rsync
-klomp-tag - cli frontend to Klomp/Tag.pm, not used internally
-klomp-term - launches klomp using term cmd, and ensures only one instance
-klomp-update - cli frontend to klomp-db, updates klomp libraries
-klomplayer - mplayer wrapper that updates a file with time position
-Klomp/Tag.pm - perl module for actually reading tags from media files
+klomp-call-handler - N900-specific: kill klomplayer when receiving a phone call
 
 $HOME/.klompdb - default location for sqlite db
 $HOME/.klomplib - default location for library path definitions
 $HOME/.klompcur - current song's info and current position
 $HOME/.klomplist - the central play queue; absolute paths that play in order
 $HOME/.klomphistory - songs that have played or been skipped, for re-playing
-
-
-**** Dependencies ****
-klomp, klomp-search     Term::ReadKey
-klomp-call-handler      python
-klomplayer              mplayer
-flacmirror              dir2ogg
-
-just GNU/Linux and perl for:
-klomp-cmd, klomp-lib, klomp-term, klomp-fifo-writer
-
-klomp-db
- to update the library and read tags from files, you need:
-   eyeD3 {mp3}
-   lltag {ogg and flac}
-   Audio::WMA {wma}
-   AtomicParsley {mp4, m4a, m4p, m4v, m4b}
- to get ascii transliteration, you need:
-   Text::Unidecode
- to get improved japanese transliteration, you need:
-   Lingua::JA::Romanize::Japanese
+$HOME/.klomp-playlist - contains the name of the current named playlist, if any
+$HOME/.klomplist-NAME - directories containing non-active playlists
