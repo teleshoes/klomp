@@ -72,6 +72,7 @@ klomp-lib
 
 klomp-term
   launch klomp using "term" cmd, and ensure only one instance
+  DEPENDS: perl
 
 
 **** Internal Execs ****
