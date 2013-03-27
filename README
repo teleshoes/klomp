@@ -42,7 +42,7 @@ everything else can do anything mplayer can
 klomp
   interactive curses CLI for searching library,
   viewing and editing playlist, and controlling playback.
-  DEPENDS: python, klomp-cmd, curses
+  DEPENDS: python, python-curses, klomp-cmd
 
 klomp-cmd
   CLI for manipulating playlists and playback
