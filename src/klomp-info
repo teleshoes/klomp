@@ -16,8 +16,8 @@ my $usage = "Usage:
     from the first line of $KLOMP_HIST
 
   ARG   [playlist|ended|$atts]
-        playlist prints <PLAYLIST_NAME> unless playlist is main
-        ended prints <ended> if klomp cur file is missing
+        playlist prints |PLAYLIST_NAME| unless playlist is main
+        ended prints |ended| if klomp cur file is missing
   -n    do not output a trailing newline
 ";
 
@@ -37,16 +37,16 @@ sub main(@){
     if($arg eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
-      push @info, "<$pl>" if $pl ne 'main';
+      push @info, "|$pl|" if $pl ne 'main';
     }elsif($arg eq 'ended'){
-      push @info, "<ended>" if not -e $KLOMP_CUR;
+      push @info, "|ended|" if not -e $KLOMP_CUR;
     }elsif($arg =~ /^(pos|len|percent)$/){
       if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
         my ($pos, $len) = ($1, $2);
         my $percent = $len > 0 ? sprintf "%.0f", $pos/$len*100 : 0;
         push @info, formatHMS $pos if $arg eq 'pos';
         push @info, formatHMS $len if $arg eq 'len';
-        push @info, "<$percent>" if $arg eq 'percent';
+        push @info, "|$percent|" if $arg eq 'percent';
       }
     }elsif($arg =~ /^($atts)$/){
       push @info, $1 if $cur =~ /^$arg=(.*)$/m;
