@@ -8,9 +8,9 @@ use Safe;
 
 sub runOrDie(@);
 sub libMatches($$);
-sub remoteSync($$$);
-sub sync($$$$);
-sub syncDir($$$@);
+sub remoteSync($$$$);
+sub sync($$$$$);
+sub syncDir($$$$@);
 
 my $klompDb = Klomp::Files::klompFile("db");
 
@@ -30,17 +30,22 @@ chomp $name;
 my $usage = "Usage:
   $name -h|--help
     print this message
-  $name HOST [--flacs] [LIB_REGEX]
+  $name HOST [--flacs] [--nopresync] [LIB_REGEX]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in HOST:~/.klomplib
-  $name --local KLOMP_LIB_FILE [--flacs] [LIB_REGEX]
+  $name --local KLOMP_LIB_FILE [--flacs] [--nopresync] [LIB_REGEX]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
   --flacs
      Always copy flac files.
      Normally, if the destination klomplib has a flacmirror, flacs are omitted.
+  --nopresync
+     Never run presync. Normally, presync runs before syncing.
+     If files have been moved or renamed locally, presync moves the files on
+     the destination rather than copying and deleting.
+     It's fairly fast and can save huge amounts of time, so its on by default.
   --local
      Specify a local klomplib and copy locally.
 
@@ -76,15 +81,21 @@ sub main(@){
     $includeFlacs = 1;
   }
 
+  my $presync = 1;
+  if(@_ > 0 and $_[0] eq '--nopresync'){
+    shift;
+    $presync = 0;
+  }
+
   my $libRegex = '';
   $libRegex = shift if @_ == 1;
 
   die $usage if @_ > 0;
 
   if(defined $host){
-    remoteSync($host, $includeFlacs, $libRegex);
+    remoteSync($host, $includeFlacs, $presync, $libRegex);
   }elsif(defined $localKlompLib){
-    sync(undef, $localKlompLib, $includeFlacs, $libRegex);
+    sync(undef, $localKlompLib, $includeFlacs, $presync, $libRegex);
   }
 }
 
@@ -101,8 +112,8 @@ sub libMatches($$){
   return $ok eq 'match';
 }
 
-sub remoteSync($$$){
-  my ($host, $includeFlacs, $libRegex) = @_;
+sub remoteSync($$$$){
+  my ($host, $includeFlacs, $presync, $libRegex) = @_;
 
   print "Copying remote .klomplib here to read\n";
   system 'scp', "$host:~/.klomplib", $tmpKlompLib;
@@ -111,11 +122,11 @@ sub remoteSync($$$){
   print "Overwriting remote .klompdb with local .klompdb\n";
   system 'scp', $klompDb, "$host:~";
 
-  sync($host, $tmpKlompLib, $includeFlacs, $libRegex);
+  sync($host, $tmpKlompLib, $includeFlacs, $presync, $libRegex);
 }
 
-sub sync($$$$){
-  my ($host, $klompLib, $includeFlacs, $libRegex) = @_;
+sub sync($$$$$){
+  my ($host, $klompLib, $includeFlacs, $presync, $libRegex) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $klompLib;
@@ -144,19 +155,19 @@ sub sync($$$$){
       delete $exts{flac};
     }
     my @whitelist = map {"*.$_"} keys %exts;
-    syncDir $path, $remotePath, $host, @whitelist;
+    syncDir $path, $remotePath, $host, $presync, @whitelist;
 
     print "\n\nflacmirror for: $lib\n";
     if($flacmirrorPath and $remoteFlacmirrorPath){
-      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, "*.ogg";
+      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, $presync, "*.ogg";
     }else{
       print "skipping, flacmirror must to be set in both lib files";
     }
   }
 }
 
-sub syncDir($$$@){
-  my ($local, $remote, $host, @whitelist) = @_;
+sub syncDir($$$$@){
+  my ($local, $remote, $host, $presync, @whitelist) = @_;
 
   my @args;
   #include subdirs
@@ -180,7 +191,7 @@ sub syncDir($$$@){
 
   my $dest = defined $host ? "$host:$remote" : $remote;
 
-  runOrDie "presync", "$local", $dest;
+  runOrDie "presync", "$local", $dest if $presync;
   runOrDie "rsync",
     "--delete-after", "-av",
     "--progress",
