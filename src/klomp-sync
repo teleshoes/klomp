@@ -193,7 +193,7 @@ sub syncDir($$$$@){
 
   runOrDie "presync", "$local", $dest if $presync;
   runOrDie "rsync",
-    "--delete-after", "-av",
+    "--delete-before", "-av",
     "--progress",
     "$local/",
     $dest,
