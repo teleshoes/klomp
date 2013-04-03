@@ -24,14 +24,17 @@ my %okExts = map {$_ => 1} qw(
   mp3 m4a wma
 );
 
+my $name = `basename $0`;
+chomp $name;
+
 my $usage = "Usage:
-  $0 -h|--help
+  $name -h|--help
     print this message
-  $0 HOST [--flacs] [LIB_REGEX]
+  $name HOST [--flacs] [LIB_REGEX]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in HOST:~/.klomplib
-  $0 --local KLOMP_LIB_FILE [--flacs] [LIB_REGEX]
+  $name --local KLOMP_LIB_FILE [--flacs] [LIB_REGEX]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
