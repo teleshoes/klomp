@@ -102,9 +102,7 @@ sub libMatches($$){
 }
 
 sub remoteSync($$$){
-  my $host = shift;
-  my $includeFlacs = shift;
-  my $libRegex = shift;
+  my ($host, $includeFlacs, $libRegex) = @_;
 
   print "Copying remote .klomplib here to read\n";
   system 'scp', "$host:~/.klomplib", $tmpKlompLib;
@@ -117,10 +115,7 @@ sub remoteSync($$$){
 }
 
 sub sync($$$$){
-  my $host = shift;
-  my $klompLib = shift;
-  my $includeFlacs = shift;
-  my $libRegex = shift;
+  my ($host, $klompLib, $includeFlacs, $libRegex) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $klompLib;
