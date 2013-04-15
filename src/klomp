@@ -627,7 +627,7 @@ class KlompQuery():
     return list(csv.DictReader(string.split("\n"), fieldnames=colNames,
       delimiter=',', quotechar='"'))
   def maybePerformQuery(self, query):
-    if self.query != None and self.query != query:
+    if self.query != query:
       self.query = query
       return self.performQuery()
     else:
