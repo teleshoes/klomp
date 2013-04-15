@@ -627,7 +627,7 @@ class KlompQuery():
     return list(csv.DictReader(string.split("\n"), fieldnames=colNames,
       delimiter=',', quotechar='"'))
   def maybePerformQuery(self, query):
-    if self.query != query:
+    if self.query != None and self.query != query:
       self.query = query
       return self.performQuery()
     else:
@@ -635,16 +635,20 @@ class KlompQuery():
   def getSongs(self):
     return self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
   def performQuery(self):
-    start = millisNow()
-    while millisNow() - start < 10000:
-      try:
-        songs = self.getSongs()
-      except IOError as e:
-        print e
-    for s in songs:
-      s['query'] = self.query
-      s['number'] = re.sub('^0+', '', s['number'])
-    return songs
+    try:
+      songs = self.getSongs()
+      for s in songs:
+        s['query'] = self.query
+        s['number'] = re.sub('^0+', '', s['number'])
+      return songs
+    except IOError as e:
+      self.query = None
+      errorSong = {}
+      for c in self.cols:
+        errorSong[c] = ''
+      errorSong['title'] = str(e)
+      errorSong['artist'] = '<error>'
+      return [errorSong]
 
 class Mode: Query, PlayList, Prompt = range(3)
 
