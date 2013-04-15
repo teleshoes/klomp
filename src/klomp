@@ -632,8 +632,15 @@ class KlompQuery():
       return self.performQuery()
     else:
       return None
+  def getSongs(self):
+    return self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
   def performQuery(self):
-    songs = self.parseCsv(readProc(self.buildQueryCmd()), self.cols)
+    start = millisNow()
+    while millisNow() - start < 10000:
+      try:
+        songs = self.getSongs()
+      except IOError as e:
+        print e
     for s in songs:
       s['query'] = self.query
       s['number'] = re.sub('^0+', '', s['number'])
