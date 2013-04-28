@@ -579,10 +579,11 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
         os.system('nohup klomp-cmd ' + klompcmd + ' 1>/dev/null 2>&1 &')
   def formatSong(self, song):
     sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
-    sep = ' ' + sep + ' '
+    bigSep = ' ' + sep + ' '
     return (''
-      + song['title'] + sep
-      + song['artist'] + sep
+      + song['number'] + sep
+      + song['title'] + bigSep
+      + song['artist'] + bigSep
       + song['album']
     )
   def maybeFormatSongString(self, s):
