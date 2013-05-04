@@ -254,8 +254,11 @@ class TextEdit(LinePrinter):
 
 class KlompListHandler():
   def readEntries(self):
-    with open(KLOMP_LIST, 'r') as f:
-      return f.readlines()
+    try:
+      with open(KLOMP_LIST, 'r') as f:
+        return f.readlines()
+    except IOError:
+      return []
   def writeEntries(self, entries, mode):
     with open(KLOMP_LIST, mode) as f:
       f.writelines(entries)
