@@ -113,15 +113,20 @@ sub getSongAbsPath($$){
   my ($lib, $relpath) = @_;
   my $libPath = Klomp::Lib::getLibraryPath $lib;
   my $absPath = "$libPath/$relpath";
-  if(-e $absPath){
+  my $prefMirror = Klomp::Lib::isPreferMirror $lib;
+  if(-e $absPath and not $prefMirror){
     return $absPath;
   }
+
   my $flacLibPath = Klomp::Lib::getFlacmirrorPath $lib;
   my $flacrelpath = $relpath;
   $flacrelpath =~ s/\.flac$/\.ogg/i;
   my $flacAbsPath = "$flacLibPath/$flacrelpath";
+
   if(-e $flacAbsPath){
     return $flacAbsPath;
+  }elsif(-e $absPath){
+    return $absPath;
   }
   return undef;
 }
