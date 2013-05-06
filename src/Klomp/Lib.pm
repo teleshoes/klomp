@@ -35,7 +35,16 @@ sub getFlacmirrorPath($;$){
   my $libArr = getLibArray $lib, $klompLib;
   return $$libArr[2] if @$libArr >= 3;
 }
-
+sub isPreferMirror($;$){
+  my ($lib, $klompLib) = @_;
+  my $libArr = getLibArray $lib, $klompLib;
+  my $pref = $$libArr[3] if @$libArr >= 4;
+  if(defined $pref and $pref =~ /mirror/){
+    return 1;
+  }else{
+    return 0;
+  }
+}
 
 sub parseLibs(;$){
   my ($klompLib) = @_;
