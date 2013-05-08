@@ -70,6 +70,20 @@ def maybeQuit():
   global quit
   if quit:
     exit(0)
+def daemonExec(execName, args):
+  if not os.fork():
+    os.setsid()
+    os.chdir("/")
+    null = os.open("/dev/null", os.O_RDWR)
+    os.dup2(null, 0)
+    os.dup2(null, 1)
+    os.dup2(null, 2)
+    os.close(null)
+    exe = subprocess.check_output(["which", execName])
+    exe = exe.rstrip()
+    args.insert(0, exe)
+    os.execv(exe, args)
+
 
 class Attrs():
   def __init__(self):
@@ -578,8 +592,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       if key == ord('q'):
         quitSlowly()
       elif key in klompcmds:
-        klompcmd = klompcmds[key]
-        os.system('nohup klomp-cmd ' + klompcmd + ' 1>/dev/null 2>&1 &')
+        daemonExec('klomp-cmd', [klompcmds[key]])
   def formatSong(self, song):
     sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
     bigSep = ' ' + sep + ' '
