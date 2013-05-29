@@ -313,7 +313,7 @@ class Prompt(LinePrinter):
     map(self.printLine, [
       "selected %d songs" % (len(self.songs)),
       "",
-      "q/esc - do nothing with these files"
+      "q/esc - do nothing with these files",
       "enter - prepend files to KLOMPLIST",
       "a     - append files to KLOMPLIST",
       "o     - overwrite KLOMPLIST with files",
