@@ -687,8 +687,8 @@ class KlompUI():
     KeyReaderThread(self.stdscr, self.onGetSomeKeys).start()
     if self.startingQuery != None and len(self.startingQuery) > 0:
       self.textEdit.setText(self.startingQuery)
+    self.setMode(self.mode)
 
-    self.enterQueryMode()
     while True:
       maybeQuit()
       if self.mode == Mode.Query:
@@ -707,23 +707,20 @@ class KlompUI():
       if songs != None:
         self.queryDisplay.setSongs(songs)
         self.updateQueryDisplay()
-  def enterQueryMode(self):
+  def setMode(self, mode):
+    self.mode = mode
+
     self.updateSongs()
-    self.mode = Mode.Query
     self.clear()
-    self.updateQueryDisplay()
-    self.updateTextEditDisplay()
-  def enterPlayListMode(self):
-    self.updateSongs()
-    self.mode = Mode.PlayList
-    self.clear()
-    self.updatePlayListDisplay()
-  def enterPromptMode(self):
-    self.updateSongs()
-    self.mode = Mode.Prompt 
-    self.prompt.setSongs(self.queryDisplay.getSongs())
-    self.clear()
-    self.updatePrompt()
+
+    if self.mode == Mode.Query:
+      self.updateQueryDisplay()
+      self.updateTextEditDisplay()
+    elif self.mode == Mode.PlayList:
+      self.updatePlayListDisplay()
+    elif self.mode == Mode.Prompt:
+      self.prompt.setSongs(self.queryDisplay.getSongs())
+      self.updatePrompt()
   def onCommandKey(self, key):
     c = curses
     offsetKeys = {
@@ -734,10 +731,10 @@ class KlompUI():
 
     if self.mode == Mode.Query:
       if key == TAB:
-        self.enterPlayListMode()
+        self.setMode(Mode.PlayList)
       elif key == c.KEY_ENTER:
         self.initialMessage = False
-        self.enterPromptMode()
+        self.setMode(Mode.Prompt)
       elif key == ESCAPE:
         quitSlowly()
       elif key in offsetKeys:
@@ -745,7 +742,7 @@ class KlompUI():
           self.updateQueryDisplay()
     elif self.mode == Mode.PlayList:
       if key == TAB:
-        self.enterQueryMode()
+        self.setMode(Mode.Query)
       elif key in offsetKeys:
         if self.playListDisplay.addOffset(offsetKeys[key]):
           self.updatePlayListDisplay()
@@ -755,7 +752,7 @@ class KlompUI():
         if self.once:
           quitSlowly()
         else:
-          self.enterQueryMode()
+          self.setMode(Mode.Query)
       else:
         self.updatePrompt()
     else:
