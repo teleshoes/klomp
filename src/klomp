@@ -47,6 +47,11 @@ def main(args):
     once = True
     args = args[1:]
 
+  initialMode = Mode.Query
+  if len(args) >= 1 and (args[0] == "--playlist"):
+    initialMode = Mode.PlayList
+    args = args[1:]
+
   debug = False
   if len(args) >= 1 and args[0] == "--debug":
     debug = True
@@ -55,7 +60,7 @@ def main(args):
   startingQuery = ' '.join(args)
 
   try:
-    curses.wrapper(KlompUI(once, startingQuery).start)
+    curses.wrapper(KlompUI(once, startingQuery, initialMode).start)
   finally:
     if debug:
       os.system("rm out")
@@ -670,10 +675,10 @@ class KlompQuery():
 class Mode: Query, PlayList, Prompt = range(3)
 
 class KlompUI():
-  def __init__(self, once, startingQuery):
+  def __init__(self, once, startingQuery, initialMode):
     self.once = once
     self.klompQuery = KlompQuery()
-    self.mode = Mode.Query
+    self.mode = initialMode
     self.startingQuery = startingQuery
     self.initialMessage = True
   def start(self, stdscr):
