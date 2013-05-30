@@ -421,7 +421,7 @@ sub nextItem(){
 }
 
 sub lpsmagic(){
-  system "lpsmagic -once &";
+  system "(lpsmagic -once 2>&1 | grep 'Rendering format string') &";
 }
 
 &main(@ARGV);
