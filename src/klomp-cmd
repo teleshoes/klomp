@@ -56,6 +56,7 @@ sub getPid();
 sub isRunning();
 sub start(;$);
 sub stop();
+sub getNice($);
 sub renice();
 sub shellQuiet(@);
 sub prevItem();
@@ -299,10 +300,24 @@ sub stop(){
   system "rm -f /tmp/klomplayer*";
 }
 
+sub getNice($){
+  my $pid = shift;
+  my $ps = `ps -o pid,nice | grep $pid`;
+  if($ps =~ /^\s*\d+\s*(-?\d+)$/){
+    return $1;
+  }
+  return '?';
+}
+
 sub renice(){
   my $pid = getPid();
   if(defined $pid){
+    my $oldNice = getNice($pid);
     system "sudo", "renice", "-n", "-12", $pid;
+    my $newNice = getNice($pid);
+    print "reniced $pid: $oldNice => $newNice\n";
+  }else{
+    print "Could not renice; klomplayer not running\n";
   }
 }
 
