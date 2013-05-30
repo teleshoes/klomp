@@ -280,7 +280,9 @@ sub start(;$){
   removePause() unless @_ > 0 and $_[0];
   ensureKlompCur();
 
-  fork or exec "$klomplayerExec > /dev/null 2>/dev/null";
+  if(fork()){
+    exec "$klomplayerExec >/dev/null 2>/dev/null &";
+  }
   if(isN9()){
     sleep 1;
     renice();
