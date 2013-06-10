@@ -26,9 +26,9 @@ sub formatHMS($);
 
 sub main(@){
   my $newline = 1;
-  if(@_ > 0 and $_[0] eq '-n'){
-    $newline = 0;
-    shift;
+  while(@_ > 0 and $_[0] =~ /^(-n)$/){
+    my $arg = shift;
+    $newline = 0 if $arg eq '-n';
   }
 
   my $cur = getCur();
