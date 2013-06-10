@@ -10,15 +10,19 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $atts = join "|", qw(album artist number title pos len percent);
 
 my $usage = "Usage:
-  $0 [-n] [ARG ARG ARG ..]
+  $0 [OPTS] [ARG ARG ARG ..]
     print values for ARGs, separated by spaces
     values are read from $KLOMP_CUR, or if its missing,
     from the first line of $KLOMP_HIST
 
-  ARG   [playlist|ended|$atts]
-        playlist prints |PLAYLIST_NAME| unless playlist is main
-        ended prints |ended| if klomp cur file is missing
-  -n    do not output a trailing newline
+  ARG:
+    [playlist|ended|$atts]
+    playlist prints |PLAYLIST_NAME| unless playlist is main
+    ended prints |ended| if klomp cur file is missing
+
+  OPTS:
+    -n  do not output a trailing newline
+    -c  output as CSV
 ";
 
 sub getCur();
@@ -26,9 +30,11 @@ sub formatHMS($);
 
 sub main(@){
   my $newline = 1;
-  while(@_ > 0 and $_[0] =~ /^(-n)$/){
+  my $csv = 0;
+  while(@_ > 0 and $_[0] =~ /^(-n|-c)$/){
     my $arg = shift;
     $newline = 0 if $arg eq '-n';
+    $csv = 1 if $arg eq '-c';
   }
 
   my $cur = getCur();
@@ -54,7 +60,11 @@ sub main(@){
       die $usage;
     }
   }
-  print join ' ', @info;
+  if($csv){
+    print join ',', @info;
+  }else{
+    print "@info";
+  }
   print "\n" if $newline;
 }
 
