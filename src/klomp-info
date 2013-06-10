@@ -51,7 +51,7 @@ sub main(@){
     }elsif($arg =~ /^($atts)$/){
       push @info, $1 if $cur =~ /^$arg=(.*)$/m;
     }else{
-      die "Usage: $0 [arg arg arg]\n\n";
+      die $usage;
     }
   }
   print join ' ', @info;
