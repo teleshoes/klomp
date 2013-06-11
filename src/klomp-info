@@ -23,6 +23,7 @@ my $usage = "Usage:
   OPTS:
     -n  do not output a trailing newline
     -c  output as CSV
+    -h  output a csv header showing the column names first
     -s  output times in fractional seconds instead of M:SS or H:MM:SS
 ";
 
@@ -32,11 +33,13 @@ sub formatHMS($);
 sub main(@){
   my $newline = 1;
   my $csv = 0;
+  my $header = 0;
   my $seconds = 0;
-  while(@_ > 0 and $_[0] =~ /^(-n|-c|-s)$/){
+  while(@_ > 0 and $_[0] =~ /^(-n|-c|-h|-s)$/){
     my $arg = shift;
     $newline = 0 if $arg eq '-n';
     $csv = 1 if $arg eq '-c';
+    $header = 1 if $arg eq '-h';
     $seconds = 1 if $arg eq '-s';
   }
 
@@ -64,6 +67,7 @@ sub main(@){
       die $usage;
     }
   }
+  print join(",", @cols) . "\n" if $header;
   if($csv){
     my @csvInfo;
     for my $s(@info){
