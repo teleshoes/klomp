@@ -4,7 +4,7 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
 
-my $KLOMP_CLI_CMD = 'klomp';
+my @KLOMP_CMD = qw(klomp);
 
 my $PID_FILE = Klomp::Files::klompFile("termpidfile");
 if(-e $PID_FILE){
@@ -13,4 +13,4 @@ if(-e $PID_FILE){
 }
 system "echo $$ > $PID_FILE";
 
-system 'term', '-title', 'KLOMP', $KLOMP_CLI_CMD;
+system 'term', '-title', 'KLOMP', @KLOMP_CMD;
