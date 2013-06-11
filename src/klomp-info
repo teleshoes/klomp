@@ -7,7 +7,10 @@ use Klomp::Files;
 my $KLOMP_CUR = Klomp::Files::klompFile("cur");
 my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 
-my $atts = join "|", qw(album artist number title pos len percent);
+my @attColNames = qw(title artist album number);
+my @colNames = (@attColNames, "pos", "len", "percent", "playlist", "ended");
+my $validAttColNames = join "|", @attColNames;
+my $validColNames = join "|", @colNames;
 
 my $usage = "Usage:
   $0 [OPTS] [COL COL COL ..]
@@ -16,7 +19,7 @@ my $usage = "Usage:
     from the first line of $KLOMP_HIST
 
   COL:
-    [playlist|ended|$atts]
+    [$validColNames]
     playlist prints |PLAYLIST_NAME| unless playlist is main
     ended prints |ended| if klomp cur file is missing
 
@@ -61,7 +64,7 @@ sub main(@){
         push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
         push @info, "|$percent|" if $col eq 'percent';
       }
-    }elsif($col =~ /^($atts)$/){
+    }elsif($col =~ /^($validAttColNames)$/){
       push @info, $1 if $cur =~ /^$col=(.*)$/m;
     }else{
       die $usage;
