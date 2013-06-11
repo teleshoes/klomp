@@ -62,7 +62,15 @@ sub main(@){
     }
   }
   if($csv){
-    print join ',', @info;
+    my @csvInfo;
+    for my $s(@info){
+      if($s =~ /[",\r\n]/){
+        $s =~ s/"/\\"/g;
+        $s = "\"$s\"";
+      }
+      push @csvInfo, $s;
+    }
+    print join ',', @csvInfo;
   }else{
     print "@info";
   }
