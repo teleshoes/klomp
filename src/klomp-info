@@ -60,19 +60,24 @@ sub main(@){
     if($col eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
-      push @info, "|$pl|" if $pl ne 'main';
+      my $playlist = $pl eq 'main' ? "" : "|$pl|";
+      push @info, $playlist;
     }elsif($col eq 'ended'){
-      push @info, "|ended|" if not -e $KLOMP_CUR;
+      my $ended = -e $KLOMP_CUR ? "" : "|ended|";
+      push @info, $ended;
     }elsif($col =~ /^(pos|len|percent)$/){
+      my ($pos, $len, $percent) = (0, 0, 0);
       if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
-        my ($pos, $len) = ($1, $2);
-        my $percent = $len > 0 ? sprintf "%.0f", $pos/$len*100 : 0;
-        push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
-        push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
-        push @info, "|$percent|" if $col eq 'percent';
+        ($pos, $len) = ($1, $2);
+        $percent = $len > 0 ? $pos/$len*100 : 0;
       }
+      $percent = sprintf "%.0f", $percent;
+      push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
+      push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
+      push @info, "|$percent|" if $col eq 'percent';
     }elsif($col =~ /^($validAttColNames)$/){
-      push @info, $1 if $cur =~ /^$col=(.*)$/m;
+      my $att = $cur =~ /^$col=(.*)$/m ? $1 : "";
+      push @info, $att;
     }else{
       die $usage;
     }
@@ -89,7 +94,7 @@ sub main(@){
     }
     print join ',', @csvInfo;
   }else{
-    print "@info";
+    print join " ", grep {defined $_ and length $_ > 0} @info;
   }
   print "\n" if $newline;
 }
