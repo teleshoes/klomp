@@ -23,6 +23,7 @@ my $usage = "Usage:
   OPTS:
     -n  do not output a trailing newline
     -c  output as CSV
+    -s  output times in fractional seconds instead of M:SS or H:MM:SS
 ";
 
 sub getCur();
@@ -31,10 +32,12 @@ sub formatHMS($);
 sub main(@){
   my $newline = 1;
   my $csv = 0;
-  while(@_ > 0 and $_[0] =~ /^(-n|-c)$/){
+  my $seconds = 0;
+  while(@_ > 0 and $_[0] =~ /^(-n|-c|-s)$/){
     my $arg = shift;
     $newline = 0 if $arg eq '-n';
     $csv = 1 if $arg eq '-c';
+    $seconds = 1 if $arg eq '-s';
   }
 
   my @cols = @_;
@@ -51,8 +54,8 @@ sub main(@){
       if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
         my ($pos, $len) = ($1, $2);
         my $percent = $len > 0 ? sprintf "%.0f", $pos/$len*100 : 0;
-        push @info, formatHMS $pos if $col eq 'pos';
-        push @info, formatHMS $len if $col eq 'len';
+        push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
+        push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
         push @info, "|$percent|" if $col eq 'percent';
       }
     }elsif($col =~ /^($atts)$/){
