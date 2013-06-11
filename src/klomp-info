@@ -72,7 +72,7 @@ sub main(@){
     my @csvInfo;
     for my $s(@info){
       if($s =~ /[",\r\n]/){
-        $s =~ s/"/\\"/g;
+        $s =~ s/"/""/g;
         $s = "\"$s\"";
       }
       push @csvInfo, $s;
