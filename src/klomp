@@ -24,10 +24,11 @@ KLOMP_CUR = os.popen('klomp-files -n cur').read()
 usage = """Usage:
   %(exec)s -h | --help
     show this message
-  %(exec)s [--once] [--debug]  [word word ..]
+  %(exec)s [--once] [--playlist] [--debug]  [word word ..]
     interactive curses ui
     the textbox is initially set to "word word ..", if passed in
     --once exits after prompt menu instead of returning to query
+    --playlist starts in playlist mode
     --debug means exceptions dont exit, and the tmp file './out' will be rm'd
 """ % {'exec': __file__}
 
