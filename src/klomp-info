@@ -22,11 +22,15 @@ my $usage = "Usage:
 
   COL:
     [$validColNames]
-      playlist: \"|PLAYLIST_NAME|\" unless playlist is main
-      ended:    \"|ended|\" if klomp cur file is missing
+      playlist: \"PLAYLIST_NAME\" unless playlist is main
+      ended:    \"ended\" if klomp cur file is missing
       pos:      current position in M:SS or H:MM:SS {or S.ss if -s}
       len:      length in M:SS or H:MM:SS {or S.ss if -s}
       percent:  integer between 0 and 100 for pos/len
+
+      non-empty values for playlist, ended, and percent
+      are wrapped in |s unless CSV output is on
+      e.g.: \"|ended|\"
 
   OPTS:
     -n  do not output a trailing newline
@@ -37,7 +41,7 @@ my $usage = "Usage:
 
 sub getCur();
 sub formatHMS($);
-sub formatSep($);
+sub formatSep($$);
 
 sub main(@){
   my $newline = 1;
@@ -61,10 +65,10 @@ sub main(@){
     if($col eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
-      my $playlist = $pl eq 'main' ? "" : formatSep $pl;
+      my $playlist = $pl eq 'main' ? "" : formatSep $pl, $csv;
       push @info, $playlist;
     }elsif($col eq 'ended'){
-      my $ended = -e $KLOMP_CUR ? "" : formatSep "ended";
+      my $ended = -e $KLOMP_CUR ? "" : formatSep "ended", $csv;
       push @info, $ended;
     }elsif($col =~ /^(pos|len|percent)$/){
       my ($pos, $len, $percent) = (0, 0, 0);
@@ -75,7 +79,7 @@ sub main(@){
       $percent = sprintf "%.0f", $percent;
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
-      push @info, formatSep "$percent" if $col eq 'percent';
+      push @info, formatSep "$percent", $csv if $col eq 'percent';
     }elsif($col =~ /^($validAttColNames)$/){
       my $att = $cur =~ /^$col=(.*)$/m ? $1 : "";
       push @info, $att;
@@ -128,7 +132,8 @@ sub formatHMS($){
   }
 }
 
-sub formatSep($){
-  return "|$_[0]|";
+sub formatSep($$){
+  my ($s, $csv) = @_;
+  return $csv ? $s : "|$s|";
 }
 &main(@ARGV);
