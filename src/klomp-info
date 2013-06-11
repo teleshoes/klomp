@@ -17,6 +17,8 @@ my $usage = "Usage:
     print values for COLs, separated by spaces
     values are read from $KLOMP_CUR, or if its missing,
     from the first line of $KLOMP_HIST
+    if no COLs are given, all are used
+      i.e.: \"@colNames\"
 
   COL:
     [$validColNames]
@@ -47,6 +49,8 @@ sub main(@){
   }
 
   my @cols = @_;
+  @cols = @colNames if @cols == 0;
+
   my $cur = getCur();
   my @info;
   for my $col(@cols){
