@@ -37,6 +37,7 @@ my $usage = "Usage:
 
 sub getCur();
 sub formatHMS($);
+sub formatSep($);
 
 sub main(@){
   my $newline = 1;
@@ -60,10 +61,10 @@ sub main(@){
     if($col eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
-      my $playlist = $pl eq 'main' ? "" : "|$pl|";
+      my $playlist = $pl eq 'main' ? "" : formatSep $pl;
       push @info, $playlist;
     }elsif($col eq 'ended'){
-      my $ended = -e $KLOMP_CUR ? "" : "|ended|";
+      my $ended = -e $KLOMP_CUR ? "" : formatSep "ended";
       push @info, $ended;
     }elsif($col =~ /^(pos|len|percent)$/){
       my ($pos, $len, $percent) = (0, 0, 0);
@@ -74,7 +75,7 @@ sub main(@){
       $percent = sprintf "%.0f", $percent;
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
-      push @info, "|$percent|" if $col eq 'percent';
+      push @info, formatSep "$percent" if $col eq 'percent';
     }elsif($col =~ /^($validAttColNames)$/){
       my $att = $cur =~ /^$col=(.*)$/m ? $1 : "";
       push @info, $att;
@@ -127,4 +128,7 @@ sub formatHMS($){
   }
 }
 
+sub formatSep($){
+  return "|$_[0]|";
+}
 &main(@ARGV);
