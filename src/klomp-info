@@ -10,12 +10,12 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $atts = join "|", qw(album artist number title pos len percent);
 
 my $usage = "Usage:
-  $0 [OPTS] [ARG ARG ARG ..]
-    print values for ARGs, separated by spaces
+  $0 [OPTS] [COL COL COL ..]
+    print values for COLs, separated by spaces
     values are read from $KLOMP_CUR, or if its missing,
     from the first line of $KLOMP_HIST
 
-  ARG:
+  COL:
     [playlist|ended|$atts]
     playlist prints |PLAYLIST_NAME| unless playlist is main
     ended prints |ended| if klomp cur file is missing
@@ -37,25 +37,26 @@ sub main(@){
     $csv = 1 if $arg eq '-c';
   }
 
+  my @cols = @_;
   my $cur = getCur();
   my @info;
-  for my $arg(@_){
-    if($arg eq 'playlist'){
+  for my $col(@cols){
+    if($col eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
       push @info, "|$pl|" if $pl ne 'main';
-    }elsif($arg eq 'ended'){
+    }elsif($col eq 'ended'){
       push @info, "|ended|" if not -e $KLOMP_CUR;
-    }elsif($arg =~ /^(pos|len|percent)$/){
+    }elsif($col =~ /^(pos|len|percent)$/){
       if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
         my ($pos, $len) = ($1, $2);
         my $percent = $len > 0 ? sprintf "%.0f", $pos/$len*100 : 0;
-        push @info, formatHMS $pos if $arg eq 'pos';
-        push @info, formatHMS $len if $arg eq 'len';
-        push @info, "|$percent|" if $arg eq 'percent';
+        push @info, formatHMS $pos if $col eq 'pos';
+        push @info, formatHMS $len if $col eq 'len';
+        push @info, "|$percent|" if $col eq 'percent';
       }
-    }elsif($arg =~ /^($atts)$/){
-      push @info, $1 if $cur =~ /^$arg=(.*)$/m;
+    }elsif($col =~ /^($atts)$/){
+      push @info, $1 if $cur =~ /^$col=(.*)$/m;
     }else{
       die $usage;
     }
