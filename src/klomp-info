@@ -22,8 +22,11 @@ my $usage = "Usage:
 
   COL:
     [$validColNames]
-    playlist prints |PLAYLIST_NAME| unless playlist is main
-    ended prints |ended| if klomp cur file is missing
+      playlist: \"|PLAYLIST_NAME|\" unless playlist is main
+      ended:    \"|ended|\" if klomp cur file is missing
+      pos:      current position in M:SS or H:MM:SS {or S.ss if -s}
+      len:      length in M:SS or H:MM:SS {or S.ss if -s}
+      percent:  integer between 0 and 100 for pos/len
 
   OPTS:
     -n  do not output a trailing newline
