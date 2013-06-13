@@ -13,4 +13,4 @@ if(-e $PID_FILE){
 }
 system "echo $$ > $PID_FILE";
 
-system 'term', '-title', 'KLOMP', @KLOMP_CMD;
+system 'term', '-title', 'KLOMP', @KLOMP_CMD, @ARGV;
