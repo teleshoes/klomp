@@ -6,10 +6,6 @@ my $depsDir = `dirname $0`;
 chomp $depsDir;
 $depsDir .= "/deps";
 
-if(`whoami` ne "root\n"){
-  exec 'sudo', $0, @ARGV;
-}
-
 sub run(@){
   print "@_\n";
   system @_;
@@ -21,38 +17,35 @@ sub runPrompt(@){
   }
 }
 
-print "searching for and playing music:\n";
-run qw(apt-get install perl python mplayer sqlite3);
+sub main(@){
+  die "Usage: $0\n" if @_ > 0;
+  if(`whoami` ne "root\n"){
+    exec 'sudo', $0, @ARGV;
+  }
 
-print "\n\n";
+  print "searching for and playing music:\n";
+  run qw(apt-get install perl python mplayer sqlite3);
 
-print "optional tag-reading-libs for:\n";
+  print "Tag reading\n\n\n";
+  my %tagReaders = (
+    'eyed3'              => "mp3",
+    'lltag'              => "ogg, flac",
+    'libaudio-wma-perl'  => "wma",
+    'atomicparsley'      => "mp4, m4a, m4p, m4v, m4b",
+  );
+  print "\n\n\n";
+  print "$_ => $tagReaders{$_}\n" foreach keys %tagReaders;
+  run "apt-get", "install", keys %tagReaders;
 
-print "\n  mp3 {eyed3}\n";
-runPrompt qw(apt-get install eyed3);
+  print "\n\n\n";
+  print "non-roman => ascii transliteration for tag parsing\n";
+  run "apt-get", "install", "libtext-unidecode-perl";
 
-print "\n  ogg and flac {lltag}:\n";
-runPrompt qw(apt-get install lltag);
+  print "improved japanese transliteration for tag parsing\n";
+  run "dpkg -i $depsDir/liblingua-ja-romanize-japanese-perl*.deb";
 
-print "\n  wma {perl module Audio::WMA}\n";
-runPrompt qw(apt-get install libaudio-wma-perl);
+  print "flacmirror: flac=>ogg parallel-dir-structure syncing\n";
+  run "apt-get", "install", "dir2ogg";
+}
 
-print "\n  mp4, m4a, m4p, m4v, m4b {AtomicParsley}\n";
-runPrompt qw(apt-get install atomicparsley);
-
-print "\n\n";
-
-print "non-roman => ascii transliteration for tag parsing\n";
-print "  {perl module Text::Unidecode}\n";
-runPrompt qw(apt-get install libtext-unidecode-perl);
-
-print "\n\n";
-
-print "improved japanese transliteration for tag parsing\n";
-print "  {perl module Lingua::JA::Romanize::Japanese}\n";
-runPrompt "dpkg -i $depsDir/liblingua-ja-romanize-japanese-perl*.deb";
-
-print "\n\n";
-
-print "flacmirror: flac=>ogg parallel-dir-structure syncing\n";
-runPrompt qw(apt-get install dir2ogg);
+&main(@ARGV);
