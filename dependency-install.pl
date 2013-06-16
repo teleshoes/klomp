@@ -27,8 +27,9 @@ sub main(@){
   run qw(apt-get install perl python mplayer sqlite3);
 
   print "Tag reading\n\n\n";
+  run "apt-get install python-pip";
+  run "pip install eyeD3 --upgrade";
   my %tagReaders = (
-    'eyed3'              => "mp3",
     'lltag'              => "ogg, flac",
     'libaudio-wma-perl'  => "wma",
     'atomicparsley'      => "mp4, m4a, m4p, m4v, m4b",
