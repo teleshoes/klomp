@@ -156,8 +156,8 @@ sub readTags($){
       my $eyeD3 = `eyeD3 '$file'`;
       $eyeD3 =~ s/\t+/\n/g;
 
-      $title  = $1 if $eyeD3 =~ /^title: (.*)/mi;
-      $artist = $1 if $eyeD3 =~ /artist: (.*)\n/mi;
+      $title  = $1 if $eyeD3 =~ /^title: (.*)$/mi;
+      $artist = $1 if $eyeD3 =~ /^artist: (.*)$/mi;
       $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
       $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
       $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
