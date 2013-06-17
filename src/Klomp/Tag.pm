@@ -163,7 +163,7 @@ sub readTags($){
       $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
       $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
 
-      $genre =~ s/ \(id \d+\)$//; #trim the genre id
+      $genre =~ s/ \(id (?:\d+|None)\)$//i; #trim the genre id
     }else{
       print STDERR "WARNING: no tags for $file, missing eyeD3\n";
     }
