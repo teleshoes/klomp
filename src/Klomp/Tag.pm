@@ -145,20 +145,46 @@ sub readMid3v2($){
   my $frames = {
     title => [
       [TIT2 => "Title"],
+      [TIT3 => "Subtitle/Description refinement"],
+      [TIT1 => "Content group description"],
+      [TSOT => "Title Sort Order key"],
+    ],
     artist => [
       [TPE1 => "Lead Artist/Performer/Soloist/Group"],
+      [TPE2 => "Band/Orchestra/Accompaniment"],
+      [TPE3 => "Conductor"],
+      [TPE4 => "Interpreter/Remixer/Modifier"],
+      [TCOM => "Composer"],
+      [TOPE => "Original Artist/Performer"],
+      [TMCL => "Musicians Credits List"],
+      [TIPL => "Involved People List"],
+      [TSO2 => "iTunes Album Artist Sort"],
+      [TSOP => "Perfomer Sort Order key"],
+      [TSOC => "iTunes Composer Sort"],
     ],
     album => [
       [TALB => "Album"],
+      [TOAL => "Original Album"],
+      [TSOA => "Album Sort Order key"],
     ],
     number => [
       [TRCK => "Track Number"],
     ],
     date => [
       [TYER => "Year of recording"],
+      [TORY => "Original Release Year"],
+      [TRDA => "Recording Dates"],
+      [TDRL => "Release Time"],
+      [TDRC => "Recording Time"],
+      [TIME => "Time of recording (HHMM)"],
+      [TDAT => "Date of recording (DDMM)"],
+      [TDOR => "Original Release Time"],
+      [TDTG => "Tagging Time"],
+      [TDEN => "Encoding Time"],
     ],
     genre => [
       [TCON => "Content type (Genre)"],
+      [TMOO => "Mood"],
     ],
   };
 
