@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 my $MPEG_LIB = eval{system "command -v AtomicParsley >/dev/null"; $? == 0};
-my $MP3_LIB = eval{system "command -v eyeD3 >/dev/null"; $? == 0};
+my $MP3_LIB = eval{system "command -v mid3v2 >/dev/null"; $? == 0};
 my $OGG_FLAC_LIB = eval{system "command -v lltag >/dev/null"; $? == 0};
 my $WMA_LIB = eval{require Audio::WMA};
 BEGIN{
@@ -140,6 +140,58 @@ sub transliterateAscii($){
   }
 }
 
+sub readMid3v2($){
+  my $mid3v2Output = shift;
+  my $frames = {
+    title => [
+      [TIT2 => "Title"],
+    artist => [
+      [TPE1 => "Lead Artist/Performer/Soloist/Group"],
+    ],
+    album => [
+      [TALB => "Album"],
+    ],
+    number => [
+      [TRCK => "Track Number"],
+    ],
+    date => [
+      [TYER => "Year of recording"],
+    ],
+    genre => [
+      [TCON => "Content type (Genre)"],
+    ],
+  };
+
+  #remove the descs
+  map {map {pop @$_} @$_} values %$frames;
+  #flatten the single-element arrays
+  for my $tag(keys %$frames){
+    my @fs = map {@$_} @{$$frames{$tag}};
+    $$frames{$tag} = \@fs;
+  }
+
+  my %parsedFrames;
+  for my $tag(keys %$frames){
+    for my $frame(@{$$frames{$tag}}){
+      if($mid3v2Output =~ /^$frame=(.*)/m){
+        $parsedFrames{$frame} = $1;
+      }
+    }
+  }
+
+  my %info;
+  for my $tag(keys %$frames){
+    $info{$tag} = '';
+    for my $frame(@{$$frames{$tag}}){
+      if(defined $parsedFrames{$frame}){
+        $info{$tag} = $parsedFrames{$frame};
+        last;
+      }
+    }
+  }
+  return \%info;
+}
+
 sub readTags($){
   my $file = shift;
   my $path = $file;
@@ -153,27 +205,12 @@ sub readTags($){
   my $genre='';
   if($file =~ /\.mp3$/i){
     if($MP3_LIB){
-      my $eyeD3 = `eyeD3 '$file'`;
-      $eyeD3 =~ s/\t+/\n/g;
-
-      $title  = $1 if $eyeD3 =~ /^title: (.*)$/mi;
-      $artist = $1 if $eyeD3 =~ /^artist: (.*)$/mi;
-      $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
-      $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
-      $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
-      my $dateFields = join "|", (
-        "year",
-        "date",
-        "release date",
-        "original release date",
-        "recording date",
-      );
-      my @dates = $eyeD3 =~ /^(?:$dateFields): (.*)/mig;
-      $date = length $_ > length $date ? $_ : $date foreach @dates;
-
-      $genre =~ s/ \(id (?:\d+|None)\)$//i; #trim the genre id
+      my $mid3v2 = `mid3v2 '$file'`;
+      my %m = %{readMid3v2 $mid3v2};
+      ($title, $artist, $album, $number, $date, $genre) = (
+        $m{title}, $m{artist}, $m{album}, $m{number}, $m{date}, $m{genre});
     }else{
-      print STDERR "WARNING: no tags for $file, missing eyeD3\n";
+      print STDERR "WARNING: no tags for $file, missing mid3v2\n";
     }
   }elsif($file =~ /\.(ogg|flac)$/i){
     if($OGG_FLAC_LIB){
