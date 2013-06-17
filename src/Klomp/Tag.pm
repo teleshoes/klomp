@@ -160,8 +160,16 @@ sub readTags($){
       $artist = $1 if $eyeD3 =~ /^artist: (.*)$/mi;
       $album  = $1 if $eyeD3 =~ /^album: (.*)$/mi;
       $number = $1 if $eyeD3 =~ /^track: (.*)$/mi;
-      $date   = $1 if $eyeD3 =~ /^year: (.*)$/mi;
       $genre  = $1 if $eyeD3 =~ /^genre: (.*)$/mi;
+      my $dateFields = join "|", (
+        "year",
+        "date",
+        "release date",
+        "original release date",
+        "recording date",
+      );
+      my @dates = $eyeD3 =~ /^(?:$dateFields): (.*)/mig;
+      $date = length $_ > length $date ? $_ : $date foreach @dates;
 
       $genre =~ s/ \(id (?:\d+|None)\)$//i; #trim the genre id
     }else{
