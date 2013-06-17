@@ -222,7 +222,7 @@ sub readMid3v2($){
     my $y = $parsedFrames{TYER};
     my $dm = $parsedFrames{TDAT};
     if($y =~ /^\d+$/ and $dm =~ /^(\d\d)[ \=_\/]*(\d\d)$/){
-      $info{date} = "$y/$2/$1"; #Y/M/D
+      $info{date} = "$y-$2-$1"; #Y-M-D
     }else{
       $info{date} = "$y $dm";
     }
