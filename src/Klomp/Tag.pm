@@ -210,7 +210,10 @@ sub readMid3v2($){
     $info{$tag} = '';
     for my $frame(@{$$frames{$tag}}){
       if(defined $parsedFrames{$frame}){
-        $info{$tag} = $parsedFrames{$frame};
+        my $t = $parsedFrames{$frame};
+        $t =~ s/^[ \t\n\/]*//;
+        $t =~ s/[ \t\n\/]*$//;
+        $info{$tag} = $t;
         last;
       }
     }
