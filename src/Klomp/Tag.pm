@@ -153,8 +153,8 @@ sub readTags($){
   my $genre='';
   if($file =~ /\.mp3$/i){
     if($MP3_LIB){
-      $eyeD3 =~ s/\t\t/\n/g;
       my $eyeD3 = `eyeD3 '$file'`;
+      $eyeD3 =~ s/\t+/\n/g;
 
       $title  = $1 if $eyeD3 =~ /^title: (.*)/mi;
       $artist = $1 if $eyeD3 =~ /artist: (.*)\n/mi;
