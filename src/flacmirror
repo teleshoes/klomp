@@ -83,12 +83,12 @@ sub main(@){
 
   if(@successes > 0){
     print "  successfully converted " . scalar(@successes) . " flacs\n";
-    print join("\n", @successes) . "\n";
+    print join("\n", sort @successes) . "\n";
   }
 
   if(@failures > 0){
     print STDERR "There were " . scalar(@failures) . " failures\n";
-    print STDERR join("\n", @failures) . "\n";
+    print STDERR join("\n", sort @failures) . "\n";
     exit 1;
   }
 
