@@ -31,198 +31,200 @@ my $usage = "Usage
 sub shellQuiet(@);
 sub convert($$$$$);
 
-my $srcDir = shift;
-my $destDir = shift;
+sub main(@){
+  my $srcDir = shift;
+  my $destDir = shift;
 
-die $usage if not defined $srcDir or not defined $destDir;
-die "src '$srcDir' is not a directory" if !-d $srcDir;
-die "dest '$destDir' is not a directory" if !-d $destDir;
+  die $usage if not defined $srcDir or not defined $destDir;
+  die "src '$srcDir' is not a directory" if !-d $srcDir;
+  die "dest '$destDir' is not a directory" if !-d $destDir;
 
-system "$dir2oggExec --help > /dev/null";
-if($?){
-  die "could not exec dir2ogg";
-}
-
-my @flacs = `cd $srcDir; find -iname '*.flac'`;
-@flacs = sort @flacs;
-
-my %flacInfos;
-for my $flac(@flacs){
-  chomp $flac;
-  $flac =~ /^(.*)\.flac$/i;
-  my $baseName = $1;
-
-  my $stat = shellQuiet 'stat', '--format', $statFormat, "$srcDir/$flac";
-  if($? or $stat !~ /(\d+):(\d+)/){
-    die "file not found: $srcDir/$flac\n";
+  system "$dir2oggExec --help > /dev/null";
+  if($?){
+    die "could not exec dir2ogg";
   }
-  my $filesize = $1;
-  my $modified = $2;
-  $flacInfos{$baseName} = "$filesize|$modified\n";
-}
 
-my @oggs = `cd $destDir; find -iname '*.ogg'`;
-@oggs = sort @oggs;
+  my @flacs = `cd $srcDir; find -iname '*.flac'`;
+  @flacs = sort @flacs;
 
-my %unmodifiedBasenames;
-my %ogginfos;
-for my $ogg(@oggs){
-  chomp $ogg;
-  $ogg =~ /^(.*)\.ogg/i;
-  my $baseName = $1;
+  my %flacInfos;
+  for my $flac(@flacs){
+    chomp $flac;
+    $flac =~ /^(.*)\.flac$/i;
+    my $baseName = $1;
 
-  my $info = shellQuiet 'cat', "$destDir/$baseName.info";
-  my $flacInfo = $flacInfos{$baseName};
-  if(not defined $flacInfo or $info ne $flacInfo){
-    print "removing $destDir/$ogg and $destDir/$baseName.info\n";
-    system "rm", "$destDir/$ogg";
-    system "rm", "$destDir/$baseName.info";
-  }else{
-    $unmodifiedBasenames{$baseName} = 1;
-  }
-}
-
-my $flacCount = @flacs;
-print "Converting $flacCount flacs\n";
-
-my $len = length @flacs;
-my $i=0;
-my @failures;
-my @flacsToTranscode;
-my @skippedFlacs;
-for my $flac(@flacs){
-  my $dirName = shellQuiet 'dirname', $flac;
-  chomp $dirName;
-  $flac =~ /^(.*)\.flac$/i;
-  my $baseName = $1;
-
-  if(defined $unmodifiedBasenames{$baseName}){
-    push @skippedFlacs, "$srcDir/$flac";
-  }else{
-    push @flacsToTranscode, $flac;
-  }
-}
-
-if(@skippedFlacs > 0){
-  print "  skipped " . scalar(@skippedFlacs) . " flacs\n";
-}
-
-
-my $cores;
-$cores = `cat /proc/cpuinfo | grep ^processor | wc -l`;
-chomp $cores;
-if($cores !~ /^\d+$/){
-  $cores = 2;
-}
-my $numWorkers = $cores;
-
-my %flacSizes;
-for my $flac(@flacsToTranscode){
-  my $size = shellQuiet 'stat', '--format', '%s', "$srcDir/$flac";
-  chomp $size;
-  if($size !~ /^\d+$/){
-    $size = 0;
-  }
-  $flacSizes{$flac} = $size;
-}
-
-my @biggestFlacs = @flacsToTranscode;#sort { $flacSizes{$b} <=> $flacSizes{$a} } keys %flacSizes;
-
-my @workers;
-for(my $i=0; $i<@biggestFlacs; $i++){
-  my $flac = $biggestFlacs[$i];
-  my $w = $i % $numWorkers;
-  my @arr;
-  my $jobFlacs = \@arr;
-  if($w >= @workers){
-    push @workers, $jobFlacs;
-  }else{
-    $jobFlacs = $workers[$w];
-  }
-  push @{$jobFlacs}, $flac;
-}
-
-
-my $baseLog = '/tmp/flacmirror_' . time;
-my @workerLogFiles;
-for(my $w=0; $w<@workers; $w++){
-  push @workerLogFiles, "$baseLog-$w.log";
-}
-
-my @pids;
-for(my $w=0; $w<@workers; $w++){
-  my @flacsJob = @{$workers[$w]};
-  my $len = @flacsJob;
-  my $pid = fork;
-  if(not $pid){
-    my $bytes=0;
-    for my $flac(@{$workers[$w]}){
-      $bytes += $flacSizes{$flac};
+    my $stat = shellQuiet 'stat', '--format', $statFormat, "$srcDir/$flac";
+    if($? or $stat !~ /(\d+):(\d+)/){
+      die "file not found: $srcDir/$flac\n";
     }
-    print "worker#$w starting $len flacs with total filesize $bytes\n";
-    
-    my $logFile = $workerLogFiles[$w];
-    open FH, "> $logFile" or die "Could not open log file $logFile\n";
-    for my $flac(@flacsJob){
-      my $dirName = shellQuiet 'dirname', $flac;
-      chomp $dirName;
-      $flac =~ /^(.*)\.flac$/i;
-      my $baseName = $1;
+    my $filesize = $1;
+    my $modified = $2;
+    $flacInfos{$baseName} = "$filesize|$modified\n";
+  }
 
-      system 'mkdir', '-p', "$destDir/$dirName";
-      my $msg =
-        convert $flac, $flacInfos{$baseName}, $srcDir, $destDir, $baseName;
-      print FH $msg;
+  my @oggs = `cd $destDir; find -iname '*.ogg'`;
+  @oggs = sort @oggs;
+
+  my %unmodifiedBasenames;
+  my %ogginfos;
+  for my $ogg(@oggs){
+    chomp $ogg;
+    $ogg =~ /^(.*)\.ogg/i;
+    my $baseName = $1;
+
+    my $info = shellQuiet 'cat', "$destDir/$baseName.info";
+    my $flacInfo = $flacInfos{$baseName};
+    if(not defined $flacInfo or $info ne $flacInfo){
+      print "removing $destDir/$ogg and $destDir/$baseName.info\n";
+      system "rm", "$destDir/$ogg";
+      system "rm", "$destDir/$baseName.info";
+    }else{
+      $unmodifiedBasenames{$baseName} = 1;
     }
+  }
+
+  my $flacCount = @flacs;
+  print "Converting $flacCount flacs\n";
+
+  my $len = length @flacs;
+  my $i=0;
+  my @failures;
+  my @flacsToTranscode;
+  my @skippedFlacs;
+  for my $flac(@flacs){
+    my $dirName = shellQuiet 'dirname', $flac;
+    chomp $dirName;
+    $flac =~ /^(.*)\.flac$/i;
+    my $baseName = $1;
+
+    if(defined $unmodifiedBasenames{$baseName}){
+      push @skippedFlacs, "$srcDir/$flac";
+    }else{
+      push @flacsToTranscode, $flac;
+    }
+  }
+
+  if(@skippedFlacs > 0){
+    print "  skipped " . scalar(@skippedFlacs) . " flacs\n";
+  }
+
+
+  my $cores;
+  $cores = `cat /proc/cpuinfo | grep ^processor | wc -l`;
+  chomp $cores;
+  if($cores !~ /^\d+$/){
+    $cores = 2;
+  }
+  my $numWorkers = $cores;
+
+  my %flacSizes;
+  for my $flac(@flacsToTranscode){
+    my $size = shellQuiet 'stat', '--format', '%s', "$srcDir/$flac";
+    chomp $size;
+    if($size !~ /^\d+$/){
+      $size = 0;
+    }
+    $flacSizes{$flac} = $size;
+  }
+
+  my @biggestFlacs = @flacsToTranscode;#sort { $flacSizes{$b} <=> $flacSizes{$a} } keys %flacSizes;
+
+  my @workers;
+  for(my $i=0; $i<@biggestFlacs; $i++){
+    my $flac = $biggestFlacs[$i];
+    my $w = $i % $numWorkers;
+    my @arr;
+    my $jobFlacs = \@arr;
+    if($w >= @workers){
+      push @workers, $jobFlacs;
+    }else{
+      $jobFlacs = $workers[$w];
+    }
+    push @{$jobFlacs}, $flac;
+  }
+
+
+  my $baseLog = '/tmp/flacmirror_' . time;
+  my @workerLogFiles;
+  for(my $w=0; $w<@workers; $w++){
+    push @workerLogFiles, "$baseLog-$w.log";
+  }
+
+  my @pids;
+  for(my $w=0; $w<@workers; $w++){
+    my @flacsJob = @{$workers[$w]};
+    my $len = @flacsJob;
+    my $pid = fork;
+    if(not $pid){
+      my $bytes=0;
+      for my $flac(@{$workers[$w]}){
+        $bytes += $flacSizes{$flac};
+      }
+      print "worker#$w starting $len flacs with total filesize $bytes\n";
+
+      my $logFile = $workerLogFiles[$w];
+      open FH, "> $logFile" or die "Could not open log file $logFile\n";
+      for my $flac(@flacsJob){
+        my $dirName = shellQuiet 'dirname', $flac;
+        chomp $dirName;
+        $flac =~ /^(.*)\.flac$/i;
+        my $baseName = $1;
+
+        system 'mkdir', '-p', "$destDir/$dirName";
+        my $msg =
+          convert $flac, $flacInfos{$baseName}, $srcDir, $destDir, $baseName;
+        print FH $msg;
+      }
+      close FH;
+      exit 0;
+    }else{
+      push @pids, $pid;
+    }
+  }
+
+  for my $pid(@pids){
+    waitpid $pid, 0;
+  }
+
+  system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
+  mkdir $destDir;
+
+  my @statuses;
+  for my $logFile(@workerLogFiles){
+    open FH, "< $logFile" or die "Couldnt read logfile $logFile\n";
+    @statuses = (@statuses, <FH>);
     close FH;
-    exit 0;
-  }else{
-    push @pids, $pid;
   }
-}
-
-for my $pid(@pids){
-  waitpid $pid, 0;
-}
-
-system "find $destDir -depth -type d -empty -execdir rmdir {} \\;";
-mkdir $destDir;
-
-my @statuses;
-for my $logFile(@workerLogFiles){
-  open FH, "< $logFile" or die "Couldnt read logfile $logFile\n";
-  @statuses = (@statuses, <FH>);
-  close FH;
-}
-@statuses = sort @statuses;
-my @successes;
-my @failues;
-my %statusMap;
-for my $line(@statuses){
-  if($line =~ /^success: (.*)/){
-    push @successes, $1;
-    $statusMap{$1} = 1;
-  }elsif($line =~ /^failure: (.*)/){
-    push @failures, $1;
-    $statusMap{$1} = 0;
+  @statuses = sort @statuses;
+  my @successes;
+  my @failues;
+  my %statusMap;
+  for my $line(@statuses){
+    if($line =~ /^success: (.*)/){
+      push @successes, $1;
+      $statusMap{$1} = 1;
+    }elsif($line =~ /^failure: (.*)/){
+      push @failures, $1;
+      $statusMap{$1} = 0;
+    }
   }
-}
-for my $flac(@flacsToTranscode){
-  if(not defined $statusMap{$flac}){
-    $statusMap{$flac} = 0;
-    push @failures, $flac;
+  for my $flac(@flacsToTranscode){
+    if(not defined $statusMap{$flac}){
+      $statusMap{$flac} = 0;
+      push @failures, $flac;
+    }
   }
-}
 
-if(@successes > 0){
-  print "  successfully converted " . scalar(@successes) . " flacs\n";
-  print join("\n", @successes) . "\n";
-}
+  if(@successes > 0){
+    print "  successfully converted " . scalar(@successes) . " flacs\n";
+    print join("\n", @successes) . "\n";
+  }
 
-if(@failures > 0){
-  print STDERR "There were " . scalar(@failures) . " failures\n";
-  print STDERR join("\n", @failures) . "\n";
-  exit 1;
+  if(@failures > 0){
+    print STDERR "There were " . scalar(@failures) . " failures\n";
+    print STDERR join("\n", @failures) . "\n";
+    exit 1;
+  }
 }
 
 
@@ -263,4 +265,4 @@ sub convert($$$$$){
   return "success: $flac\n";
 }
 
-
+&main(@ARGV);
