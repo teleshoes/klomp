@@ -22,12 +22,12 @@ sub shellQuiet(@);
 sub runSql($$;@);
 sub runSqlBatch($\@;@);
 sub cols($);
-sub addSongs($$$);
+sub addSongs($$$$);
 sub wrapGuessCol($);
 sub create($);
-sub update($$);
+sub update($$$);
 sub missing($$);
-sub add($$$);
+sub add($$$$);
 sub search($$$$$);
 sub info($$);
 
@@ -35,10 +35,10 @@ my $usage = "Usage:
  $0 [db-path] -c|--create
    Make an empty sqlite db with necessary structures
 
- $0 [db-path] -u|--update [lib lib ...]
+ $0 [db-path] -u|--update [--quick] [lib lib ...]
    Add or update the info in the db for music files in the given libs (or all)
 
- $0 [db-path] -m|--missing [lib lib ...]
+ $0 [db-path] -m|--missing [--quick] [lib lib ...]
    Check for missing files in given libs (or all), and prompt for removal.
 
  $0 [db-path] -a|--add lib song-rel-path
@@ -80,13 +80,23 @@ sub main(@){
     }
     create($db);
   }elsif($cmd =~ /^(-u|--update)$/){
-    update($db, \@_);
+    my $quick = 0;
+    if(@_ > 0 and $_[0] =~ /^(--quick)$/){
+      $quick = 1;
+      shift;
+    }
+    update($db, $quick, \@_);
   }elsif($cmd =~ /^(-m|--missing)$/){
     missing($db, \@_);
   }elsif($cmd =~ /^(-a|--add)$/ and @_ >= 2){
+    my $quick = 0;
+    if(@_ > 0 and $_[0] =~ /^(--quick)$/){
+      $quick = 1;
+      shift;
+    }
     my $lib = shift;
     my $songRelPath = shift;
-    add($db, $lib, $songRelPath);
+    add($db, $lib, $quick, $songRelPath);
   }elsif($cmd =~ /^(-i|--info)$/ and @_ == 1){
     my $songRelPath = shift;
     info($db, $songRelPath);
@@ -134,8 +144,9 @@ sub create($){
     . ");");
 }
 
-sub update($$){
+sub update($$$){
   my $db = shift;
+  my $quick= shift;
   my @libs = @{shift()};
   for my $lib(@libs){
     my $libpath = Klomp::Lib::getLibraryPath $lib;
@@ -159,7 +170,7 @@ sub update($$){
       $songRelPath =~ s/^.\///;
       $songRelPaths[$i] = $songRelPath;
     }
-    addSongs($db, $lib, \@songRelPaths);
+    addSongs($db, $lib, $quick, \@songRelPaths);
   }
 }
 
@@ -172,14 +183,15 @@ sub missing($$){
   }
 }
 
-sub add($$$){
+sub add($$$$){
   my $db = shift;
   my $lib = shift;
+  my $quick = shift;
   my $songRelPath = shift;
   
   my @songRelPaths;
   push @songRelPaths, $songRelPath;
-  addSongs($db, $lib, \@songRelPaths);
+  addSongs($db, $lib, $quick, \@songRelPaths);
 }
 
 sub parseQuotes($){
@@ -550,9 +562,10 @@ sub checkMissing($$){
   }
 }
 
-sub addSongs($$$){
+sub addSongs($$$$){
   my $db = shift;
   my $lib = shift;
+  my $quick = shift;
   my @songRelPaths = @{scalar shift};
 
   my $libpath = Klomp::Lib::getLibraryPath $lib;
@@ -581,6 +594,11 @@ sub addSongs($$$){
       my @infoArr = @{$info};
       $dbSize = $infoArr[0];
       $dbMod = $infoArr[1];
+    }
+
+    if($dbExists and $quick){
+      $skippedCount++;
+      next;
     }
   
     my $stat = shellQuiet 'stat', '--format', '%s:%Y', "$libpath/$songRelPath";
