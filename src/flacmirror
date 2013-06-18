@@ -29,7 +29,7 @@ my $usage = "Usage
 ";
 
 sub shellQuiet(@);
-sub convert($$$$);
+sub convert($$$$$);
 
 my $srcDir = shift;
 my $destDir = shift;
@@ -170,7 +170,8 @@ for(my $w=0; $w<@workers; $w++){
       my $baseName = $1;
 
       system 'mkdir', '-p', "$destDir/$dirName";
-      my $msg = convert $flac, $srcDir, $destDir, $baseName;
+      my $msg =
+        convert $flac, $flacInfos{$baseName}, $srcDir, $destDir, $baseName;
       print FH $msg;
     }
     close FH;
@@ -244,8 +245,9 @@ sub shell(@){
   return `$cmd`;
 }
 
-sub convert($$$$){
+sub convert($$$$$){
   my $flac = shift;
+  my $flacInfo = shift;
   my $srcDir = shift;
   my $destDir = shift;
   my $baseName = shift;
@@ -256,7 +258,7 @@ sub convert($$$$){
   }
   system 'mv', "$srcDir/$baseName.ogg", "$destDir/$baseName.ogg";
   open INFO, "> $destDir/$baseName.info";
-  print INFO $flacInfos{$baseName};
+  print INFO $flacInfo;
   close INFO;
   return "success: $flac\n";
 }
