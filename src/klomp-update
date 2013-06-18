@@ -5,8 +5,11 @@ use lib "/opt/klomp/lib";
 use Klomp::Lib;
 
 my $usage = "Usage:
-  $0                        update all libs
-  $0 LIB [LIB LIB ..]       updated specified libs
+  $0 [--quick]                        update all libs
+  $0 [--quick] LIB [LIB LIB ..]       updated specified libs
+  --quick
+     pass --quick to klomp-db when adding songs
+     {assume existing songs with the same path are unchanged}
 ";
 
 sub runOrDie(@);
@@ -15,6 +18,11 @@ sub getLibs(@);
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
+  my $quick = 0;
+  if(@_ > 0 and $_[0] =~ /^--quick$/){
+    $quick = 1;
+    shift;
+  }
 
   my @libs = getLibs(@_);
   ensureDb();
@@ -23,7 +31,11 @@ sub main(@){
     print "\nHandling library: $lib\n";
 
     runOrDie 'klomp-db', '-m', $lib;
-    runOrDie 'klomp-db', '-u', $lib;
+    if($quick){
+      runOrDie 'klomp-db', '-u', '--quick', $lib;
+    }else{
+      runOrDie 'klomp-db', '-u', $lib;
+    }
   }
 
   for my $lib(@libs){
