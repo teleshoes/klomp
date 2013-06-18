@@ -25,59 +25,15 @@ my $usage = "Usage
     OGG quality is set to $quality.
 ";
 
-sub shellQuiet(@);
-sub convert($$$);
+sub fsize($);
+sub mtime($);
+sub getCpuCoreCount();
+sub splitBuckets($\@);
+
+sub getBasenames($$);
+sub oggUnmodified($$$);
 sub runConversionJobs($$$);
-
-sub getBasenames($$){
-  my ($type, $dir) = @_;
-  my @files = `cd $dir; find -iname '*.$type'`;
-  my @basenames;
-  for my $file(sort @files){
-    chomp $file;
-    $file =~ /^(.*)\.($type)$/i;
-    die "Malformed file {suffix must '.$type' and lowercase}\n" if $2 ne $type;
-    push @basenames, $1;
-  }
-  return @basenames;
-}
-
-sub fsize($){
-  return (stat $_[0])[7];
-}
-sub mtime($){
-  return (stat $_[0])[9];
-}
-sub getCpuCoreCount(){
-  my $cores = `cat /proc/cpuinfo | grep ^processor | wc -l`;
-  chomp $cores;
-  $cores = 2 if $cores !~ /^\d+$/;
-  return $cores;
-}
-sub splitBuckets($\@){
-  my $bucketSize = shift;
-  my @elems = @{shift()};
-
-  my @buckets;
-  for(my $i=0; $i<@elems; $i++){
-    my $b = $i % $bucketSize;
-    while($b >= @buckets){
-      push @buckets, [];
-    }
-    push @{$buckets[$b]}, $elems[$i];
-  }
-
-  return @buckets;
-}
-
-sub oggUnmodified($$$){
-  my ($basename, $srcDir, $destDir) = @_;
-  my $flac = "$srcDir/$basename.flac";
-  my $ogg = "$destDir/$basename.ogg";
-  my $fm = mtime $flac;
-  my $om = mtime $ogg;
-  return (-f $flac and -f $ogg and mtime $flac eq mtime $ogg);
-}
+sub convert($$$);
 
 sub main(@){
   my $srcDir = shift;
@@ -140,25 +96,57 @@ sub main(@){
   mkdir $destDir;
 }
 
+sub fsize($){
+  return (stat $_[0])[7];
+}
+sub mtime($){
+  return (stat $_[0])[9];
+}
+sub getCpuCoreCount(){
+  my $cores = `cat /proc/cpuinfo | grep ^processor | wc -l`;
+  chomp $cores;
+  $cores = 2 if $cores !~ /^\d+$/;
+  return $cores;
+}
+sub splitBuckets($\@){
+  my $bucketSize = shift;
+  my @elems = @{shift()};
 
-
-sub wrapTokens(@){
-  my @tokens;
-  for my $token(@_){
-    my $t = $token;
-    $t =~ s/'/'\\''/g;
-    push @tokens, "'$t'";
+  my @buckets;
+  for(my $i=0; $i<@elems; $i++){
+    my $b = $i % $bucketSize;
+    while($b >= @buckets){
+      push @buckets, [];
+    }
+    push @{$buckets[$b]}, $elems[$i];
   }
-  return @tokens;
+
+  return @buckets;
 }
-sub shellQuiet(@){
-  my $cmd = join ' ', wrapTokens(@_);
-  return `$cmd 2>/dev/null`;
+
+
+sub getBasenames($$){
+  my ($type, $dir) = @_;
+  my @files = `cd $dir; find -iname '*.$type'`;
+  my @basenames;
+  for my $file(sort @files){
+    chomp $file;
+    $file =~ /^(.*)\.($type)$/i;
+    die "Malformed file {suffix must '.$type' and lowercase}\n" if $2 ne $type;
+    push @basenames, $1;
+  }
+  return @basenames;
 }
-sub shell(@){
-  my $cmd = join ' ', wrapTokens(@_);
-  return `$cmd`;
+
+sub oggUnmodified($$$){
+  my ($basename, $srcDir, $destDir) = @_;
+  my $flac = "$srcDir/$basename.flac";
+  my $ogg = "$destDir/$basename.ogg";
+  my $fm = mtime $flac;
+  my $om = mtime $ogg;
+  return (-f $flac and -f $ogg and mtime $flac eq mtime $ogg);
 }
+
 
 sub runConversionJobs($$$){
   my ($srcDir, $destDir, $basenames) = @_;
