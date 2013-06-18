@@ -17,6 +17,8 @@ my @allCols = (@infoCols, @tagCols, @guessTagCols);
 
 my $defaultDb = Klomp::Files::klompFile("db");
 
+sub fsize($);
+sub mtime($);
 sub shell(@);
 sub shellQuiet(@);
 sub runSql($$;@);
@@ -446,6 +448,14 @@ sub info($$){
   }
 }
 
+sub fsize($){
+  return (stat $_[0])[7];
+}
+sub mtime($){
+  return (stat $_[0])[9];
+}
+
+
 sub wrapTokens(@){
   my @tokens;
   for my $token(@_){
@@ -600,14 +610,14 @@ sub addSongs($$$$){
       $skippedCount++;
       next;
     }
-  
-    my $stat = shellQuiet 'stat', '--format', '%s:%Y', "$libpath/$songRelPath";
-    if($? or $stat !~ /(\d+):(\d+)/){
+
+    my $f = "$libpath/$songRelPath";
+    if(not -f $f){
       print STDERR "file not found: $libpath/$songRelPath\n";
       next;
     }
-    my $filesize = $1;
-    my $modified = $2;
+    my $filesize = fsize $f;
+    my $modified = mtime $f;
 
     if($dbExists and $dbSize == $filesize and $dbMod == $modified){
       $skippedCount++;
