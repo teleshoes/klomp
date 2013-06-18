@@ -5,8 +5,27 @@ use strict;
 use warnings;
 
 my $quality = 6;
-
 my $dir2oggExec = 'dir2ogg';
+
+my $usage = "Usage
+  $0 SRC DEST
+    Convert FLAC files under <SRC> to ogg vorbis.
+    Move the OGGs to a mirrored directory structure under <DEST>,
+      and record filesystem info about each flac file in a separate
+      file under <DEST>.
+
+    e.g.:  $0 ~/Music/flacs ~/Music/oggs
+      \"/home/user/Music/flacs/Beatles/RubberSoul/DriveMyCar.flac\"
+      =>
+      \"/home/user/Music/flacs/Beatles/RubberSoul/DriveMyCar.ogg\"
+      \"/home/user/Music/oggs/Beatles/RubberSoul/DriveMyCar.info\"
+
+    If the file already exists, it is skipped unless running stat
+      on the FLAC file has a different output than was recorded
+      in the info file.
+
+    OGG quality is set to $quality.
+";
 
 sub shellQuiet(@);
 sub convert($$$$);
@@ -14,7 +33,7 @@ sub convert($$$$);
 my $srcDir = shift;
 my $destDir = shift;
 
-die "Usage: $0 src dest" if not defined $srcDir or not defined $destDir;
+die $usage if not defined $srcDir or not defined $destDir;
 die "src '$srcDir' is not a directory" if !-d $srcDir;
 die "dest '$destDir' is not a directory" if !-d $destDir;
 
