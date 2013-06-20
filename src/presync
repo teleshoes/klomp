@@ -109,7 +109,7 @@ sub getInfo($\@){
 sub getPaths($){
   my $src = shift;
   my $findCmd;
-  if($src =~ /^((?:.+@).+):(.*)$/){
+  if($src =~ /^((?:.+@)?.+):(.*)$/){
     $findCmd = "ssh '$1' '".
       "if [ -d '$2' ]; then " .
         "cd '$2'; " .
