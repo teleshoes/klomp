@@ -39,15 +39,11 @@ sub dieUsage();
 
 sub main(@){
   my $src = shift;
-  $src = '' if not defined $src;
   my $dest = shift;
-  $dest = '' if not defined $dest;
 
-  if(@_ > 0 or
-    ($src !~ /.*:.*/ and !-d $src) or
-    ($dest !~ /.*:.*/ and !-d $dest)){
-    die $usage;
-  }
+  die $usage if @_ > 0 or not defined $src or not defined $dest;
+  die "$src must be a local or remote dir\n" if not -d $src and $src !~ /:/;
+  die "$dest must be a local or remote dir\n" if not -d $dest and $dest !~ /:/;
 
   $src =~ s/\/$//;
   $dest =~ s/\/$//;
