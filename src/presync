@@ -29,7 +29,6 @@ my $usage = "Usage:
                           =>    dest/bananacake/
 ";
 
-sub main($$);
 sub getPaths($);
 sub diffPaths($$);
 sub getInfo($\@);
@@ -38,20 +37,18 @@ sub execCommands($\@);
 sub writeTempFile($);
 sub dieUsage();
 
-my $src = shift;
-$src = '' if not defined $src;
-my $dest = shift;
-$dest = '' if not defined $dest;
-
-if(@ARGV > 0 or
-  ($src !~ /.*:.*/ and !-d $src) or
-  ($dest !~ /.*:.*/ and !-d $dest)){
-  die $usage;
-}
-
-sub main($$){
+sub main(@){
   my $src = shift;
+  $src = '' if not defined $src;
   my $dest = shift;
+  $dest = '' if not defined $dest;
+
+  if(@_ > 0 or
+    ($src !~ /.*:.*/ and !-d $src) or
+    ($dest !~ /.*:.*/ and !-d $dest)){
+    die $usage;
+  }
+
   $src =~ s/\/$//;
   $dest =~ s/\/$//;
 
@@ -215,4 +212,4 @@ sub writeTempFile($){
   return $fname;
 }
 
-&main($src, $dest);
+&main(@ARGV);
