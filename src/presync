@@ -12,27 +12,21 @@ my $usage = "Usage:
     create subdirs in DEST as necessary to move the files, but will never
     replace existing files or rm files or directories.
     e.g.:
-    src/one/a
-    src/one/b
-    src/one/c
-    src/two/d
-    src/two/e
-    src/two/f
+    presync src/ dest/
+      src/one/a           =>    src/one/a
+      src/one/b           =>    src/one/b
+      src/one/c           =>    src/one/c
+      src/two/d           =>    src/two/d
+      src/two/e           =>    src/two/e
+      src/two/f           =>    src/two/f
 
-    dest/a
-    dest/b
-    dest/c
-    dest/d
-    dest/bananacake/e
-    dest/two/d
-    =>
-    dest/d
-    dest/one/a
-    dest/one/b
-    dest/one/c
-    dest/two/d
-    dest/two/e
-    dest/bananacake/
+      dest/a              =>    dest/one/a
+      dest/b              =>    dest/one/b
+      dest/c              =>    dest/one/c
+      dest/d              =>    dest/d
+      dest/bananacake/e   =>    dest/two/e
+      dest/two/d          =>    dest/two/d
+                          =>    dest/bananacake/
 ";
 
 sub main($$);
