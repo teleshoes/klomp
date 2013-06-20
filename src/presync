@@ -4,6 +4,37 @@ use warnings;
 
 my $PRESYNC = 'presync';
 
+my $usage = "Usage:
+  $0 [[USER\@]HOST:]SRC_DIR [[USER\@]HOST:]DEST_DIR
+    SRC and DEST can be remote or local.
+    Script will compare DEST to SRC, find files that are similar in DEST
+    but in a different relative location, and move them to match. It will
+    create subdirs in DEST as necessary to move the files, but will never
+    replace existing files or rm files or directories.
+    e.g.:
+    src/one/a
+    src/one/b
+    src/one/c
+    src/two/d
+    src/two/e
+    src/two/f
+
+    dest/a
+    dest/b
+    dest/c
+    dest/d
+    dest/bananacake/e
+    dest/two/d
+    =>
+    dest/d
+    dest/one/a
+    dest/one/b
+    dest/one/c
+    dest/two/d
+    dest/two/e
+    dest/bananacake/
+";
+
 sub main($$);
 sub getPaths($);
 sub diffPaths($$);
@@ -21,7 +52,7 @@ $dest = '' if not defined $dest;
 if(@ARGV > 0 or
   ($src !~ /.*:.*/ and !-d $src) or
   ($dest !~ /.*:.*/ and !-d $dest)){
-  dieUsage();
+  die $usage;
 }
 
 sub main($$){
@@ -188,39 +219,6 @@ sub writeTempFile($){
   print FH $content;
   close FH;
   return $fname;
-}
-
-sub dieUsage(){
-  die
-"Usage: $0 [[USER\@]HOST:]SRC_DIR [[USER\@]HOST:]DEST_DIR
-SRC and DEST can be remote or local.
-Script will compare DEST to SRC, find files that are similar in DEST
-but in a different relative location, and move them to match. It will
-create subdirs in DEST as necessary to move the files, but will never
-replace existing files or rm files or directories.
-e.g.:
-src/one/a
-src/one/b
-src/one/c
-src/two/d
-src/two/e
-src/two/f
-
-dest/a
-dest/b
-dest/c
-dest/d
-dest/bananacake/e
-dest/two/d
-=>
-dest/d
-dest/one/a
-dest/one/b
-dest/one/c
-dest/two/d
-dest/two/e
-dest/bananacake/
-";
 }
 
 &main($src, $dest);
