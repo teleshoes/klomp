@@ -78,7 +78,10 @@ def maybeQuit():
     exit(0)
 def daemonExec(execName, args):
   if not os.fork():
-    os.setsid()
+    try:
+      os.setsid()
+    except:
+      pass
     os.chdir("/")
     null = os.open("/dev/null", os.O_RDWR)
     os.dup2(null, 0)
