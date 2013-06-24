@@ -88,7 +88,8 @@ def daemonExec(execName, args):
     os.dup2(null, 1)
     os.dup2(null, 2)
     os.close(null)
-    exe = subprocess.check_output(["which", execName])
+    exe = subprocess.Popen(['which', execName],
+      stdout=subprocess.PIPE).communicate()[0]
     exe = exe.rstrip()
     args.insert(0, exe)
     os.execv(exe, args)
