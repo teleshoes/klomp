@@ -576,21 +576,21 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
   def handleKeys(self, keys):
     c = curses
     klompcmds = {
-      ord(' '):    'pause',
-      ord('z'):    'prev',
-      ord('x'):    'next',
-      ord('r'):    'shuffle',
-      ord('b'):    'breaks toggle',
-      ord('9'):    'volume -1 0',
-      ord('0'):    'volume +1 0',
-      ord('5'):    'volume  10 1',
-      ord('6'):    'volume  25 1',
-      ord('7'):    'volume  75 1',
-      ord('8'):    'volume 100 1',
-      ord('a'):    'seek -60',
-      ord('s'):    'seek 60',
-      c.KEY_LEFT:  'seek -10',
-      c.KEY_RIGHT: 'seek 10'}
+      ord(' '):    ['pause'],
+      ord('z'):    ['prev'],
+      ord('x'):    ['next'],
+      ord('r'):    ['shuffle'],
+      ord('b'):    ['breaks', 'toggle'],
+      ord('9'):    ['volume',  '-1', '0'],
+      ord('0'):    ['volume',  '+1', '0'],
+      ord('5'):    ['volume',  '10', '1'],
+      ord('6'):    ['volume',  '25', '1'],
+      ord('7'):    ['volume',  '75', '1'],
+      ord('8'):    ['volume', '100', '1'],
+      ord('a'):    ['seek', '-60'],
+      ord('s'):    ['seek', '60'],
+      c.KEY_LEFT:  ['seek', '-10'],
+      c.KEY_RIGHT: ['seek', '10']}
     for key in keys:
       if key > 0 and key < 256:
         ch = chr(key).lower()
@@ -598,7 +598,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       if key == ord('q'):
         quitSlowly()
       elif key in klompcmds:
-        daemonExec('klomp-cmd', [klompcmds[key]])
+        daemonExec('klomp-cmd', klompcmds[key])
   def formatSong(self, song):
     sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
     bigSep = ' ' + sep + ' '
