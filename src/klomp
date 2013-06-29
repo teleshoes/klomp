@@ -512,7 +512,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
           regina OR spektor OR (the AND beatles)
        START: ^ at the beginning of a WORD
         [^"come together" ^abbey] => START(come together) AND START(abbey)
-       END: ^ at the end of a WORD
+       END: $ at the end of a WORD
         [beatles love$ can't "a hard day's night"$] =>
           beatles AND END(love) AND can't AND END(a hard day's night)
        LIBRARY: @all or @ followed by a library name at the query start
