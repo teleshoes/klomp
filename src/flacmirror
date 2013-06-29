@@ -53,7 +53,7 @@ sub main(@){
     }else{
       my $ogg = "$destDir/$basename.ogg";
       print "removing $ogg\n";
-      #system "rm", $ogg;
+      system "rm", $ogg;
     }
   }
 
