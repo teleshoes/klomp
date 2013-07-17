@@ -40,7 +40,7 @@ print "copying these scripts to $dest\n";
 print "@execs\n";
 
 print "copying lib\n";
-system "rm", "-r", $libDir;
+system "rm", "-rf", $libDir;
 system "mkdir", "-p", $libDir;
 system "cp -r Klomp $libDir";
 
