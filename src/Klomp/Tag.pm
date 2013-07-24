@@ -257,6 +257,7 @@ sub readTags($){
       $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
       $album  = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
       $number = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
+      $number = $1 if $lltag =~ m/^\s*TRACKNUMBER=(.*)$/mix;
       $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
       $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
     }else{
