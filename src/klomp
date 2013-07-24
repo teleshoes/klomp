@@ -305,10 +305,10 @@ class Prompt(LinePrinter):
       "album/number":        lambda s: (s['album'], self.num(s))
     }
   def num(self, s):
-    n = re.sub('[^0-9].*', '', s['number'])
-    try:
-      return int(n)
-    except ValueError:
+    m = re.search('[0-9]+', s['number'])
+    if m:
+      return int(m.group(0))
+    else:
       return 0
   def resetSortOrder(self):
     self.sortOrderItr = cycle(self.sortOrders)
