@@ -9,10 +9,17 @@ sub getAllLibNames(;$);
 sub getDefaultLibNames(;$);
 sub getLibraryPath($;$);
 sub getFlacmirrorPath($;$);
+sub getProperties(;$);
 
 sub readLibFile(;$);
 sub parseLibs(;$);
+sub parseProps(;$);
 sub getLibArray($;$);
+
+sub getProperties(;$){
+  my ($klompLib) = @_;
+  return parseProps $klompLib;
+}
 
 sub getAllLibNames(;$){
   my ($klompLib) = @_;
@@ -49,7 +56,12 @@ sub isPreferMirror($;$){
 
 sub parseLibs(;$){
   my ($klompLib) = @_;
-  return readLibFile $klompLib;
+  return ${readLibFile $klompLib}[0];
+}
+
+sub parseProps(;$){
+  my ($klompLib) = @_;
+  return ${readLibFile $klompLib}[1];
 }
 
 sub readLibFile(;$){
@@ -63,17 +75,20 @@ sub readLibFile(;$){
   chomp foreach @lines;
 
   my %libs;
+  my %props;
   my (@libLines, @properties);
   for my $line(@lines){
     if($line =~ /^\s*#/ or $line =~ /^\s*$/){
       next;
     }elsif($line =~ /^(.*):(.*):(.*):(.*):(.*)/){
       $libs{$1} = [$2, $3, $4, $5];
+    }elsif($line =~ /^\s*([^ \t]*)\s*=\s*(.*?)\s*$/){
+      $props{$1} = $2;
     }else{
       die "Malformed lib line: $line\n";
     }
   }
-  return \%libs;
+  return [\%libs, \%props];
 }
 
 sub getLibArray($;$){
