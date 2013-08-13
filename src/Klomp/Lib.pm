@@ -69,6 +69,8 @@ sub readLibFile(;$){
       next;
     }elsif($line =~ /^(.*):(.*):(.*):(.*):(.*)/){
       $libs{$1} = [$2, $3, $4, $5];
+    }else{
+      die "Malformed lib line: $line\n";
     }
   }
   return \%libs;
