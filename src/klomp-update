@@ -15,6 +15,7 @@ my $usage = "Usage:
 sub runOrDie(@);
 sub ensureDb();
 sub getLibs(@);
+sub genSymlinkDir($);
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
@@ -48,6 +49,9 @@ sub main(@){
       runOrDie "flacmirror $dir $flacMirrorDir";
     }
   }
+
+  my $props = Klomp::Lib::getProperties;
+  genSymlinkDir $$props{symlink} if defined $$props{symlink};
 }
 
 sub runOrDie(@){
@@ -82,6 +86,33 @@ sub getLibs(@){
   }
 
   return @libs;
+}
+
+sub genSymlinkDir($){
+  my $symDir = shift;
+  print "\n\nrefreshing symlink dir $symDir\n";
+  if(-d $symDir){
+    system "find", $symDir, "-depth", "-type", "l", "-delete";
+    system "find", $symDir, "-depth", "-type", "d", "-empty", "-delete";
+  }
+  die "Could not create $symDir, already exists\n" if -e $symDir;
+  system "mkdir", "-p", $symDir;
+
+  for my $lib(Klomp::Lib::getAllLibNames){
+    my $libDir = Klomp::Lib::getLibraryPath $lib;
+    for my $file(`find $libDir -maxdepth 1 -mindepth 1`){
+      chomp $file;
+
+      my $lnFile = $file;
+      $lnFile =~ s/^.*\///;
+      $lnFile = "$symDir/$lnFile";
+
+      $lnFile .= "[$lib]" if -e $lnFile;
+      $lnFile .= "-" . time if -e $lnFile;
+
+      symlink $file, $lnFile;
+    }
+  }
 }
 
 &main(@ARGV);
