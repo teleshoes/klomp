@@ -65,7 +65,7 @@ sub readLibFile(;$){
   my %libs;
   my (@libLines, @properties);
   for my $line(@lines){
-    if($line =~ /^\s*#/){
+    if($line =~ /^\s*#/ or $line =~ /^\s*$/){
       next;
     }elsif($line =~ /^(.*):(.*):(.*):(.*):(.*)/){
       $libs{$1} = [$2, $3, $4, $5];
