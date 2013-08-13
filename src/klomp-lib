@@ -10,6 +10,8 @@ my $defaultKlomplib = Klomp::Files::klompFile("lib");
 my $usage = "Usage:
   $0 [--file=libfile]
     print available libs
+  $0 [--file=libfile] -p
+    print library properties
   $0 [--file=libfile] -d
     print default libs
   $0 [--file=libfile] -l <lib>
@@ -31,6 +33,9 @@ sub main(@){
 
   if(not defined $cmd and not defined $lib){
     print map {"$_\n"} Klomp::Lib::getAllLibNames $klompLib;
+  }elsif($cmd eq "-p" and not defined $lib){
+    my $props = Klomp::Lib::getProperties $klompLib;
+    print "$_ => $$props{$_}\n" foreach sort keys %$props;
   }elsif($cmd eq "-d" and not defined $lib){
     print map {"$_\n"} Klomp::Lib::getDefaultLibNames $klompLib;
   }elsif($cmd eq "-l" and defined $lib){
