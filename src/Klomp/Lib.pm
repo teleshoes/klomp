@@ -10,6 +10,7 @@ sub getDefaultLibNames(;$);
 sub getLibraryPath($;$);
 sub getFlacmirrorPath($;$);
 
+sub readLibFile(;$);
 sub parseLibs(;$);
 sub getLibArray($;$);
 
@@ -48,14 +49,28 @@ sub isPreferMirror($;$){
 
 sub parseLibs(;$){
   my ($klompLib) = @_;
+  return readLibFile $klompLib;
+}
+
+sub readLibFile(;$){
+  my ($klompLib) = @_;
   $klompLib = $defaultKlompLib if not defined $klompLib;
   die "$klompLib file not found\n" if not -e $klompLib;
 
   open FH, "< $klompLib" or die "Could not read $klompLib";
-  my @lines = grep {/^[^#]/} <FH>;
+  my @lines = <FH>;
   close FH;
   chomp foreach @lines;
-  my %libs = map {my @arr = split ':'; {shift @arr, \@arr}} @lines;
+
+  my %libs;
+  my (@libLines, @properties);
+  for my $line(@lines){
+    if($line =~ /^\s*#/){
+      next;
+    }elsif($line =~ /^(.*):(.*):(.*):(.*):(.*)/){
+      $libs{$1} = [$2, $3, $4, $5];
+    }
+  }
   return \%libs;
 }
 
