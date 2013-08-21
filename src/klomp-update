@@ -92,12 +92,14 @@ sub relPath($$){
   my ($absPath, $file) = @_;
   $absPath =~ s/\/$//;
 
-  my @paths;
+  my $levels;
   while(length $absPath > 0){
     last if $file =~ s/^\Q$absPath\E\/?//;
-    push @paths, "..";
-    $absPath =~ s@/[^/]*$@@;
+    last if $absPath !~ s@/[^/]*$@@;
+    $levels++;
   }
+  my @paths;
+  @paths = ("..")x$levels if $file !~ /^\//;
   push @paths, $file if length $file > 0;
   return join("/", @paths);
 }
