@@ -7,6 +7,7 @@ use Klomp::Lib;
 my $usage = "Usage:
   $0 [--quick]                        update all libs
   $0 [--quick] LIB [LIB LIB ..]       updated specified libs
+  $0 --symlink-only                   just update the symlink dir
   Compares a library path on the filesystem to the contents of the database,
   and makes updates to the database. Never modifies the files.
 
@@ -18,6 +19,8 @@ my $usage = "Usage:
   renaming the symlinks as necessary.
   Attempts to make the symlinks relative based on the libpath;
 
+  --symlink-only
+     instead of updating any libs, JUST update the symlink dir if it exists
   --quick
      pass --quick to klomp-db when adding songs
      {assume existing songs with the same path are unchanged}
@@ -30,14 +33,23 @@ sub genSymlinkDir($);
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
+  my $symlinkOnly = 0;
+  if(@_ == 1 and $_[0] =~ /^--symlink-only$/){
+    $symlinkOnly = 1;
+    shift;
+  }
+
   my $quick = 0;
   if(@_ > 0 and $_[0] =~ /^--quick$/){
     $quick = 1;
     shift;
   }
 
-  my @libs = getLibs(@_);
-  ensureDb();
+  my @libs;
+  if(not $symlinkOnly){
+    @libs = getLibs(@_);
+    ensureDb();
+  }
 
   for my $lib(@libs){
     print "\nHandling library: $lib\n";
