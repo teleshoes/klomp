@@ -88,6 +88,20 @@ sub getLibs(@){
   return @libs;
 }
 
+sub relPath($$){
+  my ($absPath, $file) = @_;
+  $absPath =~ s/\/$//;
+
+  my @paths;
+  while(length $absPath > 0){
+    last if $file =~ s/^\Q$absPath\E\/?//;
+    push @paths, "..";
+    $absPath =~ s@/[^/]*$@@;
+  }
+  push @paths, $file if length $file > 0;
+  return join("/", @paths);
+}
+
 sub genSymlinkDir($){
   my $symDir = shift;
   print "\n\nrefreshing symlink dir $symDir\n";
