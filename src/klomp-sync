@@ -164,6 +164,17 @@ sub sync($$$$$){
       print "skipping, flacmirror must to be set in both lib files";
     }
   }
+
+  my $props = Klomp::Lib::getProperties;
+  my $remoteProps = Klomp::Lib::getProperties $klompLib;
+
+
+  if(defined $$props{symlink} and defined $$remoteProps{symlink}){
+    my $src = $$props{symlink};
+    my $dest = $$remoteProps{symlink};
+    $dest = "$host:$dest" if defined $host;
+    runOrDie "rsync", "--delete-before", "-avP", "$src/", $dest;
+  }
 }
 
 sub syncDir($$$$@){
