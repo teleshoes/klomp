@@ -102,6 +102,15 @@ sub relPath($$){
   return join("/", @paths);
 }
 
+sub symRel($$){
+  my ($srcFile, $destFile) = @_;
+  my $destDir = $destFile;
+  $destDir =~ s@/([^/]*)$@@;
+  my $relFile = relPath $destDir, $srcFile;
+
+  symlink $relFile, $destFile;
+}
+
 sub genSymlinkDir($){
   my $symDir = shift;
   print "\n\nrefreshing symlink dir $symDir\n";
@@ -124,7 +133,7 @@ sub genSymlinkDir($){
       $lnFile .= "[$lib]" if -e $lnFile;
       $lnFile .= "-" . time if -e $lnFile;
 
-      symlink $file, $lnFile;
+      symRel $file, $lnFile;
     }
   }
 }
