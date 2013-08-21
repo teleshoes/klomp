@@ -7,6 +7,17 @@ use Klomp::Lib;
 my $usage = "Usage:
   $0 [--quick]                        update all libs
   $0 [--quick] LIB [LIB LIB ..]       updated specified libs
+  Compares a library path on the filesystem to the contents of the database,
+  and makes updates to the database. Never modifies the files.
+
+  Prompts before removing missing files, adds new files,
+  and updates existing modified files.
+
+  After every update, if klomplib specifies a symlink dir,
+  makes symlinks for all files in all libs in that dir,
+  renaming the symlinks as necessary.
+  Attempts to make the symlinks relative based on the libpath;
+
   --quick
      pass --quick to klomp-db when adding songs
      {assume existing songs with the same path are unchanged}
