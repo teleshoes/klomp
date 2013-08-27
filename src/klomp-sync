@@ -120,7 +120,7 @@ sub remoteSync($$$$){
   die "Error copying $host:~/.klomplib\n" if not -e $tmpKlompLib;
 
   print "Overwriting remote .klompdb with local .klompdb\n";
-  system 'scp', $klompDb, "$host:~";
+  system 'rsync', "-c", "-v", "-P", $klompDb, "$host:~";
 
   sync($host, $tmpKlompLib, $includeFlacs, $presync, $libRegex);
 }
