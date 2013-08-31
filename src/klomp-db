@@ -31,7 +31,7 @@ sub update($$$);
 sub missing($$);
 sub add($$$$);
 sub search($$$$$);
-sub getSubQuerySql($);
+sub getSubQuerySql($$);
 sub info($$);
 
 my $usage = "Usage: 
@@ -197,14 +197,16 @@ sub add($$$$){
   addSongs($db, $lib, $quick, \@songRelPaths);
 }
 
-sub parseQuotes($){
+sub quoteTokenize($){
   my $query = shift;
+
+  $query =~ s/~/~~/g;
+  my $quoteTokens = {};
 
   my $newQuery = '';
   my $endOfLastQuote = 0;
 
-  my %quoteAtoms;
-  my $atomId = 0;
+  my $tokenId = 0;
 
   my $startQuote=0;
   my $endQuote;
@@ -224,23 +226,30 @@ sub parseQuotes($){
       if($nextChar eq '"'){
         $offset++;
       }else{
-        my $quoteAtom = substr $query, $startQuote+1, $endQuote-$startQuote-1;
-        $quoteAtom =~ s/""/"/g;
-        $quoteAtom =~ s/@/~at~/g;
-        $quoteAtom =~ s/!/~bang~/g;
-        $quoteAtom =~ s/\^/~carat~/g;
-        $quoteAtom =~ s/\$/~dollar~/g;
+        my $quoteToken = substr $query, $startQuote+1, $endQuote-$startQuote-1;
+        $quoteToken =~ s/""/"/g;
         $newQuery .= substr $query, $endOfLastQuote, $startQuote-$endOfLastQuote;
         $endOfLastQuote = $endQuote+1;
-        $newQuery .= "~$atomId~";
-        $quoteAtoms{$atomId++} = $quoteAtom;
+        $newQuery .= "~$tokenId~";
+        $$quoteTokens{$tokenId++} = $quoteToken;
         last;
       }
     }
   }
   $newQuery .= substr $query, $endOfLastQuote, $len-$endOfLastQuote;
 
-  return ($newQuery, %quoteAtoms);
+  return ($newQuery, $quoteTokens);
+}
+sub quoteUntokenize($$){
+  my ($query, $quoteTokens) = @_;
+
+  for my $tokenId(keys %$quoteTokens){
+    my $token = $$quoteTokens{$tokenId};
+    $query =~ s/~$tokenId~/$token/;
+  }
+
+  $query =~ s/~~/~/g;
+  return $query;
 }
 
 sub search($$$$$){
@@ -306,21 +315,13 @@ sub search($$$$$){
 
   my $lim = $limit > 0 ? "LIMIT $limit" : '';
 
-  $query =~ s/~/~~/g;
-  
-  my %quoteAtoms;
-  ($query, %quoteAtoms) = parseQuotes $query;
+  my $quoteTokens;
+  ($query, $quoteTokens) = quoteTokenize $query;
 
   $query =~ s/\s*  \&\&  \s*/~and~/gx;
   $query =~ s/\s*  \|\|  \s*/~or~/gx;
   $query =~ s/\s*  \+\+  \s*/~or~/gx;
   $query =~ s/\s+/~and~/g;
-  
-
-  for my $atomId(keys %quoteAtoms){
-    my $atom = $quoteAtoms{$atomId};
-    $query =~ s/~$atomId~/$atom/;
-  }
 
   my $selCols = join "\n       ,", @namedCols;
   my $sql = ''
@@ -336,7 +337,7 @@ sub search($$$$$){
   for my $sub(@subqueries){
     my $q = $$sub[0];
 
-    my $subQuerySql = getSubQuerySql($q);
+    my $subQuerySql = getSubQuerySql($q, $quoteTokens);
 
     my $term;
     $term = " and (" if $$sub[1] eq '~and~';
@@ -357,8 +358,8 @@ sub search($$$$$){
 }
 
 # turns search words into SQL queries
-sub getSubQuerySql($){
-  my $q = shift;
+sub getSubQuerySql($$){
+  my ($q, $quoteTokens) = @_;
 
   my %columnNames = (
     t => ["title", "title_guess"],
@@ -383,12 +384,8 @@ sub getSubQuerySql($){
   my $startAnchor = $q =~ s/^\^//;
   my $endAnchor = $q =~ s/\$$//;
 
-  $q =~ s/~dollar~/\$/g;
-  $q =~ s/~carat~/\^/g;
-  $q =~ s/~bang~/!/g;
-  $q =~ s/~at~/@/g;
+  $q = quoteUntokenize $q, $quoteTokens;
 
-  $q =~ s/~~/~/g;
   $q =~ s/'/''/g;
   $q =~ s/%/\\%/g;
 
