@@ -286,9 +286,9 @@ sub search($$$$$$){
   @libs = @defaultLibs if @libs == 0;
   @libs = () if $all;
 
-  my $libWhere = '';
+  my $libWhere = '1=1';
   if(@libs > 0){
-    $libWhere = "library in (" . (join ', ', map {"'$_'"} @libs) . ") and";
+    $libWhere = "library in (" . (join ', ', map {"'$_'"} @libs) . ")";
   }
 
   if(not @cols){
@@ -328,31 +328,29 @@ sub search($$$$$$){
   $query =~ s/\s*  \+\+  \s*/~or~/gx;
   $query =~ s/\s+/~and~/g;
 
+  my @queryParts;
+  while($query =~ /(.+?)(~and~|~or~|$)/g){
+    push @queryParts, $1;
+    push @queryParts, $2 if $2 ne "";
+  }
+
+  my $where = '';
+  for my $part(@queryParts){
+    if($part eq "~and~"){
+      $where .= "\n  and\n";
+    }elsif($part eq "~or~"){
+      $where .= "\n  or\n";
+    }else{
+      $where .= "  (" . getSubQuerySql($part, $quoteTokens) . "\n  )";
+    }
+  }
+
   my $selCols = join "\n       ,", @namedCols;
   my $sql = ''
     . "select $selCols \n"
     . "from Songs \n"
-    . "where $libWhere (\n  (\n  ";
+    . "where $libWhere and (\n$where\n)\n$orderBy\n$lim;";
 
-  $query .= '~term~';
-  my @subqueries;
-  while($query =~ /(.*?)(~and~|~or~|~term~)/g){
-    push @subqueries, [$1, $2];
-  }
-  for my $sub(@subqueries){
-    my $q = $$sub[0];
-
-    my $subQuerySql = getSubQuerySql($q, $quoteTokens);
-
-    my $term;
-    $term = " and (" if $$sub[1] eq '~and~';
-    $term = " or (" if $$sub[1] eq '~or~';
-    $term = "" if $$sub[1] eq '~term~';
-
-    $sql .= "$subQuerySql)$term\n  "
-  }
-  $sql .= "\n) \n$orderBy\n$lim;";
-  
   print STDERR "--\n$sql\n--\n" if $verbose;
   
   if(@cols > 1){
@@ -401,7 +399,7 @@ sub getSubQuerySql($$){
   my $compOp = $negate ? "not like" : "like";
   my $joinOp = $negate ? "and" : "or";
 
-  return join(" $joinOp ", map{" $_ $compOp $q "} @columns);
+  return join(" $joinOp ", map{"\n      $_ $compOp $q"} @columns);
 }
 
 sub info($$){
