@@ -425,6 +425,10 @@ sub validateQuery($){
 sub getSubQuerySql($$){
   my ($q, $quoteTokens) = @_;
 
+  if($q =~ /\@n\[(\d+)-(\d+)]/){
+    return "\n      ($1 <= abs(number_guess) and abs(number_guess) <= $2)";
+  }
+
   my %columnNames = (
     t => ["title", "title_guess"],
     l => ["album", "album_guess"],
