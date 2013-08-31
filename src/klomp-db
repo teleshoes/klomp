@@ -357,6 +357,7 @@ sub search($$$$$$){
       die "Unknown query part type: $type\n";
     }
   }
+  $where = '1=1' if @$queryParts == 0;
 
   my $selCols = join "\n       ,", @namedCols;
   my $sql = ''
