@@ -30,7 +30,7 @@ sub create($);
 sub update($$$);
 sub missing($$);
 sub add($$$$);
-sub search($$$$$);
+sub search($$$$$$);
 sub getSubQuerySql($$);
 sub info($$);
 
@@ -53,6 +53,7 @@ my $usage = "Usage:
  $0 [db-path] -s|--search query [OPTS]
    Query for relative paths to songs in given libs (or all), or more info.
    optional OPTS:
+   -v|--verbose            print SQL to STDERR before running it
    --lib lib               optional libs to search (all if not given)
                            {can appear multiple times}
    -l|--limit LIMIT        optional integer limit on number of rows returned
@@ -106,13 +107,16 @@ sub main(@){
   }elsif($cmd =~ /^(-s|--search)$/ and @_ >= 1){
     my $query = shift;
 
+    my $verbose = 0;
     my @libs;
     my $limit = 0;
     my @cols;
     my $mode = 'playlist';
     while(@_){
       my $arg = shift;
-      if($arg =~ /^(-l|--limit)$/ && @_>0){
+      if($arg =~ /^(-v|--verbose)$/){
+        $verbose = 1;
+      }elsif($arg =~ /^(-l|--limit)$/ && @_>0){
         $limit = shift;
         die $usage if $limit !~ /^\d+$/;
       }elsif($arg =~ /^(--col)$/ && @_>0){
@@ -128,7 +132,7 @@ sub main(@){
       }
     }
 
-    search($db, $query, $limit, \@cols, \@libs);
+    search($db, $query, $verbose, $limit, \@cols, \@libs);
   }else{
     die $usage;
   }
@@ -252,9 +256,10 @@ sub quoteUntokenize($$){
   return $query;
 }
 
-sub search($$$$$){
+sub search($$$$$$){
   my $db = shift;
   my $query = shift;
+  my $verbose = shift;
   my $limit = shift;
   my @cols = @{shift()};
   my @libs = @{shift()};
@@ -348,7 +353,7 @@ sub search($$$$$){
   }
   $sql .= "\n) \n$orderBy\n$lim;";
   
-  #print STDERR $sql;
+  print STDERR "--\n$sql\n--\n" if $verbose;
   
   if(@cols > 1){
     print runSql $db, $sql, '-csv';
