@@ -324,13 +324,15 @@ sub search($$$$$$){
   my $quoteTokens;
   ($query, $quoteTokens) = quoteTokenize $query;
 
+  $query =~ s/\s*  \(    \s*/~lparens~/gx;
+  $query =~ s/\s*  \)    \s*/~rparens~/gx;
   $query =~ s/\s*  \&\&  \s*/~and~/gx;
   $query =~ s/\s*  \|\|  \s*/~or~/gx;
   $query =~ s/\s*  \+\+  \s*/~or~/gx;
   $query =~ s/\s+/~and~/g;
 
   my $queryParts = [];
-  while($query =~ /(.*?)(~and~|~or~|$)/g){
+  while($query =~ /(.*?)(~lparens~|~rparens~|~and~|~or~|$)/g){
     push @$queryParts, ['subquery', $1] if $1 ne "";
     push @$queryParts, ["$2"] if $2 ne "";
   }
@@ -340,7 +342,11 @@ sub search($$$$$$){
   my $where = '';
   for my $part(@$queryParts){
     my $type = $$part[0];
-    if($type eq "~and~"){
+    if($type eq "~lparens~"){
+      $where .= "\n (\n";
+    }elsif($type eq "~rparens~"){
+      $where .= "\n )\n";
+    }elsif($type eq "~and~"){
       $where .= "\n  and\n";
     }elsif($type eq "~or~"){
       $where .= "\n  or\n";
@@ -377,11 +383,15 @@ sub validateQuery($){
 
     my @okPrev;
     if($type eq "subquery"){
-      @okPrev = qw(undef ~and~ ~or~);
+      @okPrev = qw(undef ~lparens~ ~and~ ~or~);
+    }elsif($type eq "~lparens~"){
+      @okPrev = qw(undef ~lparens~ ~and~ ~or~);
+    }elsif($type eq "~rparens~"){
+      @okPrev = qw(subquery ~rparens~);
     }elsif($type eq "~and~"){
-      @okPrev = qw(subquery);
+      @okPrev = qw(subquery ~rparens~);
     }elsif($type eq "~or~"){
-      @okPrev = qw(subquery);
+      @okPrev = qw(subquery ~rparens~);
     }
     my %okPrevHash = map {$_=>1} @okPrev;
     if(not defined $okPrevHash{$prevType}){
