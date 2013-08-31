@@ -328,20 +328,24 @@ sub search($$$$$$){
   $query =~ s/\s*  \+\+  \s*/~or~/gx;
   $query =~ s/\s+/~and~/g;
 
-  my @queryParts;
-  while($query =~ /(.+?)(~and~|~or~|$)/g){
-    push @queryParts, $1;
-    push @queryParts, $2 if $2 ne "";
+  my $queryParts = [];
+  while($query =~ /(.*?)(~and~|~or~|$)/g){
+    push @$queryParts, ['subquery', $1] if $1 ne "";
+    push @$queryParts, ["$2"] if $2 ne "";
   }
 
   my $where = '';
-  for my $part(@queryParts){
-    if($part eq "~and~"){
+  for my $part(@$queryParts){
+    my $type = $$part[0];
+    if($type eq "~and~"){
       $where .= "\n  and\n";
-    }elsif($part eq "~or~"){
+    }elsif($type eq "~or~"){
       $where .= "\n  or\n";
+    }elsif($type eq "subquery"){
+      my $q = $$part[1];
+      $where .= "  (" . getSubQuerySql($q, $quoteTokens) . "\n  )";
     }else{
-      $where .= "  (" . getSubQuerySql($part, $quoteTokens) . "\n  )";
+      die "Unknown query part type: $type\n";
     }
   }
 
