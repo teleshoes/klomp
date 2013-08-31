@@ -356,38 +356,32 @@ sub search($$$$$){
   }
 }
 
+# turns search words into SQL queries
 sub getSubQuerySql($){
   my $q = shift;
 
-  my $neg = '';
-  my $negAndOr = 'or';
-  if($q =~ /^!/){
-    $q =~ s/^!//;
-    $neg = 'not';
-    $negAndOr = 'and';
-  }
+  my %columnNames = (
+    t => ["title", "title_guess"],
+    l => ["album", "album_guess"],
+    a => ["artist", "artist_guess"],
+    g => ["genre"],
+    p => ["relpath"],
+    n => ["number", "number_guess"],
+  );
 
-  my $default = 1;
-  my $title = 0;
-  my $album = 0;
-  my $artist = 0;
-  my $genre = 0;
-  my $path = 0;
-  my $number = 0;
-  while($q =~ /^@[tlagpn]/){
-    $default = 0;
-    $q =~ s/^@([tlagpn])//;
-    $title = 1 if $1 eq 't';
-    $album = 1 if $1 eq 'l';
-    $artist = 1 if $1 eq 'a';
-    $genre = 1 if $1 eq 'g';
-    $path = 1 if $1 eq 'p';
-    $number = 1 if $1 eq 'n';
-  }
+  my $negate = $q =~ s/^!//;
 
-  my ($startBoing, $endBoing) = ('%', '%');
-  $startBoing = '' if $q =~ s/^\^//;
-  $endBoing = '' if $q =~ s/\$$//;
+  my $colStr;
+  if($q =~ s/^@([tlagpn]+)//){
+    $colStr = $1;
+  }else{
+    $colStr = "tla";
+  }
+  my %colChars = map {$_=>1} split //, $colStr;
+  my @columns = map {@{$columnNames{$_}}} keys %colChars;
+
+  my $startAnchor = $q =~ s/^\^//;
+  my $endAnchor = $q =~ s/\$$//;
 
   $q =~ s/~dollar~/\$/g;
   $q =~ s/~carat~/\^/g;
@@ -398,27 +392,14 @@ sub getSubQuerySql($){
   $q =~ s/'/''/g;
   $q =~ s/%/\\%/g;
 
-  my $like = "$neg like '$startBoing$q$endBoing'";
-  my @wheres;
-  if($default or $title){
-    push @wheres, "title $like $negAndOr title_guess $like\n  ";
-  }
-  if($default or $album){
-    push @wheres, "album $like $negAndOr album_guess $like\n  ";
-  }
-  if($default or $artist){
-    push @wheres, "artist $like $negAndOr artist_guess $like\n  ";
-  }
-  if($genre){
-    push @wheres, "genre $like\n  ";
-  }
-  if($path){
-    push @wheres, "relpath $like\n  ";
-  }
-  if($number){
-    push @wheres, "number $like $negAndOr number_guess $like\n  ";
-  }
-  return join(" $negAndOr ", @wheres);
+  $q = "%$q" unless $startAnchor;
+  $q = "$q%" unless $endAnchor;
+  $q = "'$q'";
+
+  my $compOp = $negate ? "not like" : "like";
+  my $joinOp = $negate ? "and" : "or";
+
+  return join(" $joinOp ", map{" $_ $compOp $q "} @columns);
 }
 
 sub info($$){
