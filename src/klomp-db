@@ -481,7 +481,8 @@ sub getNumericSubQuerySql($){
 
   my $numColsRe = join "|", keys %numericColumns;
   my $opRe = "<|<=|>|>=|=";
-  my $numRe = "\\d+(?:\\.\\d+)?";
+  my $floatRe = "\\d+(?:\\.\\d+)?";
+  my $numRe = "$floatRe|$floatRe:$floatRe|$floatRe:$floatRe:$floatRe";
 
   if($q =~ /^\@($numColsRe)($opRe)($numRe)$/){
     my ($col, $op, $val) = ($numericColumns{$1}, $2, parseNum($3));
@@ -497,6 +498,8 @@ sub getNumericSubQuerySql($){
 sub parseNum($){
   my $n = shift;
   my $floatRe = "\\d+(?:\\.\\d+)?";
+  return $3 + $2*60 + $1*60*60 if $n =~ /($floatRe):($floatRe):($floatRe)/;
+  return $2 + $1*60 if $n =~ /($floatRe):($floatRe)/;
   return $1 if $n =~ /($floatRe)/;
   return 0;
 }
