@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use IPC::Run qw(run);
 use Getopt::Long qw(GetOptionsFromArray :config bundling);
 
 my $usage = "Usage:
@@ -65,8 +64,8 @@ sub getLen($){
   my $exec = selectExec @cmds;
   die "Could not find these on path: @cmds\n" if not defined $exec;
 
-  my $info;
-  run [$exec, "-i", $file], '>&', \$info;
+  $file =~ s/"/\\"/g;
+  my $info = `$exec -i "$file" 2>&1`;
   if($info =~ /Duration: (\d+):(\d+):(\d+(?:\.\d+))/){
     return $3 + ($2*60) + ($1*60*60);
   }else{
