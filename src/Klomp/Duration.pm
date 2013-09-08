@@ -26,6 +26,7 @@ sub getDuration($){
   return undef if not -f $file or not defined $exec;
 
   $file =~ s/"/\\"/g;
+  $file =~ s/`/\\`/g;
   my $info = `$exec -i "$file" 2>&1`;
   if($info =~ /Duration: (\d+):(\d+):(\d+(?:\.\d+))/){
     return $3 + ($2*60) + ($1*60*60);
