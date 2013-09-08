@@ -476,6 +476,7 @@ sub getNumericSubQuerySql($){
 
   my %numericColumns = (
     n => "number_guess",
+    d => "duration",
   );
 
   my $numColsRe = join "|", keys %numericColumns;
