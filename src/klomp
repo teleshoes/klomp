@@ -128,7 +128,9 @@ def millisNow():
   return int(round(time.time() * 1000))
 
 def msg(s):
-  os.system("echo '" + str(s) + "' >> out")
+  f = open("out", "a")
+  f.write(str(s))
+  f.close()
 
 class KeyReaderThread(threading.Thread):
   def __init__(self, stdscr, onGetSomeKeys):
