@@ -373,9 +373,9 @@ class KlompLibs():
     self.sep = "///\\\\\\"
     reSep = self.sep.replace('\\', '\\\\')
     self.songRe = re.compile('([^@]*)@(.*)')
-    infoCols = ["artist", "album", "number", "title", "query"]
-    infoColsRe = "|".join(infoCols)
-    self.attRe = re.compile("(" + infoColsRe + ")=(.*)")
+    self.attCols = ["artist", "album", "number", "title", "query"]
+    attColsRe = "|".join(self.attCols)
+    self.attRe = re.compile("(" + attColsRe + ")=(.*)")
   def toString(self, song):
     return (
         song['library'] + '@' + song['relpath'] +
@@ -393,6 +393,8 @@ class KlompLibs():
       if len(info) > 0:
         song['relpath'] = info[0]
         info = info[1:]
+      for att in self.attCols:
+        song[att] = ''
       for att in info:
         attM = self.attRe.match(att)
         if attM:
