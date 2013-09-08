@@ -17,6 +17,7 @@ if(`whoami` ne "root\n"){
 }
 
 my @execs = qw(
+  duration
   flacmirror
   presync
   klomplayer
