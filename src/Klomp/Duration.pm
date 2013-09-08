@@ -1,11 +1,14 @@
 package Klomp::Duration;
 use Exporter 'import';
-@EXPORT_OK = qw(getDuration formatTimeS formatTimeHMS);
+@EXPORT_OK = qw(getDuration cmdExists formatTimeS formatTimeHMS);
 use strict;
 use warnings;
 
+my @cmds = ("ffmpeg", "avconv");
+
 sub selectExec(@);
 sub getDuration($);
+sub cmdExists();
 sub formatTimeS($);
 sub formatTimeHMS($);
 
@@ -19,19 +22,20 @@ sub selectExec(@){
 
 sub getDuration($){
   my $file = shift;
-  die "file not found: $file\n" unless -e $file;
-
-  my @cmds = ("ffmpeg", "avconv");
   my $exec = selectExec @cmds;
-  die "Could not find these on path: @cmds\n" if not defined $exec;
+  return undef if not -f $file or not defined $exec;
 
   $file =~ s/"/\\"/g;
   my $info = `$exec -i "$file" 2>&1`;
   if($info =~ /Duration: (\d+):(\d+):(\d+(?:\.\d+))/){
     return $3 + ($2*60) + ($1*60*60);
-  }else{
-    die "Unknown duration for input: $file\n";
   }
+  return undef;
+}
+
+sub cmdExists(){
+  my $exec = selectExec @cmds;
+  return defined $exec;
 }
 
 sub formatTimeS($){

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Getopt::Long qw(GetOptionsFromArray :config bundling);
 use lib "/opt/klomp/lib";
-use Klomp::Duration qw(getDuration formatTimeS formatTimeHMS);
+use Klomp::Duration qw(getDuration cmdExists formatTimeS formatTimeHMS);
 
 my $usage = "Usage:
   $0 [OPTS] FILENAME FILENAME ..
@@ -31,10 +31,19 @@ sub main(@){
   my @files = @_;
 
   die $usage if not $ok or @files == 0 or $help;
+  die "FATAL: no ffmpeg/avconv cmd found\n" if not cmdExists;
 
   my $lenTotal = 0;
   for my $file(@_){
+    if(not -f $file){
+      print STDERR "$file not found\n";
+      next;
+    }
     my $len = getDuration $file;
+    if(not defined $len){
+      print STDERR "Unknown duration for $file\n";
+      next;
+    }
     $lenTotal += $len;
     my $fmt = $seconds ? formatTimeS $len : formatTimeHMS $len;
     $fmt .= " $file" unless $nofilename;
