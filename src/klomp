@@ -447,7 +447,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       prefix = ' ' * (maxLen - numLen)
       s['number'] = prefix + s['number']
   def formatSong(self, s):
-    return ' ' + s['number'] + ':' + s['title']
+    return ' ' + s['number'] + ':' + s['title'] + ' (' + s['duration'] + ')'
   def formatSongBucket(self, s):
     prefix = ''
     sep1 = ' - '
@@ -608,6 +608,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
     return (''
       + song['number'] + sep
       + song['title'] + bigSep
+      + song['title'] + " (" + song['duration'] + ")" + bigSep
       + song['artist'] + bigSep
       + song['album']
     )
