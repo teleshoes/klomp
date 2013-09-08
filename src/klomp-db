@@ -34,6 +34,8 @@ sub add($$$$);
 sub search($$$$$$);
 sub validateQuery($);
 sub getSubQuerySql($$);
+sub getNumericSubQuerySql($);
+sub parseNum($);
 sub info($$);
 
 my $usage = "Usage: 
@@ -426,9 +428,8 @@ sub validateQuery($){
 sub getSubQuerySql($$){
   my ($q, $quoteTokens) = @_;
 
-  if($q =~ /\@n\[(\d+)-(\d+)]/){
-    return "\n      ($1 <= abs(number_guess) and abs(number_guess) <= $2)";
-  }
+  my $numericSql = getNumericSubQuerySql $q;
+  return $numericSql if defined $numericSql;
 
   my %columnNames = (
     t => ["title", "title_guess"],
@@ -466,6 +467,36 @@ sub getSubQuerySql($$){
   my $joinOp = $negate ? "and" : "or";
 
   return join(" $joinOp ", map{"\n      $_ $compOp $q"} @columns);
+}
+
+# adds special numeric comparison cases for some columns
+sub getNumericSubQuerySql($){
+  my $q = shift;
+
+  my %numericColumns = (
+    n => "number_guess",
+  );
+
+  my $numColsRe = join "|", keys %numericColumns;
+  my $opRe = "<|<=|>|>=|=";
+  my $numRe = "\\d+(?:\\.\\d+)?";
+
+  if($q =~ /^\@($numColsRe)($opRe)($numRe)$/){
+    my ($col, $op, $val) = ($numericColumns{$1}, $2, parseNum($3));
+    return "\n      (abs($col) $op $val)";
+  }elsif($q =~ /^\@($numColsRe)\[($numRe)-($numRe)\]$/){
+    my ($col, $min, $max) = ($numericColumns{$1}, parseNum($2), parseNum($3));
+    return "\n      ($min <= abs($col) and abs($col) <= $max)";
+  }
+
+  return undef;
+}
+
+sub parseNum($){
+  my $n = shift;
+  my $floatRe = "\\d+(?:\\.\\d+)?";
+  return $1 if $n =~ /($floatRe)/;
+  return 0;
 }
 
 sub info($$){
