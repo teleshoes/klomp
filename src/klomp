@@ -373,7 +373,7 @@ class KlompLibs():
     self.sep = "///\\\\\\"
     reSep = self.sep.replace('\\', '\\\\')
     self.songRe = re.compile('([^@]*)@(.*)')
-    self.attCols = ["artist", "album", "number", "title", "query"]
+    self.attCols = ["artist", "album", "number", "title", "duration", "query"]
     attColsRe = "|".join(self.attCols)
     self.attRe = re.compile("(" + attColsRe + ")=(.*)")
   def toString(self, song):
@@ -383,6 +383,7 @@ class KlompLibs():
         self.sep + "album=" + song['album'] +
         self.sep + "number=" + song['number'] +
         self.sep + "title=" + song['title'] +
+        self.sep + "duration=" + song['duration'] +
         self.sep + "query=" + song['query'] + "\n")
   def fromString(self, s):
     song = {}
