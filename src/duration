@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Getopt::Long qw(GetOptionsFromArray :config bundling);
 use lib "/opt/klomp/lib";
-use Klomp::Duration qw(getLen formatLenS formatLenHMS);
+use Klomp::Duration qw(getDuration formatTimeS formatTimeHMS);
 
 my $usage = "Usage:
   $0 [OPTS] FILENAME FILENAME ..
@@ -34,14 +34,14 @@ sub main(@){
 
   my $lenTotal = 0;
   for my $file(@_){
-    my $len = getLen $file;
+    my $len = getDuration $file;
     $lenTotal += $len;
-    my $fmt = $seconds ? formatLenS $len : formatLenHMS $len;
+    my $fmt = $seconds ? formatTimeS $len : formatTimeHMS $len;
     $fmt .= " $file" unless $nofilename;
     $fmt .= "\n";
     print $fmt unless $total;
   }
-  my $fmtTotal = $seconds ? formatLenS $lenTotal : formatLenHMS $lenTotal;
+  my $fmtTotal = $seconds ? formatTimeS $lenTotal : formatTimeHMS $lenTotal;
   print "$fmtTotal\n" if $total;
 }
 
