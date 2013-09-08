@@ -438,12 +438,13 @@ sub getSubQuerySql($$){
     g => ["genre"],
     p => ["relpath"],
     n => ["number", "number_guess"],
+    d => ["duration"],
   );
 
   my $negate = $q =~ s/^!//;
 
   my $colStr;
-  if($q =~ s/^@([tlagpn]+)//){
+  if($q =~ s/^@([tlagpnd]+)//){
     $colStr = $1;
   }else{
     $colStr = "tla";
