@@ -124,6 +124,26 @@ class Attrs():
     return self.attrs[name]
 attrs = Attrs()
 
+def pad2(n):
+  if n < 10:
+    return "0" + str(n)
+  else:
+    return str(n)
+
+def fmtTime(t):
+  try:
+    t = int(float(t))
+  except:
+    return "??:??"
+  s = t%60
+  m = t/60%60
+  h = t/60/60
+  if h > 0:
+    return str(h) + ":" + pad2(m) + ":" + pad2(s)
+  else:
+    return str(m) + ":" + pad2(s)
+  return fmt
+
 def millisNow():
   return int(round(time.time() * 1000))
 
@@ -447,7 +467,8 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       prefix = ' ' * (maxLen - numLen)
       s['number'] = prefix + s['number']
   def formatSong(self, s):
-    return ' ' + s['number'] + ':' + s['title'] + ' (' + s['duration'] + ')'
+    dur = fmtTime(s['duration'])
+    return ' ' + s['number'] + ':' + s['title'] + ' (' + dur + ')'
   def formatSongBucket(self, s):
     prefix = ''
     sep1 = ' - '
@@ -605,10 +626,11 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
   def formatSong(self, song):
     sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
     bigSep = ' ' + sep + ' '
+    dur = fmtTime(song['duration'])
     return (''
       + song['number'] + sep
       + song['title'] + bigSep
-      + song['title'] + " (" + song['duration'] + ")" + bigSep
+      + song['title'] + " (" + dur + ")" + bigSep
       + song['artist'] + bigSep
       + song['album']
     )
