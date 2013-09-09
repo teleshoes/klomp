@@ -400,6 +400,9 @@ sub fixQuery($){
       push @$newQueryParts, ["~and~"];
       $prevType = "~and~";
     }
+    if($prevType eq "~rparens~" and $type =~ /^(~lparens~|subquery)$/){
+      push @$newQueryParts, ["~and~"];
+      $prevType = "~and~";
     }
 
     if($type eq "~lparens~"){
