@@ -769,8 +769,9 @@ class KlompUI():
   def start(self, stdscr):
     self.stdscr = stdscr
     height, width = self.stdscr.getmaxyx()
-    self.textEdit = TextEdit(0, width, attrs.get('textEdit'))
     self.queryDisplay = QueryDisplay(height, width, attrs.get('query'))
+    self.textEdit = TextEdit(0, width, attrs.get('textEdit'),
+      self.moveQueryDisplay)
     self.queryDisplay.setSongs([])
     self.playListDisplay = PlayListDisplay(height, width, attrs.get('playList'))
     self.prompt = Prompt(height, width, attrs.get('prompt'))
@@ -786,6 +787,11 @@ class KlompUI():
       elif self.mode == Mode.PlayList:
         self.updatePlayListDisplay()
       time.sleep(1)
+  def moveQueryDisplay(self):
+    offset = self.textEdit.height
+    if offset != self.queryDisplay.y:
+      self.queryDisplay.move(offset, self.queryDisplay.x)
+      self.queryDisplay.update()
   def updateSongs(self):
     text = self.textEdit.getText()
     if text != "":
