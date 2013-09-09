@@ -104,6 +104,7 @@ class Attrs():
       'query': [c.COLOR_GREEN, NONE, []],
       'cur': [c.COLOR_GREEN, c.COLOR_BLACK, []],
       'playList': [c.COLOR_BLUE, c.COLOR_WHITE, []],
+      'offset': [c.COLOR_RED, c.COLOR_WHITE, [c.A_BOLD]],
       'prompt': [c.COLOR_MAGENTA, c.COLOR_BLACK, [c.A_BOLD]]
     }
     self.attrs = None
@@ -567,7 +568,9 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
         bucketOrder.append(b)
       buckets[b].append(song)
 
-    self.printLine(self.getSummary(self.songs) + self.formatOffset())
+    self.printText(self.getSummary(self.songs))
+    self.printText(self.formatOffset(), attrs.get('offset'))
+    self.newline()
     for bucket in bucketOrder:
       if self.isWindowFull():
         break
