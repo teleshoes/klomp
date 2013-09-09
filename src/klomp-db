@@ -467,6 +467,8 @@ sub validateQuery($){
 sub getSubQuerySql($$){
   my ($q, $quoteTokens) = @_;
 
+  return "1=1" if $q =~ /^\s*$/;
+
   my $numericSql = getNumericSubQuerySql $q;
   return $numericSql if defined $numericSql;
 
