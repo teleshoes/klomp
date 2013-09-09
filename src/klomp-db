@@ -393,7 +393,7 @@ sub validateQuery($){
       die "'$type' cannot be at the end of the query\n";
     }
 
-    if($type eq "~lparens~" and $prevType eq "subquery"){
+    if($type eq "~lparens~" and $prevType =~ /^(~rparens~|subquery)$/){
       push @$newQueryParts, ["~and~"];
       $prevType = "~and~";
     }
