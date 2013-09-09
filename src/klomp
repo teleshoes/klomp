@@ -199,9 +199,9 @@ class LinePrinter():
         self.win.resize(h, w)
       except:
         pass
-    self.height = h
-    self.width = w
-    if self.onResize != None: self.onResize()
+      self.height = h
+      self.width = w
+      if self.onResize != None: self.onResize()
   def move(self, y, x):
     if y != self.y or x != self.x:
       self.resize(self.height + self.y - y, self.width + self.x - x)
@@ -209,8 +209,8 @@ class LinePrinter():
         self.win.mvwin(y, x)
       except:
         pass
-    self.y = y
-    self.x = x
+      self.y = y
+      self.x = x
   def isWindowFull(self):
     return self.line >= self.height
   def printLines(self, strLines, attrs=None):
