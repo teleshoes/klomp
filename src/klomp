@@ -199,6 +199,8 @@ class LinePrinter():
         self.win.resize(h, w)
       except:
         pass
+    self.height = h
+    self.width = w
     if self.onResize != None: self.onResize()
   def isWindowFull(self):
     return self.line >= self.height
