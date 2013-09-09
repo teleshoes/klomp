@@ -192,6 +192,9 @@ class LinePrinter():
   def updateSize(self):
     y, x = self.win.getmaxyx()
     self.height, self.width = y - self.y, x - self.x
+  def resize(self, h, w):
+    if h != self.height or w != self.width:
+      self.win.resize(h, w)
   def isWindowFull(self):
     return self.line >= self.height
   def printLines(self, strLines, attrs=None):
@@ -267,19 +270,31 @@ class TextEdit(LinePrinter):
       elif key < 256:
         text += chr(key)
     self.preText += text.decode('utf8')
-  def getCursorPos(self):
-    length = len(self.preText)
+  def parseLines(self, txt):
+    lines = []
+    line = u""
+    xLen = 0
     tabwidth = 8
     tabstop = 0
-    for c in self.preText:
-      tabstop = 1 + (tabstop % tabwidth)
+    for c in txt:
+      cLen = 1
       if c == "\t":
-        length += tabwidth-tabstop
-        tabstop = 0
+        cLen = tabwidth-tabstop
+        if cLen == 0: cLen = tabwidth
       elif self.isFullWidth(c):
-        length += 1
-        tabstop += 1
-    return length
+        cLen = 2
+      if xLen + cLen >= self.width:
+        lines += [line]
+        line = u""
+        xLen = 0
+        tabstop = 0
+        if c == "\t": cLen = tabwidth
+      line += c
+      xLen += cLen
+      tabstop = cLen + (tabstop % tabwidth)
+    if len(line) > 0: lines += [line]
+    if len(lines) == 0: lines = [""]
+    return (lines, xLen)
   def isFullWidth(self, c):
     p = ord(c)
     return (False
@@ -295,12 +310,15 @@ class TextEdit(LinePrinter):
     self.postText = u""
   def updateText(self):
     self.clear()
-    self.printLine(self.getText())
+    (lines, xLen) = self.parseLines(self.preText + self.postText)
+    self.resize(len(lines), self.width)
+    for line in lines:
+      self.printLine(line.encode('utf8'))
     self.win.noutrefresh()
   def updateCursor(self):
-    pos = self.getCursorPos()
-    self.win.move(0, pos)
-    curses.setsyx(self.y, pos)
+    (lines, xLen) = self.parseLines(self.preText)
+    self.win.move(0, xLen)
+    curses.setsyx(self.y + len(lines) - 1, xLen)
 
 class KlompListHandler():
   def readEntries(self):
