@@ -412,6 +412,10 @@ sub fixQuery($){
     }
     push @$newQueryParts, $$queryParts[$i];
   }
+  while($parensDepth > 0){
+    push @$newQueryParts, ["~rparens~"];
+    $parensDepth--;
+  }
 
   validateQuery $newQueryParts;
   return $newQueryParts;
