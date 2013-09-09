@@ -195,7 +195,10 @@ class LinePrinter():
     self.height, self.width = y - self.y, x - self.x
   def resize(self, h, w):
     if h != self.height or w != self.width:
-      self.win.resize(h, w)
+      try:
+        self.win.resize(h, w)
+      except:
+        pass
     if self.onResize != None: self.onResize()
   def isWindowFull(self):
     return self.line >= self.height
@@ -319,7 +322,10 @@ class TextEdit(LinePrinter):
     self.win.noutrefresh()
   def updateCursor(self):
     (lines, xLen) = self.parseLines(self.preText)
-    self.win.move(0, xLen)
+    try:
+      self.win.move(0, xLen)
+    except:
+      pass
     curses.setsyx(self.y + len(lines) - 1, xLen)
 
 class KlompListHandler():
