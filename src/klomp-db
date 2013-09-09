@@ -32,6 +32,7 @@ sub update($$$);
 sub missing($$);
 sub add($$$$);
 sub search($$$$$$);
+sub fixQuery($);
 sub validateQuery($);
 sub getSubQuerySql($$);
 sub getNumericSubQuerySql($);
@@ -342,7 +343,7 @@ sub search($$$$$$){
     push @$queryParts, ["$2"] if $2 ne "";
   }
 
-  $queryParts = validateQuery $queryParts;
+  $queryParts = fixQuery $queryParts;
 
   my $where = '';
   for my $part(@$queryParts){
@@ -379,9 +380,42 @@ sub search($$$$$$){
   }
 }
 
-sub validateQuery($){
+sub fixQuery($){
   my $queryParts = shift();
   my $newQueryParts = [];
+
+  my $trueSubquery = ["subquery", ""];
+
+  my $parensDepth = 0;
+  for(my $i=0; $i<@$queryParts; $i++){
+    my $type = $$queryParts[$i][0];
+    my $prevType = $i-1 >= 0 ? $$queryParts[$i-1][0] : 'undef';
+    my $nextType = $i+1 < @$queryParts ? $$queryParts[$i+1][0] : 'undef';
+
+    if($type eq "~rparens~" and $prevType eq "~lparens~"){
+      push @$newQueryParts, $trueSubquery;
+      $prevType = "subquery";
+    }
+    if($type eq "~lparens~" and $prevType =~ /^(~rparens~|subquery)$/){
+      push @$newQueryParts, ["~and~"];
+      $prevType = "~and~";
+    }
+    }
+
+    if($type eq "~lparens~"){
+      $parensDepth++;
+    }elsif($type eq "~rparens~"){
+      $parensDepth--;
+    }
+    push @$newQueryParts, $$queryParts[$i];
+  }
+
+  validateQuery $newQueryParts;
+  return $newQueryParts;
+}
+
+sub validateQuery($){
+  my $queryParts = shift();
 
   my $parensDepth = 0;
   for(my $i=0; $i<@$queryParts; $i++){
@@ -391,11 +425,6 @@ sub validateQuery($){
 
     if($nextType eq "undef" and $type !~ /^(subquery|~rparens~)$/){
       die "'$type' cannot be at the end of the query\n";
-    }
-
-    if($type eq "~lparens~" and $prevType =~ /^(~rparens~|subquery)$/){
-      push @$newQueryParts, ["~and~"];
-      $prevType = "~and~";
     }
 
     my @okPrev;
@@ -417,11 +446,8 @@ sub validateQuery($){
     if(not defined $okPrevHash{$prevType}){
       die "'$type' is after '$prevType': only '@okPrev' is allowed\n";
     }
-    push @$newQueryParts, $$queryParts[$i];
   }
   die "missing closing parenthesis\n" if $parensDepth != 0;
-
-  return $newQueryParts;
 }
 
 # turns search words into SQL queries
