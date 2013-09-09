@@ -182,7 +182,7 @@ class KeyReaderThread(threading.Thread):
 class LinePrinter():
   def __init__(self, height, width, y, x, attrs=None):
     self.line = 0
-    self.ypos = 0
+    self.xpos = 0
     self.y = y
     self.x = x
     self.height = height
@@ -203,20 +203,20 @@ class LinePrinter():
     self.printText(line, attrs)
     self.newline()
   def newline(self):
-    self.ypos = 0
+    self.xpos = 0
     self.line += 1
   def printText(self, txt, attrs=None):
     if attrs == None:
       attrs = self.attrs
-    txt = txt[:self.width-self.ypos]
+    txt = txt[:self.width-self.xpos]
     try:
       if attrs != None:
-        self.win.addstr(self.line, self.ypos, txt, attrs)
+        self.win.addstr(self.line, self.xpos, txt, attrs)
       else:
-        self.win.addstr(self.line, self.ypos, txt)
+        self.win.addstr(self.line, self.xpos, txt)
     except curses.error:
       pass
-    self.ypos += len(txt)
+    self.xpos += len(txt)
   def clear(self):
     self.win.erase()
     self.line = 0
