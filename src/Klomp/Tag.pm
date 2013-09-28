@@ -52,19 +52,19 @@ sub guess($$$){
     $guess = transliterateJapanese $valueHint if $guess eq '';
     $guess = transliterateAscii $valueHint if $guess eq '';
   }else{
-    if($col eq 'title'){
+    if($col =~ /^title$/){
       $guess = $filename;
       $guess =~ s/\.[a-z0-9]{1,5}$//i;
       $guess =~ s/^[0-9 \-_]+//;
-    }elsif($col eq 'artist'){
+    }elsif($col =~ /^artist$/){
       $guess = $outerDir;
-    }elsif($col eq 'album'){
+    }elsif($col =~ /^album$/){
       $guess = $innerDir;
-    }elsif($col eq 'number'){
+    }elsif($col =~ /^number$/){
       if($filename =~ /^\s*(\d+)\s*/){
         $guess = $1;
       }
-    }elsif($col eq 'date'){
+    }elsif($col =~ /^date$/){
       if($pathHint =~ /(19\d\d|20\d\d)/){
         $guess = $1;
       }
