@@ -126,13 +126,13 @@ sub transliterateAscii($){
   return '' if not $UNIDECODE_LIB;
   my $arg = shift;
   return '' if $arg eq '';
-  
+
   my $oldArg = $arg;
 
   utf8::decode($arg);
   $arg = unidecode $arg;
   utf8::encode($arg);
-  
+
   if($oldArg eq $arg){
     return '';
   }else{
@@ -253,13 +253,13 @@ sub readTags($){
   }elsif($file =~ /\.(ogg|flac)$/i){
     if($OGG_FLAC_LIB){
       my $lltag = `lltag -S '$file'`;
-      $title  = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
-      $artist = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
-      $album  = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
-      $number = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
-      $number = $1 if $lltag =~ m/^\s*TRACKNUMBER=(.*)$/mix;
-      $date   = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
-      $genre  = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
+      $title       = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
+      $artist      = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
+      $album       = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
+      $number      = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
+      $number      = $1 if $lltag =~ m/^\s*TRACKNUMBER=(.*)$/mix;
+      $date        = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
+      $genre       = $1 if $lltag =~ m/^\s*GENRE=(.*)$/mix;
     }else{
       print STDERR "WARNING: no tags for $file, missing lltag\n";
     }
@@ -273,22 +273,22 @@ sub readTags($){
     }
 
     for my $tag(keys %tags) {
-      $title  = $tags{$tag} if $tag =~ m/^TITLE$/mix;
-      $artist = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
-      $album  = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
-      $number = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
-      $date   = $tags{$tag} if $tag =~ m/^YEAR$/mix;
-      $genre  = $tags{$tag} if $tag =~ m/^GENRE$/mix;
+      $title       = $tags{$tag} if $tag =~ m/^TITLE$/mix;
+      $artist      = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
+      $album       = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
+      $number      = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
+      $date        = $tags{$tag} if $tag =~ m/^YEAR$/mix;
+      $genre       = $tags{$tag} if $tag =~ m/^GENRE$/mix;
     }
   }elsif($file =~ /\.(mp4|m4a|m4p|m4v|m4b)$/i){
     if($MPEG_LIB){
       my $atomic = `AtomicParsley '$file' -t`;
-      $title  = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
-      $artist = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
-      $album  = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
-      $number = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
-      $date   = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
-      $genre  = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
+      $title       = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
+      $artist      = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
+      $album       = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
+      $number      = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
+      $date        = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
+      $genre       = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
     }else{
       print STDERR "WARNING: no tags for $file, missing AtomicParsley\n";
     }
