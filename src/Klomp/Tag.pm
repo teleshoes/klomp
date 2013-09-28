@@ -274,7 +274,6 @@ sub readTags($){
 
     for my $tag(keys %tags) {
       $title  = $tags{$tag} if $tag =~ m/^TITLE$/mix;
-      $artist = $tags{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
       $artist = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
       $album  = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
       $number = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
