@@ -162,6 +162,12 @@ sub readMid3v2($){
       [TSOP => "Perfomer Sort Order key"],
       [TSOC => "iTunes Composer Sort"],
     ],
+    albumartist => [
+      [TPE2 => "Band/Orchestra/Accompaniment"],
+      [TPE3 => "Conductor"],
+      [TCOM => "Composer"],
+      [TPE4 => "Interpreter/Remixer/Modifier"],
+    ],
     album => [
       [TALB => "Album"],
       [TOAL => "Original Album"],
@@ -237,6 +243,7 @@ sub readTags($){
 
   my $title='';
   my $artist='';
+  my $albumartist='';
   my $album='';
   my $number='';
   my $date='';
@@ -245,8 +252,9 @@ sub readTags($){
     if($MP3_LIB){
       my $mid3v2 = `mid3v2 '$file'`;
       my %m = %{readMid3v2 $mid3v2};
-      ($title, $artist, $album, $number, $date, $genre) = (
-        $m{title}, $m{artist}, $m{album}, $m{number}, $m{date}, $m{genre});
+      ($title, $artist, $albumartist, $album, $number, $date, $genre) = (
+        $m{title}, $m{artist}, $m{albumartist},
+        $m{album}, $m{number}, $m{date}, $m{genre});
     }else{
       print STDERR "WARNING: no tags for $file, missing mid3v2\n";
     }
@@ -255,6 +263,7 @@ sub readTags($){
       my $lltag = `lltag -S '$file'`;
       $title       = $1 if $lltag =~ m/^\s*TITLE=(.*)$/mix;
       $artist      = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
+      $albumartist = $1 if $lltag =~ m/^\s*ALBUMARTIST=(.*)$/mix;
       $album       = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
       $number      = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
       $number      = $1 if $lltag =~ m/^\s*TRACKNUMBER=(.*)$/mix;
@@ -275,6 +284,7 @@ sub readTags($){
     for my $tag(keys %tags) {
       $title       = $tags{$tag} if $tag =~ m/^TITLE$/mix;
       $artist      = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
+      $albumartist = $tags{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
       $album       = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
       $number      = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
       $date        = $tags{$tag} if $tag =~ m/^YEAR$/mix;
@@ -285,6 +295,7 @@ sub readTags($){
       my $atomic = `AtomicParsley '$file' -t`;
       $title       = $1 if $atomic =~ m/^Atom\ "©NAM"\ contains:\ (.*)$/mix;
       $artist      = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
+      $albumartist = $1 if $atomic =~ m/^Atom\ "aART"\ contains:\ (.*)$/mix;
       $album       = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
       $number      = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
       $date        = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
@@ -301,6 +312,7 @@ sub readTags($){
   return (
     title => $title,
     artist => $artist,
+    albumartist => $albumartist,
     album => $album,
     number => $number,
     date => $date,
