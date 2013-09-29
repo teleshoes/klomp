@@ -23,6 +23,7 @@ my $usage = "Usage:
      instead of updating any libs, JUST update the symlink dir if it exists
   --quick
      pass --quick to klomp-db when adding songs
+     dont update the symlink dir
      {assume existing songs with the same path are unchanged}
 ";
 
@@ -75,7 +76,7 @@ sub main(@){
   }
 
   my $props = Klomp::Lib::getProperties;
-  genSymlinkDir $$props{symlink} if defined $$props{symlink};
+  genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
 }
 
 sub runOrDie(@){
