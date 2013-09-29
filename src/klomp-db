@@ -11,7 +11,7 @@ my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
 
 my @infoCols = qw(library relpath filesize modified duration);
-my @tagCols = qw(title artist album number date genre);
+my @tagCols = qw(title artist albumartist album number date genre);
 my @guessTagCols = map{$_ . "_guess"} @tagCols;
 my @searchableCols = (@infoCols, @tagCols);
 my @allCols = (@infoCols, @tagCols, @guessTagCols);
