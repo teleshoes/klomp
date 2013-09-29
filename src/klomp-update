@@ -4,6 +4,7 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
 use Klomp::Lib;
+use File::Path qw(mkpath);
 
 my $usage = "Usage:
   $0 [--quick] [--utils-only] [LIB LIB LIB ..]
@@ -22,6 +23,7 @@ my $usage = "Usage:
   After updating the klompdb, if klomplib specifies a history dir,
     update the history.
     -takes a dump of the sqlite database
+    -mirrors all library dirs with empty files
 
   --utils-only
      instead of updating any libs, update symlink/history dirs if they exist
@@ -174,14 +176,33 @@ sub genSymlinkDir($){
 
 sub genHistoryDir($){
   my $histDir = shift;
+  my $libsDir = "$histDir/libs";
   my $dbDump = "$histDir/klomp-db";
 
   print "\n\nupdating history dir $histDir\n";
   runOrDie "mkdir", "-p", $histDir if not -d $histDir;
   die "Dir doesnt exist and couldnt mkdir: $histDir\n" if not -d $histDir;
 
+  runOrDie "rm", "-rf", $libsDir;
+  runOrDie "mkdir", $libsDir;
+  die "Dir doesnt exist and couldnt mkdir: $libsDir\n" if not -d $libsDir;
+
   my $klompDb = Klomp::Files::klompFile("db");
   runOrDie "echo .dump | sqlite3 $klompDb > $dbDump";
+
+  for my $lib(Klomp::Lib::getAllLibNames){
+    my $libDir = Klomp::Lib::getLibraryPath $lib;
+    chdir $libDir;
+    for my $file(`find -type f`){
+      chomp $file;
+      my $destFile = "$libsDir/$lib/$file";
+      my $destDir = $destFile;
+      $destDir =~ s@/[^/]*$@\/@;
+      mkpath $destDir;
+      open FH, "> $destFile";
+      close FH;
+    }
+  }
 
 }
 
