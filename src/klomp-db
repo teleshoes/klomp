@@ -39,7 +39,7 @@ sub getNumericSubQuerySql($);
 sub parseNum($);
 sub info($$);
 
-my $usage = "Usage: 
+my $usage = "Usage:
  $0 [db-path] -c|--create
    Make an empty sqlite db with necessary structures
 
@@ -200,7 +200,7 @@ sub add($$$$){
   my $lib = shift;
   my $quick = shift;
   my $songRelPath = shift;
-  
+
   my @songRelPaths;
   push @songRelPaths, $songRelPath;
   addSongs($db, $lib, $quick, \@songRelPaths);
@@ -219,7 +219,7 @@ sub quoteTokenize($){
 
   my $startQuote=0;
   my $endQuote;
- 
+
   my $offset=0;
 
   my $len = length $query;
@@ -372,7 +372,7 @@ sub search($$$$$$){
     . "where $libWhere and (\n$where\n)\n$orderBy\n$lim;";
 
   print STDERR "--\n$sql\n--\n" if $verbose;
-  
+
   if(@cols > 1){
     print runSql $db, $sql, '-csv';
   }else{
@@ -713,7 +713,7 @@ sub addSongs($$$$){
   my @songRelPaths = @{scalar shift};
 
   my $libpath = Klomp::Lib::getLibraryPath $lib;
-  
+
   my %dbInfo;
   for my $line(runSql($db, 'select filesize, modified, relpath from Songs')){
     $line =~ /(\d+)\|(\d+)\|(.*)\n/;
@@ -728,13 +728,13 @@ sub addSongs($$$$){
   my $handledCount = 0;
   my $skippedCount = 0;
   print "Adding/updating $songCount songs from the filesystem\n";
-  
+
   my $count = 0;
   my @stmts = ();
   my $limit = 50;
   for my $songRelPath(@songRelPaths){
     my ($dbSize, $dbMod);
-    
+
     my $info = $dbInfo{$songRelPath};
     my $dbExists = defined $info;
     if($dbExists){
@@ -780,7 +780,7 @@ sub addSongs($$$$){
       $cols{$col . "_guess"} = Klomp::Tag::guess(
         $col, $songRelPath, $cols{$col});
     }
-    
+
     $cols{library} = $lib;
     $cols{relpath} = $songRelPath;
     $cols{filesize} = $filesize;
