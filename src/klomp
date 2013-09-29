@@ -747,6 +747,8 @@ class KlompQuery():
       for s in songs:
         s['query'] = self.query
         s['number'] = re.sub('^0+', '', s['number'])
+        if s['albumartist'] and s['albumartist'] != s['artist']:
+          s['artist'] += ' [' + s['albumartist'] + ']'
       return songs
     except IOError as e:
       self.query = None
