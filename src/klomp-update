@@ -150,7 +150,7 @@ sub genSymlinkDir($){
 
   for my $lib(Klomp::Lib::getAllLibNames){
     my $libDir = Klomp::Lib::getLibraryPath $lib;
-    for my $file(`find $libDir -maxdepth 1 -mindepth 1`){
+    for my $file(`find "$libDir" -maxdepth 1 -mindepth 1`){
       chomp $file;
 
       my $lnFile = $file;
