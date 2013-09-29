@@ -6,7 +6,7 @@ use Klomp::Lib;
 
 my $usage = "Usage:
   $0 [--quick]                        update all libs
-  $0 [--quick] LIB [LIB LIB ..]       updated specified libs
+  $0 [--quick] LIB [LIB LIB ..]       updated specified libs, assume --quick
   $0 --symlink-only                   just update the symlink dir
   Compares a library path on the filesystem to the contents of the database,
   and makes updates to the database. Never modifies the files.
@@ -47,6 +47,7 @@ sub main(@){
 
   my @libs;
   if(not $symlinkOnly){
+    $quick = 1 if @_ > 0;
     @libs = getLibs(@_);
     ensureDb();
   }
