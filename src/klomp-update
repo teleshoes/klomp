@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
+use Klomp::Files;
 use Klomp::Lib;
 
 my $usage = "Usage:
@@ -20,6 +21,7 @@ my $usage = "Usage:
 
   After updating the klompdb, if klomplib specifies a history dir,
     update the history.
+    -takes a dump of the sqlite database
 
   --utils-only
      instead of updating any libs, update symlink/history dirs if they exist
@@ -172,9 +174,15 @@ sub genSymlinkDir($){
 
 sub genHistoryDir($){
   my $histDir = shift;
+  my $dbDump = "$histDir/klomp-db";
+
   print "\n\nupdating history dir $histDir\n";
   runOrDie "mkdir", "-p", $histDir if not -d $histDir;
   die "Dir doesnt exist and couldnt mkdir: $histDir\n" if not -d $histDir;
+
+  my $klompDb = Klomp::Files::klompFile("db");
+  runOrDie "echo .dump | sqlite3 $klompDb > $dbDump";
+
 }
 
 &main(@ARGV);
