@@ -24,6 +24,7 @@ my $usage = "Usage:
     update the history.
     -takes a dump of the sqlite database
     -mirrors all library dirs with empty files
+    -commits changes to a git repository
 
   --utils-only
      instead of updating any libs, update symlink/history dirs if they exist
@@ -178,10 +179,15 @@ sub genHistoryDir($){
   my $histDir = shift;
   my $libsDir = "$histDir/libs";
   my $dbDump = "$histDir/klomp-db";
+  my $gitDir = "$histDir/.git";
 
   print "\n\nupdating history dir $histDir\n";
   runOrDie "mkdir", "-p", $histDir if not -d $histDir;
   die "Dir doesnt exist and couldnt mkdir: $histDir\n" if not -d $histDir;
+
+  chdir $histDir;
+  runOrDie "git", "init" if not -d $gitDir;
+  die "Git dir doesnt exist and couldnt git init\n" if not -d $gitDir;
 
   runOrDie "rm", "-rf", $libsDir;
   runOrDie "mkdir", $libsDir;
@@ -204,6 +210,9 @@ sub genHistoryDir($){
     }
   }
 
+  chdir $histDir;
+  runOrDie "git", "add", "-A";
+  system "git", "commit", "-a", "-m", "automatic commit";
 }
 
 &main(@ARGV);
