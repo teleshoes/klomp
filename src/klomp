@@ -711,7 +711,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
 
 class KlompQuery():
   def __init__(self):
-    self.cols = ['artist', 'album', 'number', 'title',
+    self.cols = ['artist', 'albumartist', 'album', 'number', 'title',
       'duration', 'relpath', 'library']
     self.query = None
   def buildQueryCmd(self):
