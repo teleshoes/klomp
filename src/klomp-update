@@ -18,18 +18,22 @@ my $usage = "Usage:
     renaming the symlinks as necessary.
     Attempts to make the symlinks relative based on the libpath
 
+  After updating the klompdb, if klomplib specifies a history dir,
+    update the history.
+
   --utils-only
-     instead of updating any libs, update symlink dir if they exist
+     instead of updating any libs, update symlink/history dirs if they exist
   --quick
      pass --quick to klomp-db when adding songs
        {assume existing songs with the same path are unchanged}
-     dont update the symlink dir
+     dont update the symlink/history dirs
 ";
 
 sub runOrDie(@);
 sub ensureDb();
 sub getLibs(@);
 sub genSymlinkDir($);
+sub genHistoryDir($);
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
@@ -77,6 +81,7 @@ sub main(@){
 
   my $props = Klomp::Lib::getProperties;
   genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
+  genHistoryDir $$props{history} if defined $$props{history} and not $quick;
 }
 
 sub runOrDie(@){
@@ -163,6 +168,13 @@ sub genSymlinkDir($){
       symRel $file, $lnFile;
     }
   }
+}
+
+sub genHistoryDir($){
+  my $histDir = shift;
+  print "\n\nupdating history dir $histDir\n";
+  runOrDie "mkdir", "-p", $histDir if not -d $histDir;
+  die "Dir doesnt exist and couldnt mkdir: $histDir\n" if not -d $histDir;
 }
 
 &main(@ARGV);
