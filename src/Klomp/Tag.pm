@@ -56,7 +56,7 @@ sub guess($$$){
       $guess = $filename;
       $guess =~ s/\.[a-z0-9]{1,5}$//i;
       $guess =~ s/^[0-9 \-_]+//;
-    }elsif($col =~ /^artist$/){
+    }elsif($col =~ /^(artist|albumartist)$/){
       $guess = $outerDir;
     }elsif($col =~ /^album$/){
       $guess = $innerDir;
