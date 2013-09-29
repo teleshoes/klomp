@@ -7,7 +7,7 @@ use Klomp::Tag;
 sub formatTags($$$);
 sub guess($$$);
 
-my @cols = qw(title artist album number date genre);
+my @cols = qw(title artist albumartist album number date genre);
 my $colUsage = join "|", @cols;
 
 my $usage = "Usage:
@@ -92,6 +92,7 @@ sub formatTags($$$){
     . ($showPath ? "path:$path\n" : '')
     . "title:$tags{title}\n"
     . "artist:$tags{artist}\n"
+    . "albumartist:$tags{albumartist}\n"
     . "album:$tags{album}\n"
     . "number:$tags{number}\n"
     . "date:$tags{date}\n"
