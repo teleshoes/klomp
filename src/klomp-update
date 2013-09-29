@@ -5,26 +5,25 @@ use lib "/opt/klomp/lib";
 use Klomp::Lib;
 
 my $usage = "Usage:
-  $0 [--quick]                        update all libs
-  $0 [--quick] LIB [LIB LIB ..]       updated specified libs, assume --quick
-  $0 --symlink-only                   just update the symlink dir
-  Compares a library path on the filesystem to the contents of the database,
-  and makes updates to the database. Never modifies the files.
+  $0 [--quick] [--utils-only] [LIB LIB LIB ..]
+
+  Compares library paths on the filesystem to the contents of the database,
+    and makes updates to the database. Never modifies the files.
 
   Prompts before removing missing files, adds new files,
-  and updates existing modified files.
+    and updates existing modified files.
 
-  After every update, if klomplib specifies a symlink dir,
-  makes symlinks for all files in all libs in that dir,
-  renaming the symlinks as necessary.
-  Attempts to make the symlinks relative based on the libpath;
+  After updating the klompdb, if klomplib specifies a symlink dir,
+    makes symlinks for all files in all libs in that dir,
+    renaming the symlinks as necessary.
+    Attempts to make the symlinks relative based on the libpath
 
-  --symlink-only
-     instead of updating any libs, JUST update the symlink dir if it exists
+  --utils-only
+     instead of updating any libs, update symlink dir if they exist
   --quick
      pass --quick to klomp-db when adding songs
+       {assume existing songs with the same path are unchanged}
      dont update the symlink dir
-     {assume existing songs with the same path are unchanged}
 ";
 
 sub runOrDie(@);
@@ -34,20 +33,21 @@ sub genSymlinkDir($);
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
-  my $symlinkOnly = 0;
-  if(@_ == 1 and $_[0] =~ /^--symlink-only$/){
-    $symlinkOnly = 1;
-    shift;
-  }
-
   my $quick = 0;
   if(@_ > 0 and $_[0] =~ /^--quick$/){
     $quick = 1;
     shift;
   }
 
+  my $utilsOnly = 0;
+  if(@_ == 1 and $_[0] =~ /^--utils-only$/){
+    $utilsOnly = 1;
+    shift;
+    die $usage if @_ > 0;
+  }
+
   my @libs;
-  if(not $symlinkOnly){
+  if(not $utilsOnly){
     $quick = 1 if @_ > 0;
     @libs = getLibs(@_);
     ensureDb();
