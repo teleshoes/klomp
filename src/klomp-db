@@ -475,7 +475,7 @@ sub getSubQuerySql($$){
   my %columnNames = (
     t => ["title", "title_guess"],
     l => ["album", "album_guess"],
-    a => ["artist", "artist_guess"],
+    a => ["artist", "artist_guess", "albumartist", "albumartist_guess"],
     g => ["genre"],
     p => ["relpath"],
     n => ["number", "number_guess"],
