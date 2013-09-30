@@ -213,6 +213,7 @@ sub genHistoryDir($){
   chdir $histDir;
   runOrDie "git", "add", "-A";
   system "git", "commit", "-a", "-m", "automatic commit";
+  system "git", "push";
 }
 
 &main(@ARGV);
