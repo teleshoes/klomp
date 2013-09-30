@@ -169,7 +169,7 @@ sub sync($$$$$){
   my $remoteProps = Klomp::Lib::getProperties $klompLib;
 
   if(defined $host){
-    runOrDie "ssh", "$host", "bash -c 'klomp-update --symlink-only'";
+    runOrDie "ssh", "$host", "bash -c 'klomp-update --utils-only'";
   }elsif(defined $$props{symlink} and defined $$remoteProps{symlink}){
     my $src = $$props{symlink};
     my $dest = $$remoteProps{symlink};
