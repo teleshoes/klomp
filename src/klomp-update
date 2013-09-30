@@ -194,7 +194,21 @@ sub genHistoryDir($){
   die "Dir doesnt exist and couldnt mkdir: $libsDir\n" if not -d $libsDir;
 
   my $klompDb = Klomp::Files::klompFile("db");
-  runOrDie "echo .dump | sqlite3 $klompDb > $dbDump";
+  my @dbDumpLines = `echo .dump | sqlite3 $klompDb`;
+  my (@allLines, @insertLines);
+  for my $line(@dbDumpLines){
+    if($line =~ /^INSERT/){
+      push @insertLines, $line;
+    }else{
+      @allLines = (@allLines, sort @insertLines);
+      @insertLines = ();
+      push @allLines, $line;
+    }
+  }
+  @allLines = (@allLines, sort @insertLines);
+  open FH, "> $dbDump" or die "Couldn't write $dbDump\n";
+  print FH @allLines;
+  close FH;
 
   for my $lib(Klomp::Lib::getAllLibNames){
     my $libDir = Klomp::Lib::getLibraryPath $lib;
