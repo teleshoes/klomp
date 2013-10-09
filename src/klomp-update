@@ -87,6 +87,9 @@ sub main(@){
   my $props = Klomp::Lib::getProperties;
   genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
   genHistoryDir $$props{history} if defined $$props{history} and not $quick;
+
+  chdir $$props{history};
+  system "git", "push";
 }
 
 sub runOrDie(@){
@@ -227,7 +230,6 @@ sub genHistoryDir($){
   chdir $histDir;
   runOrDie "git", "add", "-A";
   system "git", "commit", "-a", "-m", "automatic commit";
-  system "git", "push";
 }
 
 &main(@ARGV);
