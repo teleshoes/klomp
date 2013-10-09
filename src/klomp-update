@@ -7,7 +7,7 @@ use Klomp::Lib;
 use File::Path qw(mkpath);
 
 my $usage = "Usage:
-  $0 [--quick] [--utils-only] [LIB LIB LIB ..]
+  $0 [--quick] [--no-push] [--utils-only] [LIB LIB LIB ..]
 
   Compares library paths on the filesystem to the contents of the database,
     and makes updates to the database. Never modifies the files.
@@ -30,6 +30,8 @@ my $usage = "Usage:
      pass --quick to klomp-db when adding songs
        {assume existing songs with the same path are unchanged}
      dont update the symlink/history dirs
+  --no-push
+     never run git push
   --utils-only
      instead of updating any libs, update symlink/history dirs if they exist
 ";
@@ -47,7 +49,11 @@ sub main(@){
     $quick = 1;
     shift;
   }
-
+  my $noPush = 0;
+  if(@_ > 0 and $_[0] =~ /^--no-push$/){
+    $noPush = 1;
+    shift;
+  }
   my $utilsOnly = 0;
   if(@_ == 1 and $_[0] =~ /^--utils-only$/){
     $utilsOnly = 1;
@@ -87,9 +93,10 @@ sub main(@){
   my $props = Klomp::Lib::getProperties;
   genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
   genHistoryDir $$props{history} if defined $$props{history} and not $quick;
-
-  chdir $$props{history};
-  system "git", "push";
+  if(not $noPush){
+    chdir $$props{history};
+    system "git", "push";
+  }
 }
 
 sub runOrDie(@){
