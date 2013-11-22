@@ -9,7 +9,7 @@ my $unitBytes = 2**20;
 my $numLen = 6;
 my $numFormat = "%$numLen.0f";
 
-sub formatLine($$$$$$);
+sub formatLine($$$$$$$);
 sub pad($$);
 sub du($;$);
 sub convert($);
@@ -45,7 +45,7 @@ sub main(@){
   }
   push @libSizeHashes, \%totalSizeHash;
 
-  print formatLine("LIB", "SYNC", "TOTAL", "FLAC", "FM-OGG", "OTHER");
+  print formatLine("LIB", "SYNC", "TOTAL", "FLAC", "FM-OGG", "OTHER", "COUNT");
 
   foreach(@libSizeHashes){
     print formatLine(
@@ -55,12 +55,13 @@ sub main(@){
       $$_{flac},
       $$_{flacmirror},
       $$_{nonflac},
+      $$_{songcount},
       );
   }
 }
 
-sub formatLine($$$$$$){
-  my ($lib, $sync, $total, $flac, $flacmirror, $nonflac) = @_;
+sub formatLine($$$$$$$){
+  my ($lib, $sync, $total, $flac, $flacmirror, $nonflac, $songcount) = @_;
   my $abbrev = 5;
   $lib = pad $abbrev, substr($lib, 0, $abbrev);
   return ''
@@ -70,6 +71,7 @@ sub formatLine($$$$$$){
     . " | " . pad($numLen, $flac)
     . " => " . pad($numLen, $flacmirror)
     . " | " . pad($numLen, $nonflac)
+    . " | " . pad($numLen, $songcount)
     . "\n"
     ;
 }
@@ -101,12 +103,27 @@ sub fmtAndConvert($){
   return fmt(convert($_[0]));
 }
 
+sub getSongCount(@){
+  my @cmd = ('klomp-db', '-s', '');
+  for my $lib(@_){
+    push @cmd, ('--lib', $lib);
+  }
+  open FH, "-|", @cmd;
+  my $cnt = 0;
+  while(<FH>){
+    $cnt++;
+  }
+  close FH;
+  die "Error getting song count\n" if $? != 0;
+  return $cnt;
+}
+
 sub getSizes($){
   my $lib = shift;
 
   my $path = Klomp::Lib::getLibraryPath $lib;
   my $fmPath = Klomp::Lib::getFlacmirrorPath $lib;
-  
+
   my $size = du $path;
   if(defined $fmPath and $fmPath){
     my $nonFlacSize = du $path, '--exclude=\*.flac';
@@ -120,6 +137,7 @@ sub getSizes($){
       nonflac => fmtAndConvert $nonFlacSize,
       flac => fmtAndConvert $flacSize,
       flacmirror => fmtAndConvert $flacMirrorSize,
+      songcount => getSongCount $lib,
     );
   }else{
     return (
@@ -129,6 +147,7 @@ sub getSizes($){
       nonflac => fmtAndConvert 0,
       flac => fmtAndConvert 0,
       flacmirror => fmtAndConvert 0,
+      songcount => getSongCount $lib,
     );
   }
 }
