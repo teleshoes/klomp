@@ -68,7 +68,7 @@ sub main(@){
 
 sub formatLine($$$$$$$){
   my ($lib, $sync, $total, $flac, $flacmirror, $nonflac, $songcount) = @_;
-  my $abbrev = 5;
+  my $abbrev = 6;
   $lib = pad $abbrev, substr($lib, 0, $abbrev);
   return ''
     . "$lib"
