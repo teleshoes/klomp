@@ -23,6 +23,7 @@ sub main(@){
 
   my $msg = ''
     . "Size unit: $unit  ($unitBytes bytes)"
+    . "  {COUNT is # of song files}"
     . "  format: $numFormat"
     . "\n"
     . "  {SYNC is the size with flacmirror-oggs, instead of flacs}"
