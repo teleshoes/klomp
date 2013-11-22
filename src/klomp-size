@@ -13,6 +13,9 @@ sub formatLine($$$$$$);
 sub pad($$);
 sub du($;$);
 sub convert($);
+sub fmt($);
+sub fmtAndConvert($);
+sub getSongCount(@);
 sub getSizes($);
 
 sub main(@){
