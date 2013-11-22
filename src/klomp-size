@@ -6,17 +6,16 @@ use Klomp::Lib;
 
 my $unit = "MiB";
 my $unitBytes = 2**20;
-my $numLen = 6;
-my $numFormat = "%$numLen.0f";
+my $colWidth = 6;
+my $numFormat = "%$colWidth.0f";
 
-sub formatLine($$$$$$$);
+sub formatRow($);
+sub fmt($);
 sub pad($$);
 sub du($;$);
 sub convert($);
-sub fmt($);
-sub fmtAndConvert($);
 sub getSongCount(@);
-sub getSizes($);
+sub getLibRow($);
 
 sub main(@){
   my @libs = Klomp::Lib::getAllLibNames;
@@ -32,54 +31,59 @@ sub main(@){
   my %okLibs = map {$_ => 1} @_;
   %okLibs = map {$_ => 1} @libs if keys %okLibs == 0;
 
-  my @libSizeHashes;
-  for my $lib(@libs){
-    next if not defined $okLibs{$lib};
-    my %libSizeHash = getSizes $lib;
-    push @libSizeHashes, \%libSizeHash;
-  }
-  my %totalSizeHash = (lib => 'total');
-  if(@libSizeHashes > 0){
-    foreach my $key(keys %{$libSizeHashes[0]}){
-      next if $key eq 'lib';
-      foreach(@libSizeHashes){
-        my $val = $$_{$key};
-        $totalSizeHash{$key} = 0 if not defined $totalSizeHash{$key};
-        $totalSizeHash{$key} = fmt($val + $totalSizeHash{$key});
-      }
+  my $titleRow = {
+      lib => "LIB",
+      sync => "SYNC",
+      total => "TOTAL",
+      flac => "FLAC",
+      flacmirror => "FM-OGG",
+      nonflac => "OTHER",
+      songcount => "COUNT",
+  };
+
+  my @libRows = map {getLibRow $_} grep {defined $okLibs{$_}} @libs;
+
+  my $totalRow = {
+      lib => "total",
+      sync => 0,
+      total => 0,
+      flac => 0,
+      flacmirror => 0,
+      nonflac => 0,
+      songcount => 0,
+  };
+  foreach my $key(keys %$titleRow){
+    next if $key eq 'lib';
+    foreach my $libRow(@libRows){
+      $$totalRow{$key} += $$libRow{$key};
     }
   }
-  push @libSizeHashes, \%totalSizeHash;
 
-  print formatLine("LIB", "SYNC", "TOTAL", "FLAC", "FM-OGG", "OTHER", "COUNT");
-
-  foreach(@libSizeHashes){
-    print formatLine(
-      $$_{lib},
-      $$_{sync},
-      $$_{total},
-      $$_{flac},
-      $$_{flacmirror},
-      $$_{nonflac},
-      $$_{songcount},
-      );
-  }
+  print formatRow($titleRow);
+  print formatRow($_) foreach @libRows;
+  print formatRow($totalRow);
 }
 
-sub formatLine($$$$$$$){
-  my ($lib, $sync, $total, $flac, $flacmirror, $nonflac, $songcount) = @_;
-  my $abbrev = 6;
-  $lib = pad $abbrev, substr($lib, 0, $abbrev);
+sub formatRow($){
+  my $row = shift;
   return ''
-    . "$lib"
-    . " | " . pad($numLen, $sync)
-    . " | " . pad($numLen, $total)
-    . " | " . pad($numLen, $flac)
-    . " => " . pad($numLen, $flacmirror)
-    . " | " . pad($numLen, $nonflac)
-    . " | " . pad($numLen, $songcount)
+    . fmt($$row{lib})
+    . " | " . fmt($$row{sync})
+    . " | " . fmt($$row{total})
+    . " | " . fmt($$row{flac})
+    . " => " . fmt($$row{flacmirror})
+    . " | " . fmt($$row{nonflac})
+    . " | " . fmt($$row{songcount})
     . "\n"
     ;
+}
+sub fmt($){
+  my $s = shift;
+  if($s =~ /^(\d*\.)?\d+$/){
+    return sprintf $numFormat, $s;
+  }else{
+    return pad $colWidth, substr($s, 0, $colWidth);
+  }
 }
 
 sub pad($$){
@@ -102,12 +106,6 @@ sub du($;$){
 sub convert($){
   return $_[0]/$unitBytes;
 }
-sub fmt($){
-  return sprintf $numFormat, $_[0];
-}
-sub fmtAndConvert($){
-  return fmt(convert($_[0]));
-}
 
 sub getSongCount(@){
   my @cmd = ('klomp-db', '-s', '');
@@ -124,7 +122,7 @@ sub getSongCount(@){
   return $cnt;
 }
 
-sub getSizes($){
+sub getLibRow($){
   my $lib = shift;
 
   my $path = Klomp::Lib::getLibraryPath $lib;
@@ -136,25 +134,25 @@ sub getSizes($){
     my $flacMirrorSize = du $fmPath;
     my $flacSize = $size - $nonFlacSize;
     my $sync = $nonFlacSize + $flacMirrorSize;
-    return (
+    return {
       lib => $lib,
-      total => fmtAndConvert $size,
-      sync => fmtAndConvert $sync,
-      nonflac => fmtAndConvert $nonFlacSize,
-      flac => fmtAndConvert $flacSize,
-      flacmirror => fmtAndConvert $flacMirrorSize,
+      sync => convert $sync,
+      total => convert $size,
+      flac => convert $flacSize,
+      flacmirror => convert $flacMirrorSize,
+      nonflac => convert $nonFlacSize,
       songcount => getSongCount $lib,
-    );
+    };
   }else{
-    return (
+    return {
       lib => $lib,
-      total => fmtAndConvert $size,
-      sync => fmtAndConvert $size,
-      nonflac => fmtAndConvert 0,
-      flac => fmtAndConvert 0,
-      flacmirror => fmtAndConvert 0,
+      sync => convert $size,
+      total => convert $size,
+      flac => 0,
+      flacmirror => 0,
+      nonflac => 0,
       songcount => getSongCount $lib,
-    );
+    };
   }
 }
 
