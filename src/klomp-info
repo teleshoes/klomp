@@ -72,10 +72,13 @@ sub main(@){
       push @info, $ended;
     }elsif($col =~ /^(pos|len|percent)$/){
       my ($pos, $len, $percent) = (0, 0, 0);
-      if($cur =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
+      if($klompInfo =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
         ($pos, $len) = ($1, $2);
-        $percent = $len > 0 ? $pos/$len*100 : 0;
       }
+      if($len == 0 and $klompInfo =~ /^duration=(\d+\.\d+)$/m){
+        $len = $1;
+      }
+      $percent = $len > 0 ? $pos/$len*100 : 0;
       $percent = sprintf "%.0f", $percent;
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
