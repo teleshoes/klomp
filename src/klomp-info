@@ -60,7 +60,7 @@ my $usage = "Usage:
     -s  output times in fractional seconds instead of M:SS or H:MM:SS
 ";
 
-sub parseInfo($$$$);
+sub parseInfo($$$$$);
 sub readKlompInfo($$);
 sub selectKlompInfo($$$$);
 sub formatHMS($);
@@ -107,6 +107,9 @@ sub main(@){
 
   my ($curInfo, $histInfo, $listInfo) = readKlompInfo $min, $max;
 
+  my $playlist = grep(/playlist/, @cols) ? `klomp-cmd playlist` : "";
+  chomp $playlist;
+
   my $first = 1;
   for my $index(@indices){
     my $klompInfo = selectKlompInfo $index, $curInfo, $histInfo, $listInfo;
@@ -114,7 +117,7 @@ sub main(@){
       print STDERR "No song info found\n";
       $klompInfo = "";
     }
-    my $info = parseInfo $klompInfo, \@cols, $csv, $seconds;
+    my $info = parseInfo $klompInfo, $playlist, \@cols, $csv, $seconds;
     print "\n" unless $first;
     $first = 0;
     print $info;
@@ -122,15 +125,13 @@ sub main(@){
   print "\n" if $newline;
 }
 
-sub parseInfo($$$$){
-  my ($klompInfo, $cols, $csv, $seconds) = @_;
+sub parseInfo($$$$$){
+  my ($klompInfo, $playlist, $cols, $csv, $seconds) = @_;
   my @info;
   for my $col(@$cols){
     if($col eq 'playlist'){
-      my $pl = `klomp-cmd playlist`;
-      chomp $pl;
-      my $playlist = $pl eq 'main' ? "" : formatSep $pl, $csv;
-      push @info, $playlist;
+      my $pl = $playlist eq 'main' ? "" : formatSep $playlist, $csv;
+      push @info, $pl;
     }elsif($col eq 'ended'){
       my $ended = -e $KLOMP_CUR ? "" : formatSep "ended", $csv;
       push @info, $ended;
