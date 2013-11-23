@@ -6,6 +6,7 @@ use Klomp::Files;
 
 my $KLOMP_CUR = Klomp::Files::klompFile("cur");
 my $KLOMP_HIST = Klomp::Files::klompFile("hist");
+my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
 my @colNames = (@attColNames, "pos", "len", "percent", "playlist", "ended");
@@ -13,12 +14,15 @@ my $validAttColNames = join "|", @attColNames;
 my $validColNames = join "|", @colNames;
 
 my $usage = "Usage:
-  $0 [OPTS] [COL COL COL ..]
+  $0 [OPTS] [COL COL COL ..] [INDEX INDEX INDEX ..]
     print values for COLs, separated by spaces
-    values are read from $KLOMP_CUR, or if its missing,
-    from the first line of $KLOMP_HIST
-    if no COLs are given, all are used
+    if no COL is given, all are used
       i.e.: \"@colNames\"
+    each INDEX is printed one per line. values are read from:
+      $KLOMP_CUR {INDEX=0}
+      $KLOMP_HIST {INDEX<0}
+      $KLOMP_LIST {INDEX>0}
+    if no INDEX is given, \"0\" is used
 
   COL:
     [$validColNames]
@@ -32,6 +36,23 @@ my $usage = "Usage:
       are wrapped in |s unless CSV output is on
       e.g.: \"|ended|\"
 
+  INDEX:
+      0     current song in klompcur
+      +N    line number in playlist {+1 is the next song to be played}
+      -N    line number in history {-1 is the song that finished most recently}
+      [X,Y] use all indices between X and Y  {X<=Y}
+
+      song information is printed, one per line, for each indicated index.
+      COL \"pos\" is 0 for every song except index \"0\"
+
+      if any index is specified, each line is prefixed by \"INDEX:\"
+
+      if an index does not exist, the closest index to it is used.
+      if two indices are the same distance away, the lower of the two is used.
+      {e.g.:   if index 0 is specified and there is no current song,
+               the last played song is used, and if that doesnt exist,
+               the next song in the playlist is used}
+
   OPTS:
     -n  do not output a trailing newline
     -c  output as CSV
@@ -39,9 +60,12 @@ my $usage = "Usage:
     -s  output times in fractional seconds instead of M:SS or H:MM:SS
 ";
 
-sub getCur();
+sub parseInfo($$$$);
+sub readKlompInfo($$);
+sub selectKlompInfo($$$$);
 sub formatHMS($);
 sub formatSep($$);
+sub parseIndices($);
 
 sub main(@){
   my $newline = 1;
@@ -56,12 +80,52 @@ sub main(@){
     $seconds = 1 if $arg eq '-s';
   }
 
-  my @cols = @_;
+  my @cols;
+  while(@_ > 0 and $_[0] =~ /^($validColNames)$/){
+    push @cols, shift;
+  }
   @cols = @colNames if @cols == 0;
 
-  my $cur = getCur();
+  my @indices;
+  while(@_ > 0){
+    my $newIndices = parseIndices shift;
+    die $usage if not defined $newIndices;
+    @indices = (@indices, @$newIndices);
+  }
+  @indices = (0) if @indices == 0;
+  my $max = 0;
+  my $min = 0;
+  for my $index(@indices){
+    $max = $index if $index > $max;
+    $min = $index if $index < $min;
+  }
+  $max = 0 if $max<0;
+
+  die $usage if @_ != 0;
+
+  print join(",", @cols) . "\n" if $header;
+
+  my ($curInfo, $histInfo, $listInfo) = readKlompInfo $min, $max;
+
+  my $first = 1;
+  for my $index(@indices){
+    my $klompInfo = selectKlompInfo $index, $curInfo, $histInfo, $listInfo;
+    if(not defined $klompInfo){
+      print STDERR "No song info found\n";
+      $klompInfo = "";
+    }
+    my $info = parseInfo $klompInfo, \@cols, $csv, $seconds;
+    print "\n" unless $first;
+    $first = 0;
+    print $info;
+  }
+  print "\n" if $newline;
+}
+
+sub parseInfo($$$$){
+  my ($klompInfo, $cols, $csv, $seconds) = @_;
   my @info;
-  for my $col(@cols){
+  for my $col(@$cols){
     if($col eq 'playlist'){
       my $pl = `klomp-cmd playlist`;
       chomp $pl;
@@ -84,13 +148,13 @@ sub main(@){
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
       push @info, formatSep "$percent", $csv if $col eq 'percent';
     }elsif($col =~ /^($validAttColNames)$/){
-      my $att = $cur =~ /^$col=(.*)$/m ? $1 : "";
+      my $att = $klompInfo =~ /^$col=(.*)$/m ? $1 : "";
       push @info, $att;
     }else{
       die $usage;
     }
   }
-  print join(",", @cols) . "\n" if $header;
+
   if($csv){
     my @csvInfo;
     for my $s(@info){
@@ -100,23 +164,58 @@ sub main(@){
       }
       push @csvInfo, $s;
     }
-    print join ',', @csvInfo;
+    return join ',', @csvInfo;
   }else{
-    print join " ", grep {defined $_ and length $_ > 0} @info;
+    return join " ", grep {defined $_ and length $_ > 0} @info;
   }
-  print "\n" if $newline;
 }
 
-sub getCur(){
-  if(-e $KLOMP_CUR){
-    return `cat $KLOMP_CUR`;
-  }elsif(-e $KLOMP_HIST){
-    my $cur = `head -1 $KLOMP_HIST`;
-    $cur =~ s/\/\/\/\\\\\\/\n/g;
-    return $cur;
-  }else{
-    return "";
+sub readKlompInfo($$){
+  my ($min, $max) = @_;
+
+  my $curInfo = undef;
+  my $histInfo = [];
+  my $listInfo = [];
+
+  $curInfo = `cat $KLOMP_CUR` if -e $KLOMP_CUR;
+  if((not defined $curInfo or $min < 0) and -e $KLOMP_HIST){
+    $min = 0-$min;
+    $min = 1 if $min == 0;
+    for my $line(`head -$min $KLOMP_HIST`){
+      $line =~ s/\/\/\/\\\\\\/\n/g;
+      push @$histInfo, $line;
+    }
   }
+  if((not defined $curInfo or $max > 0) and -e $KLOMP_LIST){
+    $max = 1 if $max == 0;
+    for my $line(`head -$max $KLOMP_LIST`){
+      $line =~ s/\/\/\/\\\\\\/\n/g;
+      push @$listInfo, $line;
+    }
+  }
+
+  return ($curInfo, $histInfo, $listInfo);
+}
+
+sub selectKlompInfo($$$$){
+  my ($index, $curInfo, $histInfo, $listInfo) = @_;
+  if($index == 0){
+    return $curInfo if defined $curInfo;
+    return $$histInfo[0] if @$histInfo > 0;
+    return $$listInfo[0] if @$listInfo > 0;
+  }elsif($index > 0){
+    $index = @$listInfo - 1 if $index >= @$listInfo;
+    return $$listInfo[$index] if @$listInfo > 0;
+    return $curInfo if defined $curInfo;
+    return $$histInfo[0] if @$histInfo > 0;
+  }elsif($index < 0){
+    $index = 0 - $index;
+    $index = @$histInfo - 1 if $index >= @$histInfo;
+    return $$histInfo[$index] if @$histInfo > 0;
+    return $curInfo if defined $curInfo;
+    return $$listInfo[0] if @$listInfo > 0;
+  }
+  return undef;
 }
 
 sub formatHMS($){
@@ -139,4 +238,25 @@ sub formatSep($$){
   my ($s, $csv) = @_;
   return $csv ? $s : "|$s|";
 }
+
+sub parseIndices($){
+  my $index = shift;
+  if($index eq "0"){
+    return [0];
+  }elsif($index =~ /^\+(\d+)$/){
+    my $val = 0 + $1;
+    return [$val] if $val > 0;
+  }elsif($index =~ /^\-(\d+)$/){
+    my $val = 0 - $1;
+    return [$val] if $val < 0;
+  }elsif($index =~ /^\[  ([+\-]?\d+)  ,  ([+\-]?\d+)  \]$/x){
+    my $lower = parseIndices $1;
+    my $upper = parseIndices $2;
+    if(defined $lower and defined $upper and $$lower[0] <= $$upper[0]){
+      return [$$lower[0] .. $$upper[0]];
+    }
+  }
+  return undef;
+}
+
 &main(@ARGV);
