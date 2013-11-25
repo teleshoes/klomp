@@ -2,10 +2,7 @@
 use strict;
 use warnings;
 
-my $depsDir = `dirname $0`;
-chomp $depsDir;
-$depsDir .= "/deps";
-
+sub getDepDebs();
 sub run(@);
 
 sub main(@){
@@ -33,11 +30,28 @@ sub main(@){
   print "non-roman => ascii transliteration for tag parsing\n";
   run "apt-get", "install", "libtext-unidecode-perl";
 
+  my $debs = getDepDebs();
+
   print "improved japanese transliteration for tag parsing\n";
-  run "dpkg -i $depsDir/liblingua-ja-romanize-japanese-perl*.deb";
+  run "dpkg", "-i", $_ foreach values %$debs;
 
   print "flacmirror: flac=>ogg parallel-dir-structure syncing\n";
   run "apt-get", "install", "dir2ogg";
+}
+
+sub getDepDebs(){
+  my $depsDir = `dirname $0`;
+  chomp $depsDir;
+  $depsDir .= "/deps";
+
+  my $debs = {};
+  for my $deb(`ls $depsDir/*`){
+    chomp $deb;
+    my $pkgName = $1 if $deb =~ /^.*\/([a-z0-9\+\-\.]+)_([^\/]*)\.deb/;
+    die "weirdly named deb package: $deb\n" if not defined $pkgName;
+    $$debs{$pkgName} = $deb;
+  }
+  return $debs;
 }
 
 sub run(@){
