@@ -93,7 +93,7 @@ sub main(@){
   my $props = Klomp::Lib::getProperties;
   genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
   genHistoryDir $$props{history} if defined $$props{history} and not $quick;
-  if(not $noPush){
+  if(not $noPush and defined $$props{history}){
     chdir $$props{history};
     system "git", "push";
   }
