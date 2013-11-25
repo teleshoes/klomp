@@ -6,10 +6,7 @@ my $depsDir = `dirname $0`;
 chomp $depsDir;
 $depsDir .= "/deps";
 
-sub run(@){
-  print "@_\n";
-  system @_;
-}
+sub run(@);
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
@@ -41,6 +38,11 @@ sub main(@){
 
   print "flacmirror: flac=>ogg parallel-dir-structure syncing\n";
   run "apt-get", "install", "dir2ogg";
+}
+
+sub run(@){
+  print "@_\n";
+  system @_;
 }
 
 &main(@ARGV);
