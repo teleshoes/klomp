@@ -10,12 +10,6 @@ sub run(@){
   print "@_\n";
   system @_;
 }
-sub runPrompt(@){
-  print "@_\nrun the above cmd? [y/N]";
-  if(lc <STDIN> eq "y\n"){
-    system @_;
-  }
-}
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
