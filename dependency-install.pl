@@ -12,31 +12,42 @@ sub main(@){
     exec 'sudo', $0, @ARGV;
   }
 
-  print "searching for and playing music:\n";
-  run qw(apt-get install perl python mplayer sqlite3);
-
-  print "Tag reading\n\n\n";
   my %tagReaders = (
     'python-mutagen'     => "mp3 {mid3v2}",
     'lltag'              => "ogg, flac",
     'libaudio-wma-perl'  => "wma",
     'atomicparsley'      => "mp4, m4a, m4p, m4v, m4b",
   );
-  print "\n\n\n";
-  print "$_ => $tagReaders{$_}\n" foreach keys %tagReaders;
-  run "apt-get", "install", keys %tagReaders;
 
-  print "\n\n\n";
-  print "non-roman => ascii transliteration for tag parsing\n";
-  run "apt-get", "install", "libtext-unidecode-perl";
+  my @essential = qw(perl python mplayer sqlite3);
+  my @tagging = sort keys %tagReaders;
+  my @translit = qw(libtext-unidecode-perl);
+  my @flacmirror = qw(dir2ogg);
+  my @japanese = qw(liblingua-ja-romanize-japanese-perl);
+
+  my $msg = ''
+    . "searching for and playing music:\n"
+    . "  @essential\n"
+    . "Tag reading\n"
+    .   (join '', (map {"  $_ => $tagReaders{$_}\n"} @tagging))
+    . "non-roman => ascii transliteration for tag parsing:\n"
+    . "  @translit\n"
+    . "flacmirror {flac=>ogg parallel-dir-structure}:\n"
+    . "  @flacmirror\n"
+    . "improved japanese transliteration for tag parsing:\n"
+    . "  @japanese\n"
+    ;
 
   my $debs = getDepDebs();
 
-  print "improved japanese transliteration for tag parsing\n";
-  run "dpkg", "-i", $_ foreach values %$debs;
+  my @packages = (@essential, @tagging, @translit, @flacmirror, @japanese);
+  my @aptPackages = grep {not defined $$debs{$_}} @packages;
+  my @debPackages = grep {defined $$debs{$_}} @packages;
 
-  print "flacmirror: flac=>ogg parallel-dir-structure syncing\n";
-  run "apt-get", "install", "dir2ogg";
+  print "$msg\n\n\n";
+
+  run "apt-get", "install", @aptPackages;
+  run "dpkg", "-i", $$debs{$_} foreach @debPackages;
 }
 
 sub getDepDebs(){
