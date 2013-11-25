@@ -20,6 +20,7 @@ sub runPrompt(@){
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
   if(`whoami` ne "root\n"){
+    print "rerunning as root\n";
     exec 'sudo', $0, @ARGV;
   }
 
