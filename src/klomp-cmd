@@ -40,6 +40,22 @@ my $usage = "Usage:
   $0 prev - previous song
   $0 next - skip song
   $0 seekabs [S|S.SS|PERCENT%] - seek to absolute seconds or percent of length
+  $0 jump [PERCENT|+PERCENT|-PERCENT] - prev/next and seek or just seek
+     split the current song into brackets
+     for +PERCENT or PERCENT:
+       go to the next bracket or the first bracket of the next song
+     for -PERCENT:
+       go to the prev bracket or the last bracket of the previous song,
+       OR if the current bracket is half-over, go to the start of this one
+
+     e.g.:
+     song5 10% => jump +25% => song5 25%
+     song5 10% => jump -25% => song4 75%
+     song5 15% => jump +25% => song5 25%
+     song5 15% => jump -25% => song5 0%
+     song5 74% => jump +25% => song5 75%
+     song5 75% => jump +25% => song6 0%
+
   $0 shuffle - shuffle klomplist randomly
   $0 breaks [on|off|toggle] - add/remove '!klomp-cmd stop's in klomplist
      {e.g.: for sleeping with a book and not losing more than a chapter}
@@ -65,6 +81,7 @@ sub shellQuiet(@);
 sub prevItem();
 sub nextItem();
 sub seekAbs($);
+sub jump($$);
 sub setKlompCurPos($);
 sub setKlompCurPosPercent($);
 sub getPosLen();
@@ -133,6 +150,11 @@ sub main(@){
     start if nextItem();
   }elsif($cmd eq 'seekabs' and @_ == 1 and $_[0] =~ /^\d+(\.\d+)?%?$/){
     seekAbs($_[0]);
+  }elsif($cmd eq 'jump' and @_ == 1 and $_[0] =~ /^(\+|-)?(\d+)$/){
+    my $dir = $1 ne "-";
+    my $percent = $2;
+    die $usage if $percent <= 0 or $percent >= 100;
+    jump($dir, $percent);
   }elsif($cmd eq 'shuffle' and @_ == 0){
     system "sort", "-R", $$FILES{list}, "-o", $$FILES{list};
   }elsif($cmd eq 'breaks' and @_ == 1){
@@ -501,6 +523,44 @@ sub getPosLen(){
   return ($curPos, $curLen);
 }
 
+sub jump($$){
+  my ($dir, $percent) = @_;
+  pauseToStop();
+  my $wasRunning = isRunning();
+  stop;
+
+  my ($curPos, $curLen) = getPosLen();
+  my $curPct = 100 * $curPos / $curLen;
+  my $segmentStart = 0;
+  while($segmentStart+$percent <= $curPct){
+    $segmentStart += $percent;
+  }
+
+  my $target;
+  if($dir){
+    $target = $segmentStart + $percent;
+  }else{
+    if($curPct - $segmentStart > $percent/2){
+      #if pos is more than halfway to next seg, jump to start of this seg
+      $target = $segmentStart;
+    }else{
+      #otherwise, jump to start of previous seg
+      $target = $segmentStart - $percent;
+    }
+  }
+
+  if($target >= 100){
+    nextItem();
+    $target = 0;
+  }elsif($target < 0){
+    prevItem();
+    $target += 100;
+  }
+
+  setKlompCurPosPercent $target;
+
+  start(1) if $wasRunning;
+}
 
 sub lpsmagic(){
   system "(lpsmagic -once 2>&1 | grep 'Rendering format string') &";
