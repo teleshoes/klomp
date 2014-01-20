@@ -55,6 +55,8 @@ my $usage = "Usage:
 sub isPhone();
 sub getPid();
 sub isRunning();
+sub removePause();
+sub pauseToStop();
 sub start(;$);
 sub stop();
 sub getNice($);
@@ -265,11 +267,22 @@ sub removePause(){
   close FH;
   return if @lines == 0;
 
-  $lines[0] =~ s/^([0-9.]+) ([0-9.]+) paused/$1 $2/;
+  my $wasPaused = 0;
+  if($lines[0] =~ s/^([0-9.]+) ([0-9.]+) paused/$1 $2/){
+    $wasPaused = 1;
+  }
 
   open FH, "> $$FILES{cur}";
   print FH @lines;
   close FH;
+
+  return $wasPaused;
+}
+
+sub pauseToStop(){
+  if(removePause()){
+    stop();
+  }
 }
 
 sub ensureKlompCur(){
