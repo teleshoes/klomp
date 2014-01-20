@@ -379,6 +379,7 @@ sub getCur(){
   my $cur = -e $$FILES{cur} ? `cat $$FILES{cur}` : '';
   if($cur =~ /^[0-9\-\.]+ [0-9\-\.]+ (.*)$/s){
     my $item = $1;
+    $item =~ s/\n+$//;
     chomp $item;
     $item =~ s/\n/\/\/\/\\\\\\/g;
     return $item;
