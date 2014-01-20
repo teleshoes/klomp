@@ -39,7 +39,7 @@ my $usage = "Usage:
   $0 pause - play/pause
   $0 prev - previous song
   $0 next - skip song
-  $0 seekabs [S|S.SS] - seek to absolute seconds
+  $0 seekabs [S|S.SS|PERCENT%] - seek to absolute seconds or percent of length
   $0 shuffle - shuffle klomplist randomly
   $0 breaks [on|off|toggle] - add/remove '!klomp-cmd stop's in klomplist
      {e.g.: for sleeping with a book and not losing more than a chapter}
@@ -63,6 +63,9 @@ sub shellQuiet(@);
 sub prevItem();
 sub nextItem();
 sub seekAbs($);
+sub setKlompCurPos($);
+sub setKlompCurPosPercent($);
+sub getPosLen();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
 sub toggleActivePlaylist($);
@@ -126,11 +129,8 @@ sub main(@){
   }elsif($cmd eq 'next' and @_ == 0){
     stop;
     start if nextItem();
-  }elsif($cmd eq 'seekabs' and @_ == 1 and $_[0] =~ /^\d+(\.\d+)?$/){
-    my $wasRunning = isRunning();
-    stop;
+  }elsif($cmd eq 'seekabs' and @_ == 1 and $_[0] =~ /^\d+(\.\d+)?%?$/){
     seekAbs($_[0]);
-    start(1) if $wasRunning;
   }elsif($cmd eq 'shuffle' and @_ == 0){
     system "sort", "-R", $$FILES{list}, "-o", $$FILES{list};
   }elsif($cmd eq 'breaks' and @_ == 1){
@@ -445,9 +445,21 @@ sub nextItem(){
 }
 
 sub seekAbs($){
+  my $wasRunning = isRunning();
+  stop;
+  my $s = shift;
+  if($s =~ /^(\d+(?:\.\d+)?)%$/){
+    setKlompCurPosPercent($1);
+  }else{
+    setKlompCurPos($s);
+  }
+  start(1) if $wasRunning;
+}
+
+sub setKlompCurPos($){
   return if not -e $$FILES{cur};
   my $pos = shift;
-  $pos =~ s/^(\d+)$/$1.0/;
+  $pos = sprintf "%.2f", $pos;
 
   open FH, "< $$FILES{cur}";
   my @lines = <FH>;
@@ -460,6 +472,22 @@ sub seekAbs($){
   print FH @lines;
   close FH;
 }
+sub setKlompCurPosPercent($){
+  my $per = shift;
+  my ($pos, $len) = getPosLen();
+  setKlompCurPos(($per/100) * $len);
+}
+
+sub getPosLen(){
+  my $info = `klomp-info -s pos len`;
+  if($info !~ /^(\d+(?:\.\d+)?) (\d+(?:\.\d+)?)$/){
+    die "Error reading klomp-info\n";
+  }
+  my ($curPos, $curLen) = ($1, $2);
+  die "Missing length info\n" if $curLen == 0;
+  return ($curPos, $curLen);
+}
+
 
 sub lpsmagic(){
   system "(lpsmagic -once 2>&1 | grep 'Rendering format string') &";
