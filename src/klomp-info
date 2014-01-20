@@ -9,9 +9,12 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @colNames = (@attColNames, "pos", "len", "percent", "playlist", "ended");
+my @colNames = (@attColNames, "pos", "len", "percent",
+  "playlist", "ended", "breaks");
 my $validAttColNames = join "|", @attColNames;
 my $validColNames = join "|", @colNames;
+
+my $breakLine = "!klomp-cmd stop";
 
 my $usage = "Usage:
   $0 [OPTS] [COL COL COL ..] [INDEX INDEX INDEX ..]
@@ -31,6 +34,7 @@ my $usage = "Usage:
       pos:      current position in M:SS or H:MM:SS {or S.ss if -s}
       len:      length in M:SS or H:MM:SS {or S.ss if -s}
       percent:  integer between 0 and 100 for pos/len
+      breaks:   \"{BR}\" if playlist contains the line \"$breakLine\"
 
       non-empty values for playlist, ended, and percent
       are wrapped in |s unless CSV output is on
@@ -148,6 +152,9 @@ sub parseInfo($$$$$){
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
       push @info, formatSep "$percent", $csv if $col eq 'percent';
+    }elsif($col eq 'breaks'){
+      my $count = `grep "$breakLine" "$KLOMP_LIST" | wc -l`;
+      push @info, $count > 0 ? "{BR}" : "";
     }elsif($col =~ /^($validAttColNames)$/){
       my $att = $klompInfo =~ /^$col=(.*)$/m ? $1 : "";
       push @info, $att;
