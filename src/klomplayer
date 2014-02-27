@@ -38,6 +38,7 @@ if(-e $PID_FILE){
 
 my $pid = open FH, '-|',
   'mplayer',
+  '-vo', 'null',
   '-quiet',
   '-input', "file=$FIFO",
   '-ss', $initPos,
