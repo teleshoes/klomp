@@ -4,7 +4,7 @@
 use strict;
 use warnings;
 
-my $quality = 6;
+my $quality = 3;
 my $dir2oggExec = 'dir2ogg';
 
 my $usage = "Usage
