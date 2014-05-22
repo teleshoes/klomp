@@ -62,9 +62,15 @@ my $usage = "Usage:
     -c  output as CSV
     -h  output a csv header showing the column names first
     -s  output times in fractional seconds instead of M:SS or H:MM:SS
+    --format=FORMAT
+      runs `printf FORMAT VAL VAL ...` where VAL is the value of each COL given
+      cannot give -c and --format
+      e.g.:  > $0 --format=\"%s / %s\\n%s\" pos len title
+             0:26 / 10:13
+             Rinse The Raindrops
 ";
 
-sub parseInfo($$$$$);
+sub parseInfo($$$$$$);
 sub readKlompInfo($$);
 sub selectKlompInfo($$$$);
 sub formatHMS($);
@@ -76,13 +82,16 @@ sub main(@){
   my $csv = 0;
   my $header = 0;
   my $seconds = 0;
-  while(@_ > 0 and $_[0] =~ /^(-n|-c|-h|-s)$/){
+  my $format;
+  while(@_ > 0 and $_[0] =~ /^(-n|-c|-h|-s|--format=.*)$/){
     my $arg = shift;
     $newline = 0 if $arg eq '-n';
     $csv = 1 if $arg eq '-c';
     $header = 1 if $arg eq '-h';
     $seconds = 1 if $arg eq '-s';
+    $format = $1 if $arg =~ /^--format=(.*)$/;
   }
+  die $usage if $csv and defined $format;
 
   my @cols;
   while(@_ > 0 and $_[0] =~ /^($validColNames)$/){
@@ -121,7 +130,7 @@ sub main(@){
       print STDERR "No song info found\n";
       $klompInfo = "";
     }
-    my $info = parseInfo $klompInfo, $playlist, \@cols, $csv, $seconds;
+    my $info = parseInfo $klompInfo, $playlist, \@cols, $csv, $seconds, $format;
     print "\n" unless $first;
     $first = 0;
     print $info;
@@ -129,8 +138,8 @@ sub main(@){
   print "\n" if $newline;
 }
 
-sub parseInfo($$$$$){
-  my ($klompInfo, $playlist, $cols, $csv, $seconds) = @_;
+sub parseInfo($$$$$$){
+  my ($klompInfo, $playlist, $cols, $csv, $seconds, $format) = @_;
   my @info;
   for my $col(@$cols){
     if($col eq 'playlist'){
@@ -173,6 +182,11 @@ sub parseInfo($$$$$){
       push @csvInfo, $s;
     }
     return join ',', @csvInfo;
+  }elsif(defined $format){
+    open FH, "-|", "printf", $format, @info;
+    my @lines = <FH>;
+    close FH;
+    return join '', @lines;
   }else{
     return join " ", grep {defined $_ and length $_ > 0} @info;
   }
