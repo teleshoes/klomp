@@ -55,7 +55,11 @@ sub main(@){
   foreach my $key(keys %$titleRow){
     next if $key eq 'lib';
     foreach my $libRow(@libRows){
-      $$totalRow{$key} += $$libRow{$key};
+      if($$totalRow{$key} =~ /\?/ or $$libRow{$key} =~ /\?/){
+        $$totalRow{$key} = "?";
+      }else{
+        $$totalRow{$key} += $$libRow{$key};
+      }
     }
   }
 
@@ -134,11 +138,14 @@ sub getLibRow($){
     my $flacMirrorSize = du $fmPath;
     my $flacSize = $size - $nonFlacSize;
     my $sync = $nonFlacSize + $flacMirrorSize;
+
+    my $flacMissing = $flacSize == 0 && $flacMirrorSize > 0;
+
     return {
       lib => $lib,
       sync => convert $sync,
-      total => convert $size,
-      flac => convert $flacSize,
+      total => ($flacMissing ? "?" : convert $size),
+      flac => ($flacMissing ? "?" : convert $flacSize),
       flacmirror => convert $flacMirrorSize,
       nonflac => convert $nonFlacSize,
       songcount => getSongCount $lib,
