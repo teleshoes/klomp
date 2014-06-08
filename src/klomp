@@ -741,14 +741,20 @@ class KlompQuery():
     return self.parseCsv(out, self.cols)
   def getError(self):
     return self.error
+  def tweakArtist(self, song):
+    artist = song['artist']
+    albArtist = song['albumartist']
+    if albArtist and albArtist != artist:
+      artist += ' [' + albArtist + ']'
+    song['artist'] = artist
+    song['albumartist'] = albArtist
   def performQuery(self):
     try:
       songs = self.getSongs()
       for s in songs:
         s['query'] = self.query
         s['number'] = re.sub('^0+', '', s['number'])
-        if s['albumartist'] and s['albumartist'] != s['artist']:
-          s['artist'] += ' [' + s['albumartist'] + ']'
+        self.tweakArtist(s)
       return songs
     except IOError as e:
       self.query = None
