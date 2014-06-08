@@ -744,7 +744,10 @@ class KlompQuery():
   def tweakArtist(self, song):
     artist = song['artist']
     albArtist = song['albumartist']
+    variousRe = re.compile('^(\s*(various|artists?)\s*)*$', re.I)
     if albArtist and albArtist != artist:
+      if variousRe.match(albArtist):
+        albArtist = 'VA'
       artist += ' [' + albArtist + ']'
     song['artist'] = artist
     song['albumartist'] = albArtist
