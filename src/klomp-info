@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
+use Klomp::Lib;
 
 my $KLOMP_CUR = Klomp::Files::klompFile("cur");
 my $KLOMP_HIST = Klomp::Files::klompFile("hist");
@@ -10,7 +11,7 @@ my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
 my @calcColNames = qw(pos len percent playlist ended breaks);
-my @extraColNames = qw();
+my @extraColNames = qw(file);
 
 my @allColNames = (@attColNames, @calcColNames, @extraColNames);
 my @defaultColNames = (@attColNames, @calcColNames);
@@ -185,6 +186,8 @@ sub parseInfo($$$$$$){
     }elsif($col eq 'breaks'){
       my $count = `grep "$breakLine" "$KLOMP_LIST" | wc -l`;
       push @info, $count > 0 ? "{BR}" : "";
+    }elsif($col eq 'file'){
+      push @info, Klomp::Lib::getSongAbsPath $info{lib}, $info{relpath};
     }elsif($col =~ /^($validAttColNames)$/){
       my $att = $info{$col};
       $att = "" if not defined $att;
