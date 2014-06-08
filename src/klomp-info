@@ -9,10 +9,12 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @colNames = (@attColNames, "pos", "len", "percent",
-  "playlist", "ended", "breaks");
+my @calcColNames = qw(pos len percent playlist ended breaks);
+
+my @allColNames = (@attColNames, @calcColNames);
+my @defaultColNames = (@attColNames, @calcColNames);
 my $validAttColNames = join "|", @attColNames;
-my $validColNames = join "|", @colNames;
+my $validColNames = join "|", @allColNames;
 
 my $breakLine = "!klomp-cmd stop";
 
@@ -20,7 +22,7 @@ my $usage = "Usage:
   $0 [OPTS] [COL COL COL ..] [INDEX INDEX INDEX ..]
     print values for COLs, separated by spaces
     if no COL is given, all are used
-      i.e.: \"@colNames\"
+      i.e.: \"@defaultColNames\"
     each INDEX is printed one per line. values are read from:
       $KLOMP_CUR {INDEX=0}
       $KLOMP_HIST {INDEX<0}
@@ -97,7 +99,7 @@ sub main(@){
   while(@_ > 0 and $_[0] =~ /^($validColNames)$/){
     push @cols, shift;
   }
-  @cols = @colNames if @cols == 0;
+  @cols = @defaultColNames if @cols == 0;
 
   my @indices;
   while(@_ > 0){
