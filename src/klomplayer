@@ -26,7 +26,7 @@ if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
 }
 
 my ($initPos, $len, $paused, $lib, $relpath) = ($1, $2, $3, $4, $5);
-my $songAbsPath = getSongAbsPath $lib, $relpath;
+my $songAbsPath = Klomp::Lib::getSongAbsPath $lib, $relpath;
 die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
 
 if(-e $PID_FILE){
@@ -108,26 +108,4 @@ sub update($$$){
   open CURFILE, "> $KLOMPCUR";
   print CURFILE $cur;
   close CURFILE;
-}
-
-sub getSongAbsPath($$){
-  my ($lib, $relpath) = @_;
-  my $libPath = Klomp::Lib::getLibraryPath $lib;
-  my $absPath = "$libPath/$relpath";
-  my $prefMirror = Klomp::Lib::isPreferMirror $lib;
-  if(-e $absPath and not $prefMirror){
-    return $absPath;
-  }
-
-  my $flacLibPath = Klomp::Lib::getFlacmirrorPath $lib;
-  my $flacrelpath = $relpath;
-  $flacrelpath =~ s/\.flac$/\.ogg/i;
-  my $flacAbsPath = "$flacLibPath/$flacrelpath";
-
-  if(-e $flacAbsPath){
-    return $flacAbsPath;
-  }elsif(-e $absPath){
-    return $absPath;
-  }
-  return undef;
 }

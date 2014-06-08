@@ -5,6 +5,7 @@ use Klomp::Files;
 
 my $defaultKlompLib = Klomp::Files::klompFile("lib");
 
+sub getSongAbsPath($$);
 sub getProperties(;$);
 sub getAllLibNames(;$);
 sub getDefaultLibNames(;$);
@@ -16,6 +17,28 @@ sub parseLibs(;$);
 sub parseProps(;$);
 sub readLibFile(;$);
 sub getLibArray($;$);
+
+sub getSongAbsPath($$){
+  my ($lib, $relpath) = @_;
+  my $libPath = getLibraryPath $lib;
+  my $absPath = "$libPath/$relpath";
+  my $prefMirror = isPreferMirror $lib;
+  if(-e $absPath and not $prefMirror){
+    return $absPath;
+  }
+
+  my $flacLibPath = getFlacmirrorPath $lib;
+  my $flacrelpath = $relpath;
+  $flacrelpath =~ s/\.flac$/\.ogg/i;
+  my $flacAbsPath = "$flacLibPath/$flacrelpath";
+
+  if(-e $flacAbsPath){
+    return $flacAbsPath;
+  }elsif(-e $absPath){
+    return $absPath;
+  }
+  return undef;
+}
 
 sub getProperties(;$){
   my ($klompLib) = @_;
