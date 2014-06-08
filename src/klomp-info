@@ -143,6 +143,21 @@ sub main(@){
 
 sub parseInfo($$$$$$){
   my ($klompInfo, $playlist, $cols, $csv, $seconds, $format) = @_;
+  my %info;
+  for my $line(split /\n/, $klompInfo){
+    if($line =~ /^(\d+\.\d+)?\s*(\d+\.\d+)?\s*(paused\s*)?\s*([^@]+)@(.*)/){
+      %info = (%info,
+        pos     => $1,
+        len     => $2,
+        paused  => $3,
+        lib     => $4,
+        relpath => $5,
+      );
+    }elsif($line =~ /^($validAttColNames|duration)=(.*)/){
+      $info{$1} = $2;
+    }
+  }
+
   my @info;
   for my $col(@$cols){
     if($col eq 'playlist'){
@@ -152,14 +167,17 @@ sub parseInfo($$$$$$){
       my $ended = -e $KLOMP_CUR ? "" : formatSep "ended", $csv;
       push @info, $ended;
     }elsif($col =~ /^(pos|len|percent)$/){
-      my ($pos, $len, $percent) = (0, 0, 0);
-      if($klompInfo =~ /^(\d+\.\d+)\s*(\d+\.\d+)/){
-        ($pos, $len) = ($1, $2);
-      }
-      if($len == 0 and $klompInfo =~ /^duration=(\d+\.\d+)$/m){
-        $len = $1;
-      }
-      $percent = $len > 0 ? $pos/$len*100 : 0;
+      my $pos;
+      $pos = $info{pos} if not defined $pos or $pos == 0;
+      $pos = 0 if not defined $pos or $pos == 0;
+
+      my $len;
+      $len = $info{len} if not defined $len or $len == 0;
+      $len = $info{duration} if not defined $len or $len == 0;
+      $len = 0 if not defined $len or $len == 0;
+
+      my $percent = 0;
+      $percent = $pos/$len*100 if $len > 0;
       $percent = sprintf "%.0f", $percent;
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
@@ -168,7 +186,8 @@ sub parseInfo($$$$$$){
       my $count = `grep "$breakLine" "$KLOMP_LIST" | wc -l`;
       push @info, $count > 0 ? "{BR}" : "";
     }elsif($col =~ /^($validAttColNames)$/){
-      my $att = $klompInfo =~ /^$col=(.*)$/m ? $1 : "";
+      my $att = $info{$col};
+      $att = "" if not defined $att;
       push @info, $att;
     }else{
       die $usage;
