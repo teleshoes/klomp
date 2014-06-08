@@ -5,15 +5,16 @@ use Klomp::Files;
 
 my $defaultKlompLib = Klomp::Files::klompFile("lib");
 
+sub getProperties(;$);
 sub getAllLibNames(;$);
 sub getDefaultLibNames(;$);
 sub getLibraryPath($;$);
 sub getFlacmirrorPath($;$);
-sub getProperties(;$);
+sub isPreferMirror($;$);
 
-sub readLibFile(;$);
 sub parseLibs(;$);
 sub parseProps(;$);
+sub readLibFile(;$);
 sub getLibArray($;$);
 
 sub getProperties(;$){
