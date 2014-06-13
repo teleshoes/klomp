@@ -27,6 +27,7 @@ my @execs = qw(
   klomp-db
   klomp-fifo-writer
   klomp-files
+  klomp-history-latest
   klomp-info
   klomp-lib
   klomp-size
