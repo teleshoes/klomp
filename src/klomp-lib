@@ -11,13 +11,13 @@ my $usage = "Usage:
   $0 [--file=libfile]
     print available libs
   $0 [--file=libfile] -p
-    print library properties
+    print library properties, one per line in the form \"<prop>=<val>\"
   $0 [--file=libfile] -d
     print default libs
-  $0 [--file=libfile] -l <lib>
-    print library path for <lib>
-  $0 [--file=libfile] -f <lib>
-    print flacmirror path for <lib>
+  $0 [--file=libfile] -l LIB
+    print library path for LIB
+  $0 [--file=libfile] -f LIB
+    print flacmirror path for LIB
   --file=libfile is optional, default is $defaultKlomplib\n";
 
 sub main(@){
