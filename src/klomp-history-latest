@@ -57,9 +57,9 @@ sub main(@){
   }
   for my $dir(@dirOrder){
     my @cnts;
-    push @cnts, "$flacCount{$dir} flacs" if $flacCount{$dir} > 0;
-    push @cnts, "$oggCount{$dir} oggs" if $oggCount{$dir} > 0;
-    push @cnts, "$otherCount{$dir} others" if $otherCount{$dir} > 0;
+    push @cnts, "$flacCount{$dir} flac" if $flacCount{$dir} > 0;
+    push @cnts, "$oggCount{$dir} ogg" if $oggCount{$dir} > 0;
+    push @cnts, "$otherCount{$dir} other" if $otherCount{$dir} > 0;
     print "$dir => $dates{$dir} {" . (join ", ", @cnts) . "}\n";
   }
 }
