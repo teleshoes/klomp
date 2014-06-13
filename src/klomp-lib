@@ -28,20 +28,20 @@ sub main(@){
   }
 
   my $cmd = shift;
-  my $lib = shift;
+  my $arg = shift;
   die $usage if @_ > 0;
 
-  if(not defined $cmd and not defined $lib){
+  if(not defined $cmd and not defined $arg){
     print map {"$_\n"} Klomp::Lib::getAllLibNames $klompLib;
-  }elsif($cmd eq "-p" and not defined $lib){
+  }elsif($cmd eq "-p" and not defined $arg){
     my $props = Klomp::Lib::getProperties $klompLib;
     print "$_ => $$props{$_}\n" foreach sort keys %$props;
-  }elsif($cmd eq "-d" and not defined $lib){
+  }elsif($cmd eq "-d" and not defined $arg){
     print map {"$_\n"} Klomp::Lib::getDefaultLibNames $klompLib;
-  }elsif($cmd eq "-l" and defined $lib){
-    print Klomp::Lib::getLibraryPath($lib, $klompLib) . "\n";
-  }elsif($cmd eq "-f" and defined $lib){
-    print Klomp::Lib::getFlacmirrorPath($lib, $klompLib) . "\n";
+  }elsif($cmd eq "-l" and defined $arg){
+    print Klomp::Lib::getLibraryPath($arg, $klompLib) . "\n";
+  }elsif($cmd eq "-f" and defined $arg){
+    print Klomp::Lib::getFlacmirrorPath($arg, $klompLib) . "\n";
   }else{
     die $usage;
   }
