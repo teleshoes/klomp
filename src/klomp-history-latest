@@ -55,6 +55,7 @@ sub main(@){
     }
     last if @dirOrder > $limit;
   }
+  @dirOrder = @dirOrder[0..$limit-1] if @dirOrder > $limit;
   for my $dir(@dirOrder){
     my @cnts;
     push @cnts, "$flacCount{$dir} flac" if $flacCount{$dir} > 0;
