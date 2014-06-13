@@ -34,6 +34,7 @@ sub main(@){
       next if $dir !~ /\//;
       $dir =~ s/\/[^\/]*$//;
       $dir =~ s/^"//;
+      $dir =~ s/^libs\///;
 
       $flacCount{$dir} = 0 if not defined $flacCount{$dir};
       $oggCount{$dir} = 0 if not defined $oggCount{$dir};
