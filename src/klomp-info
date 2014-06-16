@@ -145,8 +145,9 @@ sub main(@){
 sub parseInfo($$$$$$){
   my ($klompInfo, $playlist, $cols, $csv, $seconds, $format) = @_;
   my %info;
+  my $okLibs = join "|", Klomp::Lib::getAllLibNames();
   for my $line(split /\n/, $klompInfo){
-    if($line =~ /^(\d+\.\d+)?\s*(\d+\.\d+)?\s*(paused\s*)?\s*([^@]+)@(.*)/){
+    if($line =~ /^(\d+\.\d+)?\s*(\d+\.\d+)?\s*(paused\s*)?\s*($okLibs)@(.*)/){
       %info = (%info,
         pos     => $1,
         len     => $2,
