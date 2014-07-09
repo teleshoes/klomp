@@ -174,8 +174,8 @@ sub parseInfo($$$$$$){
       $pos = 0 if not defined $pos or $pos == 0;
 
       my $len;
-      $len = $info{len} if not defined $len or $len == 0;
       $len = $info{duration} if not defined $len or $len == 0;
+      $len = $info{len} if not defined $len or $len == 0;
       $len = 0 if not defined $len or $len == 0;
 
       my $percent = 0;
