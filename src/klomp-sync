@@ -108,7 +108,7 @@ sub runOrDie(@){
 sub libMatches($$){
   my ($lib, $regex) = @_;
   my $compartment = new Safe;
-  my $ok = $compartment->reval("$lib =~ /$regex/i ? 'match' : 'nomatch'");
+  my $ok = $compartment->reval("\"$lib\" =~ /$regex/i ? 'match' : 'nomatch'");
   return $ok eq 'match';
 }
 
