@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use threads;
+use threads::shared;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
 use Klomp::Duration qw(getDuration cmdExists formatTimeS);
@@ -27,11 +29,13 @@ sub runSql($$;@);
 sub runSqlBatch($\@;@);
 sub cols($);
 sub addSongs($$$$);
+sub handleAddSongJob($$$$$);
 sub getSongRow($$$$$);
 sub getSongInsertStmt($);
 sub getSongDeleteStmt($);
 sub wrapGuessCol($);
 sub readLibMetadata($$);
+sub chunks($@);
 sub create($);
 sub update($$$);
 sub missing($$);
@@ -731,40 +735,84 @@ sub addSongs($$$$){
   my $skippedCount = 0;
   print "Adding/updating $songCount songs from the filesystem\n";
 
-  my $count = 0;
-  my @stmts = ();
-  my $limit = 50;
-  for my $songRelPath(@songRelPaths){
+  my $jobSize = 50;
+  my $jobCount = 4;
+
+  my @jobs;
+  share(@jobs);
+
+  my %threads;
+  my $id=0;
+  for my $songChunk(chunks $jobSize, @songRelPaths){
+    my $job = {};
+    my $sql = [];
+    my $songs = [];
+    share($songs);
+    share($job);
+    share($sql);
+
+    for my $song(@$songChunk){
+      share($song);
+      push @$songs, $song;
+    }
+
+    $$job{id} = $id;
+    $$job{songs} = $songs;
+    $$job{status} = 'unstarted';
+    $$job{sql} = $sql;
+    $$job{skippedCount} = 0;
+    $$job{handledCount} = 0;
+
+    $id++;
+    push @jobs, $job;
+  }
+
+  my @queue = @jobs;
+  my @running;
+  while(@queue > 0 or @running > 0){
+    while(@queue > 0 and threads->list(threads::running) < $jobCount){
+      my $job = shift @queue;
+      push @running, $job;
+      $threads{$$job{id}} = threads->new( sub {
+        handleAddSongJob $job, $lib, $metadata, $quick, $durationCmdExists;
+      });
+    }
+
+    my $job = shift @running;
+    $threads{$$job{id}}->join;
+    if($$job{status} ne "success"){
+      die "error\n";
+    }elsif($$job{handledCount} > 0){
+      print "  job $$job{id} finished - adding $$job{handledCount}  " .
+        "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
+      runSqlBatch $db, @{$$job{sql}};
+      $handledCount += $$job{handledCount};
+      $skippedCount += $$job{skippedCount};
+    }
+  }
+
+  print "  handled $handledCount new or modified songs\n";
+  print "  skipped $skippedCount unmodified songs {same size and mod date}\n";
+}
+
+sub handleAddSongJob($$$$$){
+  my ($job, $lib, $metadata, $quick, $durationCmdExists) = @_;
+
+  $$job{status} = 'started';
+  for my $songRelPath(@{$$job{songs}}){
     my $songRow = getSongRow $lib, $songRelPath, $metadata,
       $quick, $durationCmdExists;
     if(not defined $songRow){
-      $skippedCount++;
+      $$job{skippedCount}++;
       next;
     }
 
     print "$songRelPath\n";
-    push @stmts, getSongDeleteStmt $songRow;
-    push @stmts, getSongInsertStmt $songRow;
-
-    if(++$count >= $limit){
-      print "  adding $count  " .
-        "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
-      runSqlBatch $db, @stmts;
-      $handledCount += $count;
-      @stmts = ();
-      $count = 0;
-    }
+    push @{$$job{sql}}, getSongDeleteStmt $songRow;
+    push @{$$job{sql}}, getSongInsertStmt $songRow;
+    $$job{handledCount}++;
   }
-  if($count > 0){
-    print "  adding $count  " .
-      "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
-    runSqlBatch $db, @stmts;
-    $handledCount += $count;
-    @stmts = ();
-    $count = 0;
-  }
-  print "  handled $handledCount new or modified songs\n";
-  print "  skipped $skippedCount unmodified songs {same size and mod date}\n";
+  $$job{status} = 'success';
 }
 
 sub getSongRow($$$$$){
@@ -898,6 +946,14 @@ sub readLibMetadata($$){
   }
 
   return $metadata;
+}
+
+sub chunks($@){
+  my ($size, @arr) = @_;
+  my @rem = (@arr);
+  my @chunks;
+  push @chunks, [splice(@rem, 0, $size)] while @rem;
+  return @chunks;
 }
 
 &main(@ARGV);
