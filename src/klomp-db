@@ -168,14 +168,11 @@ sub update($$$){
     }
     chdir $libpath;
 
-    my $suffixPattern;
-    for(my $i=0; $i<@songSuffixes; $i++){
-      $suffixPattern .= ".*\\." . $songSuffixes[$i];
-      if($i < $#songSuffixes){
-        $suffixPattern .= "\\|";
-      }
-    }
-    my @songRelPaths = shell 'find', '.', '-iregex', $suffixPattern;
+    my @find = ("find", ".", "-false",
+      map {("-or", "-iname", "*.$_")} @songSuffixes
+    );
+
+    my @songRelPaths = shell @find;
     @songRelPaths = sort @songRelPaths;
     for (my $i=0; $i<@songRelPaths; $i++){
       my $songRelPath = $songRelPaths[$i];
