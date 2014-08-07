@@ -27,6 +27,9 @@ sub runSql($$;@);
 sub runSqlBatch($\@;@);
 sub cols($);
 sub addSongs($$$$);
+sub getSongRow($$$$$);
+sub getSongInsertStmt($);
+sub getSongDeleteStmt($);
 sub wrapGuessCol($);
 sub readLibMetadata($$);
 sub create($);
@@ -716,7 +719,6 @@ sub addSongs($$$$){
   my $quick = shift;
   my @songRelPaths = @{scalar shift};
 
-  my $libpath = Klomp::Lib::getLibraryPath $lib;
   readLibMetadata $db, $lib;
 
   my $metadata = readLibMetadata $db, $lib;
@@ -733,82 +735,16 @@ sub addSongs($$$$){
   my @stmts = ();
   my $limit = 50;
   for my $songRelPath(@songRelPaths){
-    if($songRelPath =~ /\n/){
-      die "Error: song path cannot contain newlines '$songRelPath'\n";
-    }
-
-    my $dbExists = defined $$metadata{$songRelPath};
-
-    my ($dbSize, $dbMod, $dbMd5sum);
-    if($dbExists){
-      $dbSize = $$metadata{$songRelPath}{filesize};
-      $dbMod = $$metadata{$songRelPath}{modified};
-      $dbMd5sum = $$metadata{$songRelPath}{md5sum};
-    }
-
-    if($dbExists and $quick){
+    my $songRow = getSongRow $lib, $songRelPath, $metadata,
+      $quick, $durationCmdExists;
+    if(not defined $songRow){
       $skippedCount++;
       next;
-    }
-
-    my $f = "$libpath/$songRelPath";
-    die "file not found: $libpath/$songRelPath\n" if not -f $f;
-
-    my $filesize = fsize $f;
-    my $modified = mtime $f;
-    my $md5sum = md5sum $f;
-
-    if($dbExists and $dbSize == $filesize and $dbMod == $modified){
-      $skippedCount++;
-      next;
-    }
-
-    my $duration;
-    if($durationCmdExists){
-      $duration = getDuration "$libpath/$songRelPath";
-      $duration = formatTimeS $duration if defined $duration;
-    }
-    $duration = '' if not defined $duration;
-
-    my %tagInfo = Klomp::Tag::readTags "$libpath/$songRelPath";
-
-    my %cols;
-    for my $col(@tagCols){
-      if(defined $tagInfo{$col}){
-        $cols{$col} = $tagInfo{$col};
-      }else{
-        $cols{$col} = '';
-      }
-      $cols{$col . "_guess"} = Klomp::Tag::guess(
-        $col, $songRelPath, $cols{$col});
-    }
-
-    $cols{library} = $lib;
-    $cols{relpath} = $songRelPath;
-    $cols{filesize} = $filesize;
-    $cols{modified} = $modified;
-    $cols{md5sum} = $md5sum;
-    $cols{duration} = $duration;
-
-    my @allVals;
-    for my $col(@allCols){
-      my $val = $cols{$col};
-      chomp $val;
-      $val =~ s/'/''/g;
-      $val = "'$val'";
-      push @allVals, $val;
     }
 
     print "$songRelPath\n";
-    my $sqlPath = $songRelPath;
-    $sqlPath =~ s/'/''/g;
-    push @stmts, "delete from Songs where relpath='$sqlPath'";
-    push @stmts, ''
-      . " insert into Songs"
-      . " (" . join(", ", @allCols) . ")"
-      . " values"
-      . " (" . join(", ", @allVals) . ")"
-      ;
+    push @stmts, getSongDeleteStmt $songRow;
+    push @stmts, getSongInsertStmt $songRow;
 
     if(++$count >= $limit){
       print "  adding $count  " .
@@ -829,6 +765,93 @@ sub addSongs($$$$){
   }
   print "  handled $handledCount new or modified songs\n";
   print "  skipped $skippedCount unmodified songs {same size and mod date}\n";
+}
+
+sub getSongRow($$$$$){
+  my ($lib, $songRelPath, $metadata, $quick, $durationCmdExists) = @_;
+
+  my $libpath = Klomp::Lib::getLibraryPath $lib;
+  my $f = "$libpath/$songRelPath";
+  die "file not found: $libpath/$songRelPath\n" if not -f $f;
+
+  my $dbExists = defined $$metadata{$songRelPath};
+
+  my ($dbSize, $dbMod, $dbMd5sum);
+  if($dbExists){
+    $dbSize = $$metadata{$songRelPath}{filesize};
+    $dbMod = $$metadata{$songRelPath}{modified};
+    $dbMd5sum = $$metadata{$songRelPath}{md5sum};
+  }
+
+
+  if($dbExists and $quick){
+    return undef;
+  }
+
+  my $filesize = fsize $f;
+  my $modified = mtime $f;
+  my $md5sum = md5sum $f;
+
+  if($dbExists and $dbMd5sum eq $md5sum){
+    return undef;
+  }
+
+  my $duration;
+  if($durationCmdExists){
+    $duration = getDuration "$libpath/$songRelPath";
+    $duration = formatTimeS $duration if defined $duration;
+  }
+  $duration = '' if not defined $duration;
+
+  my %tagInfo = Klomp::Tag::readTags "$libpath/$songRelPath";
+
+  my $cols = {};
+  for my $col(@tagCols){
+    if(defined $tagInfo{$col}){
+      $$cols{$col} = $tagInfo{$col};
+    }else{
+      $$cols{$col} = '';
+    }
+    $$cols{$col . "_guess"} = Klomp::Tag::guess(
+      $col, $songRelPath, $$cols{$col});
+  }
+
+  $$cols{library} = $lib;
+  $$cols{relpath} = $songRelPath;
+  $$cols{filesize} = $filesize;
+  $$cols{modified} = $modified;
+  $$cols{md5sum} = $md5sum;
+  $$cols{duration} = $duration;
+
+  return $cols;
+}
+
+sub getSongInsertStmt($){
+  my $cols = shift;
+
+  my @allVals;
+  for my $col(@allCols){
+    my $val = $$cols{$col};
+    chomp $val;
+    $val =~ s/'/''/g;
+    $val = "'$val'";
+    push @allVals, $val;
+  }
+
+  return ''
+    . " insert into Songs"
+    . " (" . join(", ", @allCols) . ")"
+    . " values"
+    . " (" . join(", ", @allVals) . ")"
+    ;
+}
+
+sub getSongDeleteStmt($){
+  my $cols = shift;
+
+  my $sqlPath = $$cols{relpath};
+  $sqlPath =~ s/'/''/g;
+  return "delete from Songs where relpath='$sqlPath'";
 }
 
 sub wrapGuessCol($){
@@ -858,7 +881,7 @@ sub readLibMetadata($$){
   my $sql = ''
     . " select " . join(", ", @colNames)
     . " from Songs"
-    . " where library = $lib"
+    . " where library = '$lib'"
     ;
 
   my $rowRegex = join ("\\|", map {"($_)"} @colRegex) . "\\n";
