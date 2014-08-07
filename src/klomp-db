@@ -723,8 +723,6 @@ sub addSongs($$$$){
   my $quick = shift;
   my @songRelPaths = @{scalar shift};
 
-  readLibMetadata $db, $lib;
-
   my $metadata = readLibMetadata $db, $lib;
 
   my $durationCmdExists = cmdExists;
@@ -937,7 +935,7 @@ sub readLibMetadata($$){
 
   my $metadata = {};
   for my $row(runSql($db, $sql)){
-    my @rowData = $row =~ /$rowRegex/;
+    my @rowData = $row =~ /^$rowRegex$/;
     die "Error reading row: $row\n" if @rowData != @colNames;
     my $relPath = $rowData[-1];
     $$metadata{$relPath} = {};
