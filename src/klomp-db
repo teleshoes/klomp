@@ -27,6 +27,7 @@ sub runSqlBatch($\@;@);
 sub cols($);
 sub addSongs($$$$);
 sub wrapGuessCol($);
+sub readLibMetadata($$);
 sub create($);
 sub update($$$);
 sub missing($$);
@@ -713,13 +714,9 @@ sub addSongs($$$$){
   my @songRelPaths = @{scalar shift};
 
   my $libpath = Klomp::Lib::getLibraryPath $lib;
+  readLibMetadata $db, $lib;
 
-  my %dbInfo;
-  for my $line(runSql($db, 'select filesize, modified, relpath from Songs')){
-    $line =~ /(\d+)\|(\d+)\|(.*)\n/;
-    my @fs_mod = ($1, $2);
-    $dbInfo{$3} = \@fs_mod;
-  }
+  my $metadata = readLibMetadata $db, $lib;
 
   my $durationCmdExists = cmdExists;
   print STDERR "WARNING: not reading durations\n" if not $durationCmdExists;
@@ -733,14 +730,13 @@ sub addSongs($$$$){
   my @stmts = ();
   my $limit = 50;
   for my $songRelPath(@songRelPaths){
-    my ($dbSize, $dbMod);
 
-    my $info = $dbInfo{$songRelPath};
-    my $dbExists = defined $info;
+    my $dbExists = defined $$metadata{$songRelPath};
+
+    my ($dbSize, $dbMod);
     if($dbExists){
-      my @infoArr = @{$info};
-      $dbSize = $infoArr[0];
-      $dbMod = $infoArr[1];
+      $dbSize = $$metadata{$songRelPath}{filesize};
+      $dbMod = $$metadata{$songRelPath}{modified};
     }
 
     if($dbExists and $quick){
@@ -838,6 +834,39 @@ sub wrapGuessCol($){
         "''".
       "),".
       "$colGuess)";
+}
+
+sub readLibMetadata($$){
+  my ($db, $lib) = @_;
+  my @cols = (
+    ['filesize', '\d+'],
+    ['modified', '\d+'],
+    ['relpath', '.*'],
+  );
+
+  my @colNames = map {$$_[0]} @cols;
+  my @colRegex = map {$$_[1]} @cols;
+
+  my $sql = ''
+    . " select " . join(", ", @colNames)
+    . " from Songs"
+    . " where library = $lib"
+    ;
+
+  my $rowRegex = join ("\\|", map {"($_)"} @colRegex) . "\\n";
+
+  my $metadata = {};
+  for my $row(runSql($db, $sql)){
+    my @rowData = $row =~ /$rowRegex/;
+    die "Error reading row: $row\n" if @rowData != @colNames;
+    my $relPath = $rowData[-1];
+    $$metadata{$relPath} = {};
+    for(my $i=0; $i<@colNames; $i++){
+      $$metadata{$relPath}{$colNames[$i]} = $rowData[$i];
+    }
+  }
+
+  return $metadata;
 }
 
 &main(@ARGV);
