@@ -174,12 +174,9 @@ sub update($$$){
 
     my @songRelPaths = shell @find;
     @songRelPaths = sort @songRelPaths;
-    for (my $i=0; $i<@songRelPaths; $i++){
-      my $songRelPath = $songRelPaths[$i];
-      chomp $songRelPath;
-      $songRelPath =~ s/^.\///;
-      $songRelPaths[$i] = $songRelPath;
-    }
+    chomp foreach @songRelPaths;
+    s/^.\/// foreach @songRelPaths;
+
     addSongs($db, $lib, $quick, \@songRelPaths);
   }
 }
