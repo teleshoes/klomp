@@ -838,11 +838,12 @@ sub getSongRow($$$$$){
 
   my $filesize = fsize $f;
   my $modified = mtime $f;
-  my $md5sum = md5sum $f;
 
-  if($dbExists and $dbMd5sum eq $md5sum){
+  if($dbExists and $dbSize eq $filesize and $dbMod eq $modified){
     return undef;
   }
+
+  my $md5sum = md5sum $f;
 
   my $duration;
   if($durationCmdExists){
