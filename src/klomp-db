@@ -12,7 +12,7 @@ use Klomp::Tag;
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
 
-my @infoCols = qw(library relpath filesize modified md5sum duration);
+my @infoCols = qw(library relpath filesize modified md5sum acoustid duration);
 my @tagCols = qw(title artist albumartist album number date genre);
 my @guessTagCols = map{$_ . "_guess"} @tagCols;
 my @searchableCols = (@infoCols, @tagCols);
@@ -35,6 +35,7 @@ sub getSongInsertStmt($);
 sub getSongDeleteStmt($);
 sub wrapGuessCol($);
 sub readLibMetadata($$);
+sub acoustidRegex();
 sub chunks($@);
 sub create($);
 sub update($$$);
@@ -599,6 +600,18 @@ sub md5sum($){
   die "Error running $md5sum" if $md5sum !~ /^([a-f0-9]{32})/;
   return $1;
 }
+sub acoustid($){
+  open FH, "-|", "acoustid-track-fetch", $_[0];
+  my $acoustid = join '', <FH>;
+  close FH;
+  chomp $acoustid;
+  my $re = acoustidRegex();
+  if($acoustid =~ /^($re)$/){
+    return $1;
+  }else{
+    return '';
+  }
+}
 
 
 sub wrapTokens(@){
@@ -822,11 +835,12 @@ sub getSongRow($$$$$){
 
   my $dbExists = defined $$metadata{$songRelPath};
 
-  my ($dbSize, $dbMod, $dbMd5sum);
+  my ($dbSize, $dbMod, $dbMd5sum, $dbAcoustid);
   if($dbExists){
     $dbSize = $$metadata{$songRelPath}{filesize};
     $dbMod = $$metadata{$songRelPath}{modified};
     $dbMd5sum = $$metadata{$songRelPath}{md5sum};
+    $dbAcoustid = $$metadata{$songRelPath}{acoustid};
   }
 
 
@@ -842,6 +856,7 @@ sub getSongRow($$$$$){
   }
 
   my $md5sum = md5sum $f;
+  my $acoustid = acoustid $f;
 
   my $duration;
   if($durationCmdExists){
@@ -868,6 +883,7 @@ sub getSongRow($$$$$){
   $$cols{filesize} = $filesize;
   $$cols{modified} = $modified;
   $$cols{md5sum} = $md5sum;
+  $$cols{acoustid} = $acoustid;
   $$cols{duration} = $duration;
 
   return $cols;
@@ -919,6 +935,7 @@ sub readLibMetadata($$){
     ['filesize', '\d+'],
     ['modified', '\d+'],
     ['md5sum', '[0-9a-f]{32}'],
+    ['acoustid', acoustidRegex()],
     ['relpath', '.*'],
   );
 
@@ -945,6 +962,13 @@ sub readLibMetadata($$){
   }
 
   return $metadata;
+}
+
+sub acoustidRegex(){
+  my $hex4 = "[0-9a-f]{4}";
+  my $hex8 = "[0-9a-f]{8}";
+  my $hex12 = "[0-9a-f]{12}";
+  return "(?:$hex8-$hex4-$hex4-$hex4-$hex12)?";
 }
 
 sub chunks($@){
