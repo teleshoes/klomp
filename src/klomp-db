@@ -730,6 +730,9 @@ sub addSongs($$$$){
   my @stmts = ();
   my $limit = 50;
   for my $songRelPath(@songRelPaths){
+    if($songRelPath =~ /\n/){
+      die "Error: song path cannot contain newlines '$songRelPath'\n";
+    }
 
     my $dbExists = defined $$metadata{$songRelPath};
 
@@ -745,10 +748,8 @@ sub addSongs($$$$){
     }
 
     my $f = "$libpath/$songRelPath";
-    if(not -f $f){
-      print STDERR "file not found: $libpath/$songRelPath\n";
-      next;
-    }
+    die "file not found: $libpath/$songRelPath\n" if not -f $f;
+
     my $filesize = fsize $f;
     my $modified = mtime $f;
 
