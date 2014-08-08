@@ -101,11 +101,10 @@ sub main(@){
   my $cmd = shift() || '';
 
   if($cmd =~ /^(-c|--create)$/ and @_ == 0){
-    if(-e $db){
-      die "'$db' exists already\n";
-    }
+    die "'$db' exists already\n" if -e $db;
     create($db);
   }elsif($cmd =~ /^(-u|--update)$/){
+    die "'$db' does not exist\n" if not -f $db;
     my $quick = 0;
     if(@_ > 0 and $_[0] =~ /^(--quick)$/){
       $quick = 1;
@@ -113,8 +112,10 @@ sub main(@){
     }
     update($db, $quick, \@_);
   }elsif($cmd =~ /^(-m|--missing)$/){
+    die "'$db' does not exist\n" if not -f $db;
     missing($db, \@_);
   }elsif($cmd =~ /^(-a|--add)$/ and @_ >= 2){
+    die "'$db' does not exist\n" if not -f $db;
     my $quick = 0;
     if(@_ > 0 and $_[0] =~ /^(--quick)$/){
       $quick = 1;
@@ -124,9 +125,11 @@ sub main(@){
     my $songRelPath = shift;
     add($db, $lib, $quick, $songRelPath);
   }elsif($cmd =~ /^(-i|--info)$/ and @_ == 1){
+    die "'$db' does not exist\n" if not -f $db;
     my $songRelPath = shift;
     info($db, $songRelPath);
   }elsif($cmd =~ /^(-s|--search)$/ and @_ >= 1){
+    die "'$db' does not exist\n" if not -f $db;
     my $query = shift;
 
     my $verbose = 0;
