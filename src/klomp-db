@@ -36,6 +36,7 @@ sub cols($);
 sub addSongs($$$$);
 sub startThread($$$$$);
 sub joinThread($);
+sub isThreadRunning($);
 sub handleAddSongJob($$$$$);
 sub getSongRow($$$$$);
 sub getSongInsertStmt($);
@@ -787,7 +788,7 @@ sub addSongs($$$$){
   my @queue = @jobs;
   my @running;
   while(@queue > 0 or @running > 0){
-    while(@queue > 0 and threads->list(threads::running) < $jobCount){
+    while(@queue > 0 and (grep{isThreadRunning $_} @running) < $jobCount){
       my $job = shift @queue;
       push @running, $job;
       startThread $job, $lib, $metadata, $quick, $durationCmdExists;
@@ -825,6 +826,15 @@ sub joinThread($){
   my $job = shift;
   if($threaded){
     $threads{$$job{id}}->join;
+  }
+}
+
+sub isThreadRunning($){
+  my $job = shift;
+  if($threaded){
+    return $threads{$$job{id}}->is_running;
+  }else{
+    return 1;
   }
 }
 
