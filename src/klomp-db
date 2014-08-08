@@ -946,9 +946,10 @@ sub getSongInsertStmt($){
 sub getSongDeleteStmt($){
   my $cols = shift;
 
+  my $library = $$cols{library};
   my $sqlPath = $$cols{relpath};
   $sqlPath =~ s/'/''/g;
-  return "delete from Songs where relpath='$sqlPath'";
+  return "delete from Songs where relpath='$sqlPath' and library='$library'";
 }
 
 sub wrapGuessCol($){
