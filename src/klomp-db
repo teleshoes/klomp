@@ -613,9 +613,10 @@ sub md5sum($){
   return $1;
 }
 sub acoustid($){
-  open FH, "-|", "acoustid-track-fetch", $_[0];
-  my $acoustid = join '', <FH>;
-  close FH;
+  my $file = shift;
+  $file =~ s/'/'\\''/g;
+
+  my $acoustid = `acoustid-track-fetch '$file' 2>/dev/null`;
   chomp $acoustid;
   my $re = acoustidRegex();
   if($acoustid =~ /^($re)$/){
