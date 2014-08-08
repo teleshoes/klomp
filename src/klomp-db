@@ -9,6 +9,11 @@ use Klomp::Duration qw(getDuration cmdExists formatTimeS);
 use Klomp::Lib;
 use Klomp::Tag;
 
+my $threaded = 1;
+my $jobCount = 4;
+my $songsPerJob = 50;
+my %threads;
+
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
 
@@ -29,6 +34,8 @@ sub runSql($$;@);
 sub runSqlBatch($\@;@);
 sub cols($);
 sub addSongs($$$$);
+sub startThread($$$$$);
+sub joinThread($);
 sub handleAddSongJob($$$$$);
 sub getSongRow($$$$$);
 sub getSongInsertStmt($);
@@ -746,15 +753,11 @@ sub addSongs($$$$){
   my $skippedCount = 0;
   print "Adding/updating $songCount songs from the filesystem\n";
 
-  my $jobSize = 50;
-  my $jobCount = 4;
-
   my @jobs;
   share(@jobs);
 
-  my %threads;
   my $id=0;
-  for my $songChunk(chunks $jobSize, @songRelPaths){
+  for my $songChunk(chunks $songsPerJob, @songRelPaths){
     my $job = {};
     my $sql = [];
     my $songs = [];
@@ -784,26 +787,42 @@ sub addSongs($$$$){
     while(@queue > 0 and threads->list(threads::running) < $jobCount){
       my $job = shift @queue;
       push @running, $job;
-      $threads{$$job{id}} = threads->new( sub {
-        handleAddSongJob $job, $lib, $metadata, $quick, $durationCmdExists;
-      });
+      startThread $job, $lib, $metadata, $quick, $durationCmdExists;
     }
 
     my $job = shift @running;
-    $threads{$$job{id}}->join;
-    if($$job{status} ne "success"){
-      die "error\n";
-    }elsif($$job{handledCount} > 0){
+    joinThread($job);
+    die "error\n" if $$job{status} ne "success";
+    $handledCount += $$job{handledCount};
+    $skippedCount += $$job{skippedCount};
+
+    if($$job{handledCount} > 0){
       print "  job $$job{id} finished - adding $$job{handledCount}  " .
         "{total: $songCount handled: $handledCount skipped: $skippedCount}\n";
       runSqlBatch $db, @{$$job{sql}};
-      $handledCount += $$job{handledCount};
-      $skippedCount += $$job{skippedCount};
     }
   }
 
   print "  handled $handledCount new or modified songs\n";
   print "  skipped $skippedCount unmodified songs {same size and mod date}\n";
+}
+
+sub startThread($$$$$){
+  my ($job, $lib, $metadata, $quick, $durationCmdExists) = @_;
+  if($threaded){
+    $threads{$$job{id}} = threads->new( sub {
+      handleAddSongJob $job, $lib, $metadata, $quick, $durationCmdExists;
+    });
+  }else{
+    handleAddSongJob $job, $lib, $metadata, $quick, $durationCmdExists;
+  }
+}
+
+sub joinThread($){
+  my $job = shift;
+  if($threaded){
+    $threads{$$job{id}}->join;
+  }
 }
 
 sub handleAddSongJob($$$$$){
