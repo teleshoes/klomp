@@ -12,6 +12,7 @@ use Klomp::Tag;
 my $threaded = 1;
 my $jobCount = 4;
 my $songsPerJob = 50;
+$jobCount = 1 if not $threaded;
 my %threads;
 
 my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
