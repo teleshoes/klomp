@@ -201,7 +201,7 @@ sub setActivePlaylistName($){
 }
 
 sub playlistPresent(){
-  return -e $$FILES{cur} or -e $$FILES{list} or -e $$FILES{history};
+  return -e $$FILES{cur} || -e $$FILES{list} || -e $$FILES{history};
 }
 
 sub backupPlaylistFiles($){
