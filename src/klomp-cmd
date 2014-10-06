@@ -218,7 +218,7 @@ sub restorePlaylistFiles($){
   my $dir = shift;
   die "error: playlist exists and would be overridden!\n" if playlistPresent;
   if(-e $dir){
-    system "mv --no-clobber $dir/* $dir/.* $ENV{HOME} 2>/dev/null";
+    system "mv --no-clobber $dir/* $dir/.* $$FILES{baseDir} 2>/dev/null";
     system "rmdir", $dir;
   }
   die "error: $dir still exists!\n" if -e $dir;
