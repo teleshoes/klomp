@@ -6,13 +6,13 @@ sub klompFile($);
 sub allKlompFiles();
 
 my $files = {
-  db           => "$ENV{HOME}/.klompdb",
-  cur          => "$ENV{HOME}/.klompcur",
-  list         => "$ENV{HOME}/.klomplist",
-  history      => "$ENV{HOME}/.klomphistory",
-  lib          => "$ENV{HOME}/.klomplib",
-  playlistname => "$ENV{HOME}/.klomp-playlist",
-  playlistdir  => "$ENV{HOME}/.klomplist-",
+  db           => "$ENV{HOME}/.klomp/db",
+  cur          => "$ENV{HOME}/.klomp/cur",
+  list         => "$ENV{HOME}/.klomp/list",
+  history      => "$ENV{HOME}/.klomp/history",
+  lib          => "$ENV{HOME}/.klomp/lib",
+  playlistname => "$ENV{HOME}/.klomp/playlist",
+  playlistdir  => "$ENV{HOME}/.klomp/list-",
   fifo         => "/tmp/klomplayer_fifo",
   fifopidfile  => "/tmp/klomplayer_fifo_pid",
   termpidfile  => "/tmp/klomp_term_pid",
