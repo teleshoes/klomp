@@ -20,6 +20,7 @@ uiLock = threading.RLock()
 
 KLOMP_LIST = os.popen('klomp-files -n list').read()
 KLOMP_CUR = os.popen('klomp-files -n cur').read()
+KLOMP_DATECACHE = os.popen('klomp-files -n datecache').read()
 
 usage = """Usage:
   %(exec)s -h | --help
@@ -715,6 +716,7 @@ class KlompQuery():
     self.cols = ['artist', 'albumartist', 'album', 'number', 'title',
       'duration', 'relpath', 'library']
     self.query = None
+    self.dateCache = None
   def buildQueryCmd(self):
     cmd = ["klomp-db", "-s", self.query]
     for col in self.cols:
@@ -755,10 +757,17 @@ class KlompQuery():
   def performQuery(self):
     try:
       songs = self.getSongs()
+      self.ensureDateCache()
+      now = int(round(time.time()))
       for s in songs:
         s['query'] = self.query
         s['number'] = re.sub('^0+', '', s['number'])
         self.tweakArtist(s)
+        path = s['library'] + "/" + s['relpath']
+        if path in self.dateCache:
+          s['dateAdded'] = self.dateCache[path]
+        else:
+          s['dateAdded'] = now
       return songs
     except IOError as e:
       self.query = None
@@ -768,6 +777,21 @@ class KlompQuery():
       errorSong['title'] = str(e)
       errorSong['artist'] = '<error>'
       return [errorSong]
+  def ensureDateCache(self):
+    if self.dateCache == None:
+      self.dateCache = self.readDateCache()
+  def readDateCache(self):
+    dateCache = {}
+    if not os.path.isfile(KLOMP_DATECACHE):
+      return dateCache
+    with open(KLOMP_DATECACHE) as f:
+      content = f.readlines()
+      for line in content:
+        m = re.search('^([0-9]+) (.*)$', line)
+        date = m.group(1)
+        path = m.group(2)
+        dateCache[path] = date
+    return dateCache
 
 class Mode: Query, PlayList, Prompt = range(3)
 
