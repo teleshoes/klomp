@@ -718,10 +718,14 @@ class KlompQuery():
     self.cols = ['artist', 'albumartist', 'album', 'number', 'title',
       'duration', 'relpath', 'library']
     self.query = None
+    self.dbQuery = None
+    self.filterType = None
+    self.filterArg = None
     self.dateCache = None
     self.variousRe = re.compile('^(\s*(various|artists?)\s*)*$', re.I)
+    self.filterRe = re.compile('^\s*@@(d)(\d+)\s*(.*)$')
   def buildQueryCmd(self):
-    cmd = ["klomp-db", "-s", self.query]
+    cmd = ["klomp-db", "-s", self.dbQuery]
     for col in self.cols:
       cmd.append("--col")
       cmd.append(col)
@@ -731,11 +735,26 @@ class KlompQuery():
       delimiter=',', quotechar='"'))
   def maybePerformQuery(self, query):
     if self.query != query:
-      self.query = query
+      self.setQuery(query)
       return self.performQuery()
     else:
       return None
-
+  def setQuery(self, query):
+    self.query = query
+    m = self.filterRe.match(query)
+    if m:
+      self.filterType = m.group(1)
+      self.filterArg = int(m.group(2))
+      self.dbQuery = m.group(3)
+    else:
+      self.dbQuery = query
+      self.filterType = None
+      self.filterArg = None
+  def filterSongs(self, songs):
+    if self.filterType == "d":
+      songs = sorted(songs, key=lambda s: (s['dateAdded']), reverse=True)
+      songs = songs[0:self.filterArg]
+    return songs
   def getSongs(self):
     cmdArr = self.buildQueryCmd()
     out, err = subprocess.Popen(cmdArr,
@@ -770,6 +789,7 @@ class KlompQuery():
           s['dateAdded'] = self.dateCache[path]
         else:
           s['dateAdded'] = now
+      songs = self.filterSongs(songs)
       return songs
     except IOError as e:
       self.query = None
