@@ -719,6 +719,7 @@ class KlompQuery():
       'duration', 'relpath', 'library']
     self.query = None
     self.dateCache = None
+    self.variousRe = re.compile('^(\s*(various|artists?)\s*)*$', re.I)
   def buildQueryCmd(self):
     cmd = ["klomp-db", "-s", self.query]
     for col in self.cols:
@@ -749,9 +750,8 @@ class KlompQuery():
   def tweakArtist(self, song):
     artist = song['artist']
     albArtist = song['albumartist']
-    variousRe = re.compile('^(\s*(various|artists?)\s*)*$', re.I)
     if albArtist and albArtist != artist:
-      if variousRe.match(albArtist):
+      if self.variousRe.match(albArtist):
         albArtist = 'VA'
       artist += ' [' + albArtist + ']'
     song['artist'] = artist
