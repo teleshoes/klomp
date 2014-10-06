@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
+use Klomp::History;
 use Klomp::Lib;
 use File::Path qw(mkpath);
 
@@ -41,6 +42,7 @@ sub ensureDb();
 sub getLibs(@);
 sub genSymlinkDir($);
 sub genHistoryDir($);
+sub genHistoryDateCache();
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
@@ -93,6 +95,7 @@ sub main(@){
   my $props = Klomp::Lib::getProperties;
   genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
   genHistoryDir $$props{history} if defined $$props{history} and not $quick;
+  genHistoryDateCache if defined $$props{history} and not $quick;
   if(not $noPush and defined $$props{history}){
     chdir $$props{history};
     system "git", "push";
@@ -237,6 +240,19 @@ sub genHistoryDir($){
   chdir $histDir;
   runOrDie "git", "add", "-A";
   system "git", "commit", "-a", "-m", "automatic commit";
+}
+
+sub genHistoryDateCache(){
+  print "\n\ngenerating date cache from history\n";
+  my $file = Klomp::Files::klompFile("datecache");
+  runOrDie "rm", "-f", $file;
+
+  my $cache = Klomp::History::getDateCache();
+  open FH, "> $file" or die "Could not write $file\n";
+  for my $path(sort keys %$cache){
+    print FH "$$cache{$path} $path\n";
+  }
+  close FH;
 }
 
 &main(@ARGV);

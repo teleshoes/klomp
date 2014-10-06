@@ -11,6 +11,7 @@ my $files = {
   cur          => "$ENV{HOME}/.klomp/cur",
   list         => "$ENV{HOME}/.klomp/list",
   history      => "$ENV{HOME}/.klomp/history",
+  datecache    => "$ENV{HOME}/.klomp/datecache",
   lib          => "$ENV{HOME}/.klomp/lib",
   playlistname => "$ENV{HOME}/.klomp/playlist",
   playlistdir  => "$ENV{HOME}/.klomp/list-",
