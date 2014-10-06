@@ -363,9 +363,9 @@ class Prompt(LinePrinter):
     self.klompListHandler = KlompListHandler()
     self.sortOrders = ["shuffle", "artist/album/number", "album/number"]
     self.sortFunctions = {
-      "shuffle":             lambda s: random(),
-      "artist/album/number": lambda s: (s['artist'], s['album'], self.num(s)),
-      "album/number":        lambda s: (s['album'], self.num(s))
+      "shuffle":             (lambda s: random(), False),
+      "artist/album/number": (lambda s: (s['artist'], s['album'], self.num(s)), False),
+      "album/number":        (lambda s: (s['album'], self.num(s)), False)
     }
   def num(self, s):
     m = re.search('[0-9]+', s['number'])
@@ -398,7 +398,8 @@ class Prompt(LinePrinter):
       ""])
     self.win.noutrefresh()
   def sortSongs(self):
-    self.songs = sorted(self.songs, key=self.sortFunctions[self.sortOrder])
+    (fct, reverse) = self.sortFunctions[self.sortOrder]
+    self.songs = sorted(self.songs, key=fct, reverse=reverse)
   def applySongs(self, mode):
     self.sortSongs()
     entries = map(klompLibs.toString, self.songs)
