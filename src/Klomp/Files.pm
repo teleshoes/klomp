@@ -6,6 +6,7 @@ sub klompFile($);
 sub allKlompFiles();
 
 my $files = {
+  baseDir      => "$ENV{HOME}/.klomp",
   db           => "$ENV{HOME}/.klomp/db",
   cur          => "$ENV{HOME}/.klomp/cur",
   list         => "$ENV{HOME}/.klomp/list",
