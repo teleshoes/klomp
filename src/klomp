@@ -362,11 +362,13 @@ class Prompt(LinePrinter):
   def __init__(self, height, width, attrs=None, onResize=None):
     LinePrinter.__init__(self, height, width, 2, 0, attrs, onResize)
     self.klompListHandler = KlompListHandler()
-    self.sortOrders = ["shuffle", "artist/album/number", "album/number"]
+    self.sortOrders = ["shuffle", "artist/album/number", "album/number",
+        "date added (newest)"]
     self.sortFunctions = {
       "shuffle":             (lambda s: random(), False),
       "artist/album/number": (lambda s: (s['artist'], s['album'], self.num(s)), False),
-      "album/number":        (lambda s: (s['album'], self.num(s)), False)
+      "album/number":        (lambda s: (s['album'], self.num(s)), False),
+      "date added (newest)": (lambda s: (s['dateAdded']), True)
     }
   def num(self, s):
     m = re.search('[0-9]+', s['number'])
