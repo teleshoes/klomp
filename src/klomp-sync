@@ -18,7 +18,7 @@ my $klompLib = Klomp::Files::klompFile("lib");
 my $tmpKlompLib = "/tmp/klomp-sync_" . time();
 
 my %okExts = map {$_ => 1} qw(
-  flac 
+  flac
   ogg
   wav
   mp3 m4a wma
@@ -33,7 +33,7 @@ my $usage = "Usage:
   $name HOST [--flacs] [--nopresync] [LIB_REGEX]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
-      to the remote dirs in HOST:~/.klomplib
+      to the remote dirs in the klomplib on HOST
   $name --local KLOMP_LIB_FILE [--flacs] [--nopresync] [LIB_REGEX]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
@@ -115,11 +115,16 @@ sub libMatches($$){
 sub remoteSync($$$$){
   my ($host, $includeFlacs, $presync, $libRegex) = @_;
 
-  print "Copying remote .klomplib here to read\n";
-  system 'scp', "$host:~/.klomplib", $tmpKlompLib;
-  die "Error copying $host:~/.klomplib\n" if not -e $tmpKlompLib;
+  print "Getting remote lib path\n";
+  my $lib = `ssh $host klomp-files lib`;
+  chomp $lib;
+  die "Could not find lib file with klomp-files\n" if $lib =~ /^\s*$/;
 
-  print "Overwriting remote .klompdb with local .klompdb\n";
+  print "Copying remote klomplib here to read\n";
+  system 'scp', "$host:$lib", $tmpKlompLib;
+  die "Error copying $host:$lib\n" if not -e $tmpKlompLib;
+
+  print "Overwriting remote klompdb with local klompdb\n";
   system 'rsync', "-c", "-v", "-P", $klompDb, "$host:~";
 
   sync($host, $tmpKlompLib, $includeFlacs, $presync, $libRegex);
@@ -134,7 +139,7 @@ sub sync($$$$$){
   for my $lib(sort keys %libs){
     print "\n\nSYNCING $lib\n";
     if(not defined $remoteLibs{$lib}){
-      print "skipping $lib: not in remote .klomplib\n";
+      print "skipping $lib: not in remote klomplib\n";
       next;
     }
     if(not libMatches $lib, $libRegex){
