@@ -13,6 +13,7 @@ sub sync($$$$$);
 sub syncDir($$$$@);
 
 my $klompDb = Klomp::Files::klompFile("db");
+my $klompDateCache = Klomp::Files::klompFile("datecache");
 
 my $klompLib = Klomp::Files::klompFile("lib");
 my $tmpKlompLib = "/tmp/klomp-sync_" . time();
@@ -125,12 +126,22 @@ sub remoteSync($$$$){
   chomp $db;
   die "Could not find db file with klomp-files\n" if $db =~ /^\s*$/;
 
+  print "Getting remote dateCache path\n";
+  my $dateCache = `ssh $host klomp-files datecache`;
+  chomp $dateCache;
+  die "Could not find dateCache file with klomp-files\n" if $dateCache =~ /^\s*$/;
+
   print "Copying remote klomplib here to read\n";
   system 'scp', "$host:$lib", $tmpKlompLib;
   die "Error copying $host:$lib\n" if not -e $tmpKlompLib;
 
   print "Overwriting remote klompdb with local klompdb\n";
   system 'rsync', "-c", "-v", "-P", $klompDb, "$host:$db";
+
+  if(-f $klompDateCache){
+    print "Overwriting remote datecache with local datecache\n";
+    system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
+  }
 
   sync($host, $tmpKlompLib, $includeFlacs, $presync, $libRegex);
 }
