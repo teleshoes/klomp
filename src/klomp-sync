@@ -120,12 +120,17 @@ sub remoteSync($$$$){
   chomp $lib;
   die "Could not find lib file with klomp-files\n" if $lib =~ /^\s*$/;
 
+  print "Getting remote db path\n";
+  my $db = `ssh $host klomp-files db`;
+  chomp $db;
+  die "Could not find db file with klomp-files\n" if $db =~ /^\s*$/;
+
   print "Copying remote klomplib here to read\n";
   system 'scp', "$host:$lib", $tmpKlompLib;
   die "Error copying $host:$lib\n" if not -e $tmpKlompLib;
 
   print "Overwriting remote klompdb with local klompdb\n";
-  system 'rsync', "-c", "-v", "-P", $klompDb, "$host:~";
+  system 'rsync', "-c", "-v", "-P", $klompDb, "$host:$db";
 
   sync($host, $tmpKlompLib, $includeFlacs, $presync, $libRegex);
 }
