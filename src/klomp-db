@@ -48,7 +48,7 @@ sub acoustidRegex();
 sub chunks($@);
 sub create($);
 sub update($$$);
-sub missing($$);
+sub missing($$$);
 sub add($$$$);
 sub search($$$$$$);
 sub fixQuery($);
@@ -72,8 +72,10 @@ my $usage = "Usage:
    --quick
      Do not update song if it already exists at song-rel-path
 
- $0 [db-path] -m|--missing [lib lib ...]
+ $0 [db-path] -m|--missing [--force=N] [lib lib ...]
    Check for missing files in given libs (or all), and prompt for removal.
+   --force=N
+     Do not prompt if removing N songs or fewer.
 
  $0 [db-path] -i|--info [song-rel-path or song-abs-path]
    Query for the info for a song, given the path of the song
@@ -129,7 +131,12 @@ sub main(@){
     add($db, $lib, $quick, $songRelPath);
   }elsif($cmd =~ /^(-m|--missing)$/){
     die "'$db' does not exist\n" if not -f $db;
-    missing($db, \@_);
+    my $force = 0;
+    if(@_ > 0 and $_[0] =~ /^--force=(\d+)$/){
+      $force = $1;
+      shift;
+    }
+    missing($db, $force, \@_);
   }elsif($cmd =~ /^(-i|--info)$/ and @_ == 1){
     die "'$db' does not exist\n" if not -f $db;
     my $songRelPath = shift;
@@ -206,12 +213,13 @@ sub update($$$){
   }
 }
 
-sub missing($$){
+sub missing($$$){
   my $db = shift;
+  my $force = shift;
   my @libs = @{shift()};
   for my $lib(@libs){
     chdir $lib;
-    checkMissing($db, $lib);
+    checkMissing($db, $force, $lib);
   }
 }
 
@@ -697,8 +705,9 @@ sub cols($){
   return @cols;
 }
 
-sub checkMissing($$){
+sub checkMissing($$$){
   my $db = shift;
+  my $force = shift;
   my $lib = shift;
   my $libpath = Klomp::Lib::getLibraryPath $lib;
 
@@ -726,8 +735,15 @@ sub checkMissing($$){
   my $missingCount = scalar @missing;
   print "  finished, $missingCount missing\n";
   if($missingCount > 0){
-    print "Remove above missing files from lib? (y/N) ";
-    if(<STDIN> =~ /^y$/i){
+    my $allow = 0;
+    if($missingCount <= $force){
+      print "Forcibly removing $missingCount songs (force=$force)\n";
+      $allow = 1;
+    }else{
+      print "Remove above missing files from lib? (y/N) ";
+      $allow = (<STDIN> =~ /^y$/i) ? 1 : 0;
+    }
+    if($allow){
       my $limit = 30;
       my $lastEnd = -1;
       for(my $i=$limit; $i<@deleteSql; $i+=$limit){
