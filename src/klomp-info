@@ -252,13 +252,15 @@ sub selectKlompInfo($$$$){
     return $$histInfo[0] if @$histInfo > 0;
     return $$listInfo[0] if @$listInfo > 0;
   }elsif($index > 0){
-    $index = @$listInfo - 1 if $index >= @$listInfo;
+    $index = @$listInfo - 1 if $index > @$listInfo;
+    $index--;
     return $$listInfo[$index] if @$listInfo > 0;
     return $curInfo if defined $curInfo;
     return $$histInfo[0] if @$histInfo > 0;
   }elsif($index < 0){
     $index = 0 - $index;
-    $index = @$histInfo - 1 if $index >= @$histInfo;
+    $index = @$histInfo - 1 if $index > @$histInfo;
+    $index--;
     return $$histInfo[$index] if @$histInfo > 0;
     return $curInfo if defined $curInfo;
     return $$listInfo[0] if @$listInfo > 0;
