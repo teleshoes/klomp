@@ -64,12 +64,16 @@ my $usage = "Usage:
 
  $0 [db-path] -u|--update [--quick] [lib lib ...]
    Add or update the info in the db for music files in the given libs (or all)
+   --quick
+     Do not update song if it already exists at song-rel-path
 
- $0 [db-path] -m|--missing [--quick] [lib lib ...]
-   Check for missing files in given libs (or all), and prompt for removal.
-
- $0 [db-path] -a|--add lib song-rel-path
+ $0 [db-path] -a|--add [--quick] lib song-rel-path
    Add or update the info in the db for the file at song-rel-path in lib
+   --quick
+     Do not update song if it already exists at song-rel-path
+
+ $0 [db-path] -m|--missing [lib lib ...]
+   Check for missing files in given libs (or all), and prompt for removal.
 
  $0 [db-path] -i|--info [song-rel-path or song-abs-path]
    Query for the info for a song, given the path of the song
@@ -113,9 +117,6 @@ sub main(@){
       shift;
     }
     update($db, $quick, \@_);
-  }elsif($cmd =~ /^(-m|--missing)$/){
-    die "'$db' does not exist\n" if not -f $db;
-    missing($db, \@_);
   }elsif($cmd =~ /^(-a|--add)$/ and @_ >= 2){
     die "'$db' does not exist\n" if not -f $db;
     my $quick = 0;
@@ -126,6 +127,9 @@ sub main(@){
     my $lib = shift;
     my $songRelPath = shift;
     add($db, $lib, $quick, $songRelPath);
+  }elsif($cmd =~ /^(-m|--missing)$/){
+    die "'$db' does not exist\n" if not -f $db;
+    missing($db, \@_);
   }elsif($cmd =~ /^(-i|--info)$/ and @_ == 1){
     die "'$db' does not exist\n" if not -f $db;
     my $songRelPath = shift;
