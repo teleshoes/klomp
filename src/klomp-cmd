@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
-use Sys::Hostname;
 use Klomp::Files;
 use Klomp::Lib;
 
@@ -69,7 +68,6 @@ my $usage = "Usage:
      {e.g.: $0 seek 10}
 ";
 
-sub isPhone();
 sub getPid();
 sub isRunning();
 sub removePause();
@@ -253,16 +251,6 @@ sub getAvailableInputCommands(){
     $cmds{$1} = 1;
   }
   return \%cmds;
-}
-
-sub isPhone(){
-  return (isN9() or isN900()) ? 1 : 0;
-}
-sub isN9(){
-  return hostname() =~ /n9$/ ? 1 : 0;
-}
-sub isN900(){
-  return hostname() =~ /n900$/ ? 1 : 0;
 }
 
 sub getPid(){
