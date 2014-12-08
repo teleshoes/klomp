@@ -97,12 +97,13 @@ sub setActivePlaylistName($);
 sub setBreaks($);
 sub maybePropCmd($);
 
-if(isPhone and `whoami` =~ /^root(\n|$)/){
-  print "you are root. rerunning as user\n";
-  exec "su -c '$0 @ARGV' user";
-}
-
 sub main(@){
+  my $targetUser = Klomp::Lib::getProperty "targetUser";
+  if(defined $targetUser and "$targetUser\n" ne `whoami`){
+    print "rerunning as $targetUser\n";
+    exec "sudo", "-u", $targetUser, $0, @ARGV;
+  }
+
   my $cmd = shift() || '';
   if($cmd eq '-h'){
     print $usage;
