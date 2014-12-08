@@ -352,6 +352,7 @@ sub getNice($){
 sub maybeRenice(){
   my $renice = Klomp::Lib::getProperty "renice";
   if(defined $renice and $renice =~ /^[+\-]?\d+$/){
+    print "renicing to '$renice' in 1s..\n";
     sleep 1;
     my $pid = getPid();
     if(defined $pid){
