@@ -35,11 +35,12 @@ sub main(@){
   if(not defined $cmd and not defined $arg){
     print map {"$_\n"} Klomp::Lib::getAllLibNames $klompLib;
   }elsif($cmd eq "-p"){
-    my $props = Klomp::Lib::getProperties $klompLib;
     if(not defined $arg){
+      my $props = Klomp::Lib::getProperties $klompLib;
       print "$_ => $$props{$_}\n" foreach sort keys %$props;
     }else{
-      print "$$props{$arg}\n" if defined $$props{$arg};
+      my $val = Klomp::Lib::getProperty $arg, $klompLib;
+      print "$val\n" if defined $val;
     }
   }elsif($cmd eq "-d" and not defined $arg){
     print map {"$_\n"} Klomp::Lib::getDefaultLibNames $klompLib;
