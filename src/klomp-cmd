@@ -4,6 +4,7 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Sys::Hostname;
 use Klomp::Files;
+use Klomp::Lib;
 
 my $klomplayerExec = 'klomplayer';
 my $FILES = Klomp::Files::allKlompFiles();
@@ -76,7 +77,7 @@ sub pauseToStop();
 sub start(;$);
 sub stop();
 sub getNice($);
-sub renice();
+sub maybeRenice();
 sub shellQuiet(@);
 sub prevItem();
 sub nextItem();
@@ -326,10 +327,7 @@ sub start(;$){
   if(fork()){
     exec "$klomplayerExec >/dev/null 2>/dev/null &";
   }
-  if(isN9()){
-    sleep 1;
-    renice();
-  }
+  maybeRenice();
 }
 
 sub stop(){
@@ -351,15 +349,19 @@ sub getNice($){
   return '?';
 }
 
-sub renice(){
-  my $pid = getPid();
-  if(defined $pid){
-    my $oldNice = getNice($pid);
-    system "sudo", "renice", "-n", "-12", $pid;
-    my $newNice = getNice($pid);
-    print "reniced $pid: $oldNice => $newNice\n";
-  }else{
-    print "Could not renice; klomplayer not running\n";
+sub maybeRenice(){
+  my $renice = Klomp::Lib::getProperty "renice";
+  if(defined $renice and $renice =~ /^[+\-]?\d+$/){
+    sleep 1;
+    my $pid = getPid();
+    if(defined $pid){
+      my $oldNice = getNice($pid);
+      system "sudo", "renice", "-n", $renice, $pid;
+      my $newNice = getNice($pid);
+      print "reniced $pid: $oldNice => $newNice\n";
+    }else{
+      print "Could not renice; klomplayer not running\n";
+    }
   }
 }
 
