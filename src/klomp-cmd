@@ -95,7 +95,7 @@ sub restorePlaylistFiles($);
 sub getActivePlaylistName();
 sub setActivePlaylistName($);
 sub setBreaks($);
-sub lpsmagic();
+sub maybePropCmd($);
 
 if(isPhone and `whoami` =~ /^root(\n|$)/){
   print "you are root. rerunning as user\n";
@@ -116,7 +116,7 @@ sub main(@){
       die "Invalid playlist name: '$name'\n"
     }
     toggleActivePlaylist $name;
-    lpsmagic() if isN9();
+    maybePropCmd("playlistCmd");
   }elsif($cmd eq 'playlist-main'){
     my $name = getActivePlaylistName;
     if(defined $name and $name ne "main"){
@@ -320,7 +320,7 @@ sub ensureKlompCur(){
 }
 
 sub start(;$){
-  lpsmagic() if isN9();
+  maybePropCmd("startCmd");
   removePause() unless @_ > 0 and $_[0];
   ensureKlompCur();
 
@@ -565,8 +565,14 @@ sub jump($$){
   start(1) if $wasRunning;
 }
 
-sub lpsmagic(){
-  system "(lpsmagic -once 2>&1 | grep 'Rendering format string') &";
+sub maybePropCmd($){
+  my $prop = shift;
+  my $cmd = Klomp::Lib::getProperty $prop;
+  if(defined $cmd){
+    print "running '$cmd'\n";
+    $cmd =~ s/'/'\\''/g;
+    system "bash -c '$cmd' >/dev/null 2>/dev/null &";
+  }
 }
 
 &main(@ARGV);
