@@ -138,7 +138,8 @@ sub main(@){
       stop;
       start;
     }else{
-      if(isPhone()){
+      my $disallowPause = Klomp::Lib::getProperty "disallowPause";
+      if(defined $disallowPause and $disallowPause =~ /true/i){
         stop;
       }else{
         system "echo pause > $$FILES{fifo}";
