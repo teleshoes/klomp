@@ -336,7 +336,7 @@ sub stop(){
     system "kill", "-9", $pid;
     system "rm", $$FILES{pidfile};
   }
-  system "killall -9 mplayer 2>/dev/null" if isPhone();
+  maybePropCmd("stopCmd");
   system "rm -f /tmp/klomplayer*";
 }
 
