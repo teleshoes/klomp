@@ -99,7 +99,7 @@ sub main(@){
   my $targetUser = Klomp::Lib::getProperty "targetUser";
   if(defined $targetUser and "$targetUser\n" ne `whoami`){
     print "rerunning as $targetUser\n";
-    exec "sudo", "-u", $targetUser, $0, @ARGV;
+    exec "sudo su -c '$0 @ARGV' $targetUser";
   }
 
   my $cmd = shift() || '';
