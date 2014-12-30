@@ -22,6 +22,13 @@ KLOMP_LIST = os.popen('klomp-files -n list').read()
 KLOMP_CUR = os.popen('klomp-files -n cur').read()
 KLOMP_DATECACHE = os.popen('klomp-files -n datecache').read()
 
+NAMED_SORT_ORDERS = { "shuffle": (False, ["random"])
+                    , "artist": (False, ["artist", "album", "number"])
+                    , "album": (False, ["album", "number"])
+                    , "newest": (True, ["dateAdded"])
+                    }
+SORT_NAME_CYCLE_ORDER = ["shuffle", "artist", "album", "newest"]
+
 usage = """Usage:
   %(exec)s -h | --help
     show this message
@@ -362,15 +369,7 @@ class Prompt(LinePrinter):
   def __init__(self, height, width, attrs=None, onResize=None):
     LinePrinter.__init__(self, height, width, 2, 0, attrs, onResize)
     self.klompListHandler = KlompListHandler()
-    self.sortOrders = ["shuffle", "artist/album/number", "album/number",
-        "date added (newest)"]
-    self.sortFunctions = {
-      "shuffle":             (lambda s: self.sortKeyFct(s, ['random']), False),
-      "artist/album/number": (lambda s: self.sortKeyFct(s, ['artist', 'album', 'number']), False),
-      "album/number":        (lambda s: self.sortKeyFct(s, ['album', 'number']), False),
-      "date added (newest)": (lambda s: self.sortKeyFct(s, ['dateAdded']), True)
-    }
-  def sortKeyFct(self, song, atts):
+  def getSortKey(self, song, atts):
     key = []
     for att in atts:
       if att == "shuffle" or att == "random":
@@ -389,33 +388,40 @@ class Prompt(LinePrinter):
       return int(m.group(0))
     else:
       return 0
-  def resetSortOrder(self):
-    self.sortOrderItr = cycle(self.sortOrders)
-    self.nextSortOrder()
-  def nextSortOrder(self):
-    self.sortOrder = self.sortOrderItr.next()
+  def resetSortName(self):
+    self.sortNameItr = cycle(SORT_NAME_CYCLE_ORDER)
+    self.nextSortName()
+  def nextSortName(self):
+    self.sortName = self.sortNameItr.next()
   def setSongs(self, songs):
-    self.resetSortOrder()
+    self.resetSortName()
     self.songs = songs
   def update(self):
+    lines = [ "selected %d songs" % (len(self.songs)),
+              "",
+              "q/esc - do nothing with these files",
+              "enter - prepend files to KLOMPLIST",
+              "a     - append files to KLOMPLIST",
+              "o     - overwrite KLOMPLIST with files",
+              "",
+              "sort => %s" % (self.sortName),
+              "  space to cycle: ",
+            ]
+    for sortName in SORT_NAME_CYCLE_ORDER:
+      lines.append("    " + self.formatSortDescription(sortName))
     self.clear()
-    map(self.printLine, [
-      "selected %d songs" % (len(self.songs)),
-      "",
-      "q/esc - do nothing with these files",
-      "enter - prepend files to KLOMPLIST",
-      "a     - append files to KLOMPLIST",
-      "o     - overwrite KLOMPLIST with files",
-      "  notyet:"
-      "  r     - REMOVE these files from KLOMPLIST",
-      "",
-      "sort => %s" % (self.sortOrder),
-      "{space to cycle: %s}" % (str(self.sortOrders)),
-      ""])
+    map(self.printLine, lines)
     self.win.noutrefresh()
+  def formatSortDescription(self, sortName):
+    (reverse, atts) = NAMED_SORT_ORDERS[sortName]
+    desc = sortName + ": " + str(atts)
+    if reverse:
+      desc += ' (reversed)'
+    return desc
   def sortSongs(self):
-    (fct, reverse) = self.sortFunctions[self.sortOrder]
-    self.songs = sorted(self.songs, key=fct, reverse=reverse)
+    (reverse, atts) = NAMED_SORT_ORDERS[self.sortName]
+    sortKeyFct = lambda s: self.getSortKey(s, atts)
+    self.songs = sorted(self.songs, key=sortKeyFct, reverse=reverse)
   def applySongs(self, mode):
     self.sortSongs()
     entries = map(klompLibs.toString, self.songs)
@@ -447,7 +453,7 @@ class Prompt(LinePrinter):
           self.applySongs("overwrite")
           return True
         elif ch == ' ':
-          self.nextSortOrder()
+          self.nextSortName()
     return False
 
 class KlompLibs():
