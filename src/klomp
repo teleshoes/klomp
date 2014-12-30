@@ -23,11 +23,11 @@ KLOMP_CUR = os.popen('klomp-files -n cur').read()
 KLOMP_DATECACHE = os.popen('klomp-files -n datecache').read()
 
 NAMED_SORT_ORDERS = { "shuffle": (False, ["random"])
-                    , "artist": (False, ["artist", "album", "number"])
-                    , "album": (False, ["album", "number"])
-                    , "newest": (True, ["dateAdded"])
+                    , "artist-group": (False, ["artist", "album", "number"])
+                    , "album-group": (False, ["album", "number"])
+                    , "newest-first": (True, ["dateAdded"])
                     }
-SORT_NAME_CYCLE_ORDER = ["shuffle", "artist", "album", "newest"]
+SORT_NAME_CYCLE_ORDER = ["shuffle", "artist-group", "album-group", "newest-first"]
 
 usage = """Usage:
   %(exec)s -h | --help
