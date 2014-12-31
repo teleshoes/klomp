@@ -24,6 +24,7 @@ sub main(@){
   my @translit = qw(libtext-unidecode-perl);
   my @flacmirror = qw(dir2ogg);
   my @japanese = qw(liblingua-ja-romanize-japanese-perl);
+  my @duration = qw(libav-tools);
 
   my $msg = ''
     . "searching for and playing music:\n"
@@ -40,7 +41,7 @@ sub main(@){
 
   my $debs = getDepDebs();
 
-  my @packages = (@essential, @tagging, @translit, @flacmirror, @japanese);
+  my @packages = (@essential, @tagging, @translit, @flacmirror, @japanese, @duration);
   my @aptPackages = grep {not defined $$debs{$_}} @packages;
   my @debPackages = grep {defined $$debs{$_}} @packages;
 
