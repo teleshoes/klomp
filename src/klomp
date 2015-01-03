@@ -28,6 +28,8 @@ NAMED_SORT_ORDERS = { "shuffle": (False, ["random"])
                     , "newest-first": (True, ["dateAdded"])
                     }
 SORT_NAME_CYCLE_ORDER = ["shuffle", "artist-group", "album-group", "newest-first"]
+SORT_ATTRIBUTES = ['random', 'dateAdded',
+                   'title', 'album', 'artist', 'genre', 'path', 'number']
 
 usage = """Usage:
   %(exec)s -h | --help
@@ -365,29 +367,71 @@ class KlompListHandler():
   def overwrite(self, entries):
     self.writeEntries(entries, 'w')
 
-class Prompt(LinePrinter):
-  def __init__(self, height, width, attrs=None, onResize=None):
-    LinePrinter.__init__(self, height, width, 2, 0, attrs, onResize)
-    self.klompListHandler = KlompListHandler()
+  def handleSongs(self, songs, mode):
+    entries = map(klompLibs.toString, songs)
+
+    if mode == "append":
+      self.append(entries)
+    elif mode == "prepend":
+      self.prepend(entries)
+    elif mode == "overwrite":
+      self.overwrite(entries)
+
+class SongSorter():
+  def __init__(self):
+    self.sortAtts = ["random"]
+    self.sortReverse = False
+  def sortSongs(self, songs):
+    sortKeyFct = lambda s: self.getSortKey(s, self.sortAtts)
+    return sorted(songs, key=sortKeyFct, reverse=self.sortReverse)
+  def setSortString(self, sortString):
+    if sortString in NAMED_SORT_ORDERS:
+      self.setSortByName(sortString)
+    else:
+      self.setSortAttributes(map(str.strip, sortString.split(",")))
+  def setSortByName(self, name):
+    if name not in NAMED_SORT_ORDERS:
+      raise Exception("Unknown sort name: " + str(name))
+    (isReverse, atts) = NAMED_SORT_ORDERS[name]
+    self.setSortAttributes(atts)
+    self.setSortReverse(isReverse)
+
+  def getSortAttributes(self):
+    return self.sortAtts
+  def setSortAttributes(self, atts):
+    for att in atts:
+      if att not in SORT_ATTRIBUTES:
+        raise Exception("Unknown sort attribute: " + str(att))
+    self.sortAtts = atts
+  def getSortReverse(self):
+    return self.sortReverse
+  def setSortReverse(self, isReverse):
+    self.sortReverse = isReverse
+
   def getSortKey(self, song, atts):
     key = []
     for att in atts:
-      if att == "shuffle" or att == "random":
+      if att == "random":
         key.append(random())
-      elif att == "num" or att == "number":
-        key.append(self.num(song))
-      elif att in song:
+      elif att == "number":
+        key.append(self.formatNumber(song[att]))
+      elif att in SORT_ATTRIBUTES:
         key.append(song[att])
       else:
-        print "Unknown sort attribute: " + att
-        os._exit(1)
+        raise Exception("Unknown sort attribute: " + str(att))
     return key
-  def num(self, s):
-    m = re.search('[0-9]+', s['number'])
+  def formatNumber(self, num):
+    m = re.search('[0-9]+', num)
     if m:
       return int(m.group(0))
     else:
       return 0
+
+class Prompt(LinePrinter):
+  def __init__(self, height, width, attrs=None, onResize=None):
+    LinePrinter.__init__(self, height, width, 2, 0, attrs, onResize)
+    self.klompListHandler = KlompListHandler()
+    self.songSorter = SongSorter()
   def resetSortName(self):
     self.sortNameItr = cycle(SORT_NAME_CYCLE_ORDER)
     self.nextSortName()
@@ -418,21 +462,10 @@ class Prompt(LinePrinter):
     if reverse:
       desc += ' (reversed)'
     return desc
-  def sortSongs(self):
-    (reverse, atts) = NAMED_SORT_ORDERS[self.sortName]
-    sortKeyFct = lambda s: self.getSortKey(s, atts)
-    self.songs = sorted(self.songs, key=sortKeyFct, reverse=reverse)
   def applySongs(self, mode):
-    self.sortSongs()
-    entries = map(klompLibs.toString, self.songs)
-
-    if mode == "append":
-      self.klompListHandler.append(entries)
-    elif mode == "prepend":
-      self.klompListHandler.prepend(entries)
-    elif mode == "overwrite":
-      self.klompListHandler.overwrite(entries)
-
+    self.songSorter.setSortByName(self.sortName)
+    self.songs = self.songSorter.sortSongs(self.songs)
+    self.klompListHandler.handleSongs(self.songs, mode)
     self.songs = []
   def handleKeys(self, keys):
     c = curses
