@@ -34,13 +34,51 @@ SORT_ATTRIBUTES = ['random', 'dateAdded',
 usage = """Usage:
   %(exec)s -h | --help
     show this message
-  %(exec)s [--once] [--playlist] [--debug]  [word word ..]
+
+  %(exec)s --append [--sort=SORT_ORDER] [--reverse] QUERY
+    perform a search using "QUERY"
+    append to the songs in KLOMP_LIST, after sorting as indicated
+
+  %(exec)s --prepend [--sort=SORT_ORDER] [--reverse] QUERY
+    perform a search using "QUERY"
+    prepend to the songs in KLOMP_LIST, after sorting as indicated
+
+  %(exec)s --overwrite [--sort=SORT_ORDER] [--reverse] QUERY
+    perform a search using "QUERY"
+    overwrite KLOMP_LIST with the songs, after sorting as indicated
+
+  %(exec)s [--once] [--playlist] [--debug] [INITIAL_QUERY]
     interactive curses ui
-    the textbox is initially set to "word word ..", if passed in
-    --once exits after prompt menu instead of returning to query
-    --playlist starts in playlist mode
-    --debug means exceptions dont exit, and the tmp file './out' will be rm'd
-""" % {'exec': __file__}
+    the textbox is initially set to "INITIAL_QUERY ..", if passed in
+
+  --sort=SORT_ORDER
+    non-interactive order for the songs returned by the query
+    SORT_ORDER can be either a named sort,
+      or a comma-separated list of attributes
+    named sorts:
+      %(sortNames)s
+    attributes:
+      %(sortAtts)s
+
+    e.g.:
+      --sort=artist,album,number  ==  --sort=artist-group
+      --sort=shuffle              ==  --sort=random,random,random
+      --sort=newest-first         ==  --sort=dateAdded --reverse
+
+  --reverse
+    reverses the sort order before adding the songs
+
+  --once
+    exit UI after prompt menu instead of returning to query
+  --playlist
+    starts UI in playlist mode
+  --debug
+    dont exit on exceptions, and remove the tmp file './out'
+
+""" % { 'exec': __file__
+      , 'sortNames': "\n          ".join(SORT_NAME_CYCLE_ORDER)
+      , 'sortAtts': "\n          ".join(SORT_ATTRIBUTES)
+      }
 
 ESCAPE = 27
 TAB = ord('\t')
@@ -51,6 +89,25 @@ def main(args):
 
   if len(args) == 1 and (args[0] == "-h" or args[0] == "--help"):
     print usage
+    exit(0)
+
+  if len(args) > 0 and args[0] in ["--append", "--prepend", "--overwrite"]:
+    mode = args[0].strip('-')
+    args = args[1:]
+    songSorter = SongSorter()
+    while len(args) > 0:
+      sortMatch = re.match("--sort=(.*)", args[0])
+      if sortMatch:
+        args = args[1:]
+        songSorter.setSortString(sortMatch.group(1))
+      elif args[0] == "--reverse":
+        args = args[1:]
+        songSorter.setSortReverse(not songSorter.getSortReverse())
+      else:
+        break
+    songs = KlompQuery().maybePerformQuery(' '.join(args))
+    songs = songSorter.sortSongs(songs)
+    KlompListHandler().handleSongs(songs, mode)
     exit(0)
 
   once = False
