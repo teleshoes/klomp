@@ -105,8 +105,12 @@ def main(args):
         songSorter.setSortReverse(not songSorter.getSortReverse())
       else:
         break
-    songs = KlompQuery().maybePerformQuery(' '.join(args))
+    query = ' '.join(args)
+    print "running query: '%s'" % query
+    songs = KlompQuery().maybePerformQuery(query)
     songs = songSorter.sortSongs(songs)
+    print "adding %d songs (mode=%s, sort=%s, reverse=%s)" % (len(songs), mode,
+      songSorter.getSortAttributes(), songSorter.getSortReverse())
     KlompListHandler().handleSongs(songs, mode)
     exit(0)
 
