@@ -102,6 +102,8 @@ sub main(@){
     exec "sudo su -c '$0 @ARGV' $targetUser";
   }
 
+  my $wasRunning = isRunning();
+
   my $cmd = shift() || '';
   if($cmd eq '-h'){
     print $usage;
@@ -127,12 +129,12 @@ sub main(@){
   }elsif($cmd eq 'stop' and @_ == 0){
     stop;
   }elsif($cmd eq 'restart' and @_ == 0){
-    if(isRunning()){
+    if($wasRunning){
       stop;
       start 1;
     }
   }elsif($cmd eq 'pause' and @_ == 0){
-    if(not isRunning()){
+    if(not $wasRunning){
       stop;
       start;
     }else{
