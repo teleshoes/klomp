@@ -453,7 +453,7 @@ sub prevnext($$){
   my $oldCur = getCur;
   $oldCur = addCurTimestamp $oldCur if defined $oldCur;
   my $cur = popFile $srcFile;
-  $cur = removeCurTimestamp $cur;
+  $cur = removeCurTimestamp $cur if defined $cur;
   if(defined $cur){
     if(defined $oldCur){
       pushFile $destFile, $oldCur;
