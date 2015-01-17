@@ -112,6 +112,7 @@ sub main(@){
     print getActivePlaylistName() . "\n";
   }elsif($cmd eq 'playlist' and @_ == 1){
     stop();
+    maybePropCmd("hardStopCmd") if $wasRunning;
     my $name = shift;
     if($name eq 'main' or $name !~ /^[a-zA-Z0-9_]+$/){
       die "Invalid playlist name: '$name'\n"
@@ -126,8 +127,10 @@ sub main(@){
   }elsif($cmd eq 'start' and @_ == 0){
     stop;
     start;
+    maybePropCmd("hardStartCmd") if not $wasRunning;
   }elsif($cmd eq 'stop' and @_ == 0){
     stop;
+    maybePropCmd("hardStopCmd") if $wasRunning;
   }elsif($cmd eq 'restart' and @_ == 0){
     if($wasRunning){
       stop;
@@ -137,20 +140,32 @@ sub main(@){
     if(not $wasRunning){
       stop;
       start;
+      maybePropCmd("hardStartCmd");
     }else{
       my $disallowPause = Klomp::Lib::getProperty "disallowPause";
       if(defined $disallowPause and $disallowPause =~ /true/i){
         stop;
+        maybePropCmd("hardStopCmd");
       }else{
         system "echo pause > $$FILES{fifo}";
       }
     }
   }elsif($cmd eq 'prev' and @_ == 0){
     stop;
-    start if prevItem();
+    if(prevItem()){
+      start;
+      maybePropCmd("hardStartCmd") if not $wasRunning;
+    }else{
+      maybePropCmd("hardStopCmd") if $wasRunning;
+    }
   }elsif($cmd eq 'next' and @_ == 0){
     stop;
-    start if nextItem();
+    if(nextItem()){
+      start;
+      maybePropCmd("hardStartCmd") if not $wasRunning;
+    }else{
+      maybePropCmd("hardStopCmd") if $wasRunning;
+    }
   }elsif($cmd eq 'seekabs' and @_ == 1 and $_[0] =~ /^\d+(\.\d+)?%?$/){
     seekAbs($_[0]);
   }elsif($cmd eq 'jump' and @_ == 1 and $_[0] =~ /^(\+|-)?(\d+)$/){
@@ -295,8 +310,10 @@ sub removePause(){
 }
 
 sub pauseToStop(){
+  my $wasRunning = isRunning();
   if(removePause()){
     stop();
+    maybePropCmd("hardStopCmd");
   }
 }
 
