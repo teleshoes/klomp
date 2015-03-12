@@ -27,13 +27,13 @@ my $usage = "Usage:
     -mirrors all library dirs with empty files
     -commits changes to a git repository
 
-  --quick
+  -q|--quick
      pass --quick to klomp-db when adding songs
        {assume existing songs with the same path are unchanged}
      dont update the symlink/history dirs
-  --no-push
+  -n|--no-push
      never run git push
-  --utils-only
+  -u|--utils-only
      instead of updating any libs, update symlink/history dirs if they exist
 ";
 
@@ -47,17 +47,17 @@ sub genHistoryDateCache();
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
   my $quick = 0;
-  if(@_ > 0 and $_[0] =~ /^--quick$/){
+  if(@_ > 0 and $_[0] =~ /^(-q|--quick)$/){
     $quick = 1;
     shift;
   }
   my $noPush = 0;
-  if(@_ > 0 and $_[0] =~ /^--no-push$/){
+  if(@_ > 0 and $_[0] =~ /^(-n|--no-push)$/){
     $noPush = 1;
     shift;
   }
   my $utilsOnly = 0;
-  if(@_ == 1 and $_[0] =~ /^--utils-only$/){
+  if(@_ == 1 and $_[0] =~ /^(-u|--utils-only)$/){
     $utilsOnly = 1;
     shift;
     die $usage if @_ > 0;
