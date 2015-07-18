@@ -17,6 +17,11 @@ sub parseLibs(;$);
 sub parseProps(;$);
 sub readLibFile(;$);
 sub getLibArray($;$);
+sub checkPropName($);
+
+my $props = {
+};
+my $okProps = join "|", sort keys %$props;
 
 sub getSongAbsPath($$){
   my ($lib, $relpath) = @_;
@@ -113,7 +118,9 @@ sub readLibFile(;$){
     }elsif($line =~ /^(.*):(.*):(.*):(.*):(.*)/){
       $libs{$1} = [$2, $3, $4, $5];
     }elsif($line =~ /^\s*([^ \t]*)\s*=\s*(.*?)\s*$/){
-      $props{$1} = $2;
+      my ($propName, $propValue) = ($1, $2);
+      checkPropName $propName;
+      $props{$propName} = $propValue;
     }else{
       die "Malformed lib line: $line\n";
     }
@@ -129,6 +136,23 @@ sub getLibArray($;$){
     die "Unknown lib '$lib' (known libs: $okLibs)\n";
   }
   return $$libs{$lib};
+}
+
+sub checkPropName($){
+  my $propName = shift;
+  if($propName !~ /^($okProps)$/){
+    my $maxPropNameLen = 0;
+    for my $propName(sort keys %$props){
+      $maxPropNameLen = length $propName if length $propName > $maxPropNameLen;
+    }
+    my $propMsg = "";
+    for my $propName(sort keys %$props){
+      $propMsg .= "  $propName";
+      $propMsg .= ' ' x ($maxPropNameLen-length $propName);
+      $propMsg .= " => $$props{$propName}\n";
+    }
+    die "Unknown property '$propName'\nknown properties:\n$propMsg";
+  }
 }
 
 1;
