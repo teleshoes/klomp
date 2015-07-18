@@ -122,6 +122,9 @@ sub updateKlompCur($$$$){
   if(not defined $pos or not defined $len){
     return;
   }
+  if($$cur{pos} eq $pos and $$cur{len} eq $len and $$cur{paused} eq $paused){
+    return;
+  }
 
   my $newCur = readKlompCur;
   if($$cur{lib} ne $$newCur{lib} or $$cur{relpath} ne $$newCur{relpath}){
