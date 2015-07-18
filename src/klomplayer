@@ -5,90 +5,95 @@ use lib "/opt/klomp/lib";
 use Klomp::Files;
 use Klomp::Lib;
 
+my $FIFO = Klomp::Files::klompFile("fifo");
+my $PID_FILE = Klomp::Files::klompFile("pidfile");
+my $KLOMPCUR = Klomp::Files::klompFile("cur");
+
+my $klompCmdExec = 'klomp-cmd';
+
 sub update($$$);
 sub getSongAbsPath($$);
 
-my $FIFO = Klomp::Files::klompFile("fifo");
-my $PID_FILE = Klomp::Files::klompFile("pidfile");
-system "rm", "-f", $FIFO;
-system "mkfifo", $FIFO;
-fork or exec "klomp-fifo-writer";
+sub main(@){
+  die "Usage: $0\n" if @_ > 0;
 
-my $klompCmdExec = 'klomp-cmd';
-my $KLOMPCUR = Klomp::Files::klompFile("cur");
+  system "rm", "-f", $FIFO;
+  system "mkfifo", $FIFO;
+  fork or exec "klomp-fifo-writer";
 
-if(not -e $KLOMPCUR){
-  die "$KLOMPCUR does not exist\n";
-}
-my $cur = `cat $KLOMPCUR`;
-if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
-  die "Current file $KLOMPCUR malformed";
-}
+  if(not -e $KLOMPCUR){
+    die "$KLOMPCUR does not exist\n";
+  }
+  my $cur = `cat $KLOMPCUR`;
+  if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
+    die "Current file $KLOMPCUR malformed";
+  }
 
-my ($initPos, $len, $paused, $lib, $relpath) = ($1, $2, $3, $4, $5);
-my $songAbsPath = Klomp::Lib::getSongAbsPath $lib, $relpath;
-die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
+  my ($initPos, $len, $paused, $lib, $relpath) = ($1, $2, $3, $4, $5);
+  my $songAbsPath = Klomp::Lib::getSongAbsPath $lib, $relpath;
+  die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
 
-if(-e $PID_FILE){
-  my $pid = `cat $PID_FILE 2>/dev/null`;
-  chomp $pid;
-  system "kill -9 $pid 2>/dev/null";
-  system "rm $PID_FILE";
-}
+  if(-e $PID_FILE){
+    my $pid = `cat $PID_FILE 2>/dev/null`;
+    chomp $pid;
+    system "kill -9 $pid 2>/dev/null";
+    system "rm $PID_FILE";
+  }
 
-my $pid = open FH, '-|',
-  'mplayer',
-  '-vo', 'BUGGYBUGBUGBUG',
-  '-quiet',
-  '-input', "file=$FIFO",
-  '-ss', $initPos,
-  $songAbsPath;
+  my $pid = open FH, '-|',
+    'mplayer',
+    '-vo', 'BUGGYBUGBUGBUG',
+    '-quiet',
+    '-input', "file=$FIFO",
+    '-ss', $initPos,
+    $songAbsPath;
 
-system "echo pause > $FIFO" if $paused =~ /^paused/;
+  system "echo pause > $FIFO" if $paused =~ /^paused/;
 
-system "echo $pid > $PID_FILE";
+  system "echo $pid > $PID_FILE";
 
-my $line = '';
-while($line !~ /^Starting playback.../){
-  $line = <FH>;
-  die "Error starting mplayer\n" if not defined $line;
-}
+  my $line = '';
+  while($line !~ /^Starting playback.../){
+    $line = <FH>;
+    die "Error starting mplayer\n" if not defined $line;
+  }
 
-my $sexPos = undef;
-my $sexLen = undef;
-$paused = 'no';
+  my $sexPos = undef;
+  my $sexLen = undef;
+  $paused = 'no';
 
-while(1){
-  if(not -e $PID_FILE){
-    die "missing pidfile\n";
-  }else{
-    my $newPid = `cat $PID_FILE`;
-    chomp $newPid;
-    if($newPid ne $pid){
-      die "new $0 is running\n";
+  while(1){
+    if(not -e $PID_FILE){
+      die "missing pidfile\n";
+    }else{
+      my $newPid = `cat $PID_FILE`;
+      chomp $newPid;
+      if($newPid ne $pid){
+        die "new $0 is running\n";
+      }
     }
-  }
 
-  if(not -p $FIFO){
-    die "fifo $FIFO is broken\n";
-  }
+    if(not -p $FIFO){
+      die "fifo $FIFO is broken\n";
+    }
 
-  my $line = <FH>;
-  if(not defined $line){
-    die "i guess its dead...\n";
-  }
-  if($line =~ /^Exiting... \(End of file\)/){
-    exec "$klompCmdExec next";
-  }
-  if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
-    $sexLen = $1;
-    update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
-  }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
-    $sexPos = $1;
-    update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
-  }elsif($line =~ /^ANS_pause=(yes|no)$/){
-    $paused = $1;
-    update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+    my $line = <FH>;
+    if(not defined $line){
+      die "i guess its dead...\n";
+    }
+    if($line =~ /^Exiting... \(End of file\)/){
+      exec "$klompCmdExec next";
+    }
+    if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
+      $sexLen = $1;
+      update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+    }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
+      $sexPos = $1;
+      update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+    }elsif($line =~ /^ANS_pause=(yes|no)$/){
+      $paused = $1;
+      update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+    }
   }
 }
 
@@ -97,6 +102,11 @@ sub update($$$){
   my $len = shift;
   my $paused = shift;
   my $cur = `cat $KLOMPCUR`;
+  if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
+    die "Current file $KLOMPCUR malformed";
+  }
+  my ($oldPos, $oldLen, $oldPaused, $lib, $relpath) = ($1, $2, $3, $4, $5);
+
   my $pausedDisplay = $paused eq 'yes' ? 'paused ' : '';
   my $new = "$pos $len $pausedDisplay$lib\@$relpath";
   if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)\@(.*)/$new/){
@@ -109,3 +119,5 @@ sub update($$$){
   print CURFILE $cur;
   close CURFILE;
 }
+
+&main(@ARGV);
