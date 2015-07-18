@@ -1,9 +1,13 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use Time::HiRes qw(time);
 use lib "/opt/klomp/lib";
 use Klomp::Files;
 use Klomp::Lib;
+
+my $updateCurCmdIntervalMillis = 20 * 1000;
+my $updateCurCmdNextRunMillis = undef;
 
 my $FIFO = Klomp::Files::klompFile("fifo");
 my $PID_FILE = Klomp::Files::klompFile("pidfile");
@@ -12,12 +16,14 @@ my $KLOMPCUR = Klomp::Files::klompFile("cur");
 my $klompCmdExec = 'klomp-cmd';
 
 sub readKlompCur();
-sub updateKlompCur($$$$);
+sub updateKlompCur($$$$$);
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
 
   my $cur = readKlompCur;
+
+  my $updateCurCmd = Klomp::Lib::getProperty "updateCurCmd";
 
   my $songAbsPath = Klomp::Lib::getSongAbsPath $$cur{lib}, $$cur{relpath};
   if(not defined $songAbsPath){
@@ -83,14 +89,14 @@ sub main(@){
     }
     if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
       $sexLen = $1;
-      updateKlompCur $cur, $sexPos, $sexLen, $paused;
+      updateKlompCur $cur, $sexPos, $sexLen, $paused, $updateCurCmd;
     }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
       $sexPos = $1;
-      updateKlompCur $cur, $sexPos, $sexLen, $paused;
+      updateKlompCur $cur, $sexPos, $sexLen, $paused, $updateCurCmd;
     }elsif($line =~ /^ANS_pause=(yes|no)$/){
       my $ansPause = $1;
       $paused = $ansPause =~ /yes/ ? 1 : 0;
-      updateKlompCur $cur, $sexPos, $sexLen, $paused;
+      updateKlompCur $cur, $sexPos, $sexLen, $paused, $updateCurCmd;
     }
   }
 }
@@ -115,8 +121,8 @@ sub readKlompCur(){
   };
 }
 
-sub updateKlompCur($$$$){
-  my ($cur, $pos, $len, $paused) = @_;
+sub updateKlompCur($$$$$){
+  my ($cur, $pos, $len, $paused, $updateCurCmd) = @_;
   my $pausedDisplay = $paused ? "paused " : "";
 
   if(not defined $pos or not defined $len){
@@ -146,6 +152,16 @@ sub updateKlompCur($$$$){
   $$cur{len} = $len;
   $$cur{paused} = $paused;
   $$cur{contents} = $contents;
+
+  if(defined $updateCurCmd){
+    my $nowMillis = time * 1000;
+    if(not defined $updateCurCmdNextRunMillis){
+      $updateCurCmdNextRunMillis = $nowMillis + $updateCurCmdIntervalMillis;
+    }elsif($nowMillis > $updateCurCmdNextRunMillis){
+      system "$updateCurCmd >/dev/null 2>/dev/null &";
+      $updateCurCmdNextRunMillis = $nowMillis + $updateCurCmdIntervalMillis;
+    }
+  }
 }
 
 &main(@ARGV);
