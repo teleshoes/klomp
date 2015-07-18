@@ -50,7 +50,7 @@ sub main(@){
   system "echo $pid > $PID_FILE";
 
   my $line = '';
-  while($line !~ /^Starting playback.../){
+  while($line !~ /^Starting playback\.\.\./){
     $line = <FH>;
     die "Error starting mplayer\n" if not defined $line;
   }
