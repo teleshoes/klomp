@@ -313,7 +313,7 @@ sub pauseToStop(){
   my $wasRunning = isRunning();
   if(removePause()){
     stop();
-    maybePropCmd("hardStopCmd");
+    maybePropCmd("hardStopCmd") if $wasRunning;
   }
 }
 
