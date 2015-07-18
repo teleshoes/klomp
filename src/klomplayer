@@ -11,27 +11,20 @@ my $KLOMPCUR = Klomp::Files::klompFile("cur");
 
 my $klompCmdExec = 'klomp-cmd';
 
-sub update($$$);
-sub getSongAbsPath($$);
+sub readKlompCur();
+sub updateKlompCur($$$$);
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
 
-  system "rm", "-f", $FIFO;
-  system "mkfifo", $FIFO;
-  fork or exec "klomp-fifo-writer";
+  my $cur = readKlompCur;
 
-  if(not -e $KLOMPCUR){
-    die "$KLOMPCUR does not exist\n";
+  my $songAbsPath = Klomp::Lib::getSongAbsPath $$cur{lib}, $$cur{relpath};
+  if(not defined $songAbsPath){
+    die "Couldnt find song $$cur{relpath} in lib $$cur{lib}\n";
+  }elsif(not -f $songAbsPath){
+    die "Song $songAbsPath not found on the filesystem\n";
   }
-  my $cur = `cat $KLOMPCUR`;
-  if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
-    die "Current file $KLOMPCUR malformed";
-  }
-
-  my ($initPos, $len, $paused, $lib, $relpath) = ($1, $2, $3, $4, $5);
-  my $songAbsPath = Klomp::Lib::getSongAbsPath $lib, $relpath;
-  die "Couldnt find song $relpath in lib $lib\n" if not defined $songAbsPath;
 
   if(-e $PID_FILE){
     my $pid = `cat $PID_FILE 2>/dev/null`;
@@ -40,15 +33,19 @@ sub main(@){
     system "rm $PID_FILE";
   }
 
+  system "rm", "-f", $FIFO;
+  system "mkfifo", $FIFO;
+  fork or exec "klomp-fifo-writer";
+
   my $pid = open FH, '-|',
     'mplayer',
     '-vo', 'BUGGYBUGBUGBUG',
     '-quiet',
     '-input', "file=$FIFO",
-    '-ss', $initPos,
+    '-ss', $$cur{pos},
     $songAbsPath;
 
-  system "echo pause > $FIFO" if $paused =~ /^paused/;
+  system "echo pause > $FIFO" if $$cur{paused};
 
   system "echo $pid > $PID_FILE";
 
@@ -60,7 +57,7 @@ sub main(@){
 
   my $sexPos = undef;
   my $sexLen = undef;
-  $paused = 'no';
+  my $paused = 0;
 
   while(1){
     if(not -e $PID_FILE){
@@ -86,38 +83,66 @@ sub main(@){
     }
     if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
       $sexLen = $1;
-      update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+      updateKlompCur $cur, $sexPos, $sexLen, $paused;
     }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
       $sexPos = $1;
-      update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+      updateKlompCur $cur, $sexPos, $sexLen, $paused;
     }elsif($line =~ /^ANS_pause=(yes|no)$/){
-      $paused = $1;
-      update $sexPos, $sexLen, $paused if defined $sexPos and defined $sexLen;
+      my $ansPause = $1;
+      $paused = $ansPause =~ /yes/ ? 1 : 0;
+      updateKlompCur $cur, $sexPos, $sexLen, $paused;
     }
   }
 }
 
-sub update($$$){
-  my $pos = shift;
-  my $len = shift;
-  my $paused = shift;
-  my $cur = `cat $KLOMPCUR`;
-  if($cur !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
-    die "Current file $KLOMPCUR malformed";
-  }
-  my ($oldPos, $oldLen, $oldPaused, $lib, $relpath) = ($1, $2, $3, $4, $5);
-
-  my $pausedDisplay = $paused eq 'yes' ? 'paused ' : '';
-  my $new = "$pos $len $pausedDisplay$lib\@$relpath";
-  if($cur !~ s/^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)\@(.*)/$new/){
-    die "Current file $KLOMPCUR malformed";
-  }
-  if($4 ne $lib or $5 ne $relpath){
-    die "Klomplayer thinks a different file is playing than whats in $KLOMPCUR\n";
-  }
-  open CURFILE, "> $KLOMPCUR";
-  print CURFILE $cur;
+sub readKlompCur(){
+  die "$KLOMPCUR does not exist\n" if not -f $KLOMPCUR;
+  open CURFILE, "< $KLOMPCUR" or die "Could not read $KLOMPCUR\n";
+  my $contents = join '', <CURFILE>;
   close CURFILE;
+
+  if($contents !~ /^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)@(.*)/){
+    die "$KLOMPCUR is malformed:\n$contents\n";
+  }
+  my ($pos, $len, $paused, $lib, $relpath) = ($1, $2, $3, $4, $5);
+  return {
+    pos      => $pos,
+    len      => $len,
+    paused   => (defined $paused and $paused =~ /paused/ ? 1 : 0),
+    lib      => $lib,
+    relpath  => $relpath,
+    contents => $contents,
+  };
+}
+
+sub updateKlompCur($$$$){
+  my ($cur, $pos, $len, $paused) = @_;
+  my $pausedDisplay = $paused ? "paused " : "";
+
+  if(not defined $pos or not defined $len){
+    return;
+  }
+
+  my $newCur = readKlompCur;
+  if($$cur{lib} ne $$newCur{lib} or $$cur{relpath} ne $$newCur{relpath}){
+    die "song has changed out from underneath $0\n";
+  }
+
+  my $contents = $$cur{contents};
+
+  my $new = "$pos $len $pausedDisplay$$newCur{lib}\@$$newCur{relpath}";
+  if($contents !~ s/^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)\@(.*)/$new/){
+    die "$KLOMPCUR is malformed:\n$contents\n";
+  }
+
+  open CURFILE, "> $KLOMPCUR" or die "Could not write $KLOMPCUR\n";
+  print CURFILE $contents;
+  close CURFILE;
+
+  $$cur{pos} = $pos;
+  $$cur{len} = $len;
+  $$cur{paused} = $paused;
+  $$cur{contents} = $contents;
 }
 
 &main(@ARGV);
