@@ -52,6 +52,7 @@ sub getProperties(;$){
 
 sub getProperty($;$){
   my ($prop, $klompLib) = @_;
+  checkPropName $prop;
   my $props = parseProps $klompLib;
   return $$props{$prop};
 }
