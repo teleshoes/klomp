@@ -684,8 +684,8 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
         ["@l^""$"] => @l^"$   {"" is a literal " in quoted string}
        NOT: a ! at the start of a WORD
         [love !"the beatles"] => love AND NOT(the beatles)
-       COLS: @ followed by any of tlagpn at the start of a WORD
-        t:title  l:album  a:artist  g:genre  p:path  n:number
+       COLS: @ followed by any of tlagpnd at the start of a WORD
+        t:title  l:album  a:artist  g:genre  p:path  n:number d:duration
         [@ap"the beatles"] => COLS{ARTIST, PATH}(the beatles)
        AND: whitespace or &&
         [white && album , the] => white AND album AND , AND the
