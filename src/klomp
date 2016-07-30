@@ -23,8 +23,8 @@ KLOMP_CUR = os.popen('klomp-files -n cur').read()
 KLOMP_DATECACHE = os.popen('klomp-files -n datecache').read()
 
 NAMED_SORT_ORDERS = { "shuffle": (False, ["random"])
-                    , "artist-group": (False, ["artist", "album", "number"])
-                    , "album-group": (False, ["album", "number"])
+                    , "artist-group": (False, ["artist", "album", "disc", "number"])
+                    , "album-group": (False, ["album", "disc", "number"])
                     , "newest-first": (True, ["dateAdded"])
                     }
 SORT_NAME_CYCLE_ORDER = ["shuffle", "artist-group", "album-group", "newest-first"]
@@ -61,9 +61,9 @@ usage = """Usage:
       %(sortAtts)s
 
     e.g.:
-      --sort=artist,album,number  ==  --sort=artist-group
-      --sort=shuffle              ==  --sort=random,random,random
-      --sort=newest-first         ==  --sort=dateAdded --reverse
+      --sort=artist,album,disc,number  ==  --sort=artist-group
+      --sort=shuffle                   ==  --sort=random,random,random
+      --sort=newest-first              ==  --sort=dateAdded --reverse
 
   --reverse
     reverses the sort order before adding the songs
