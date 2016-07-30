@@ -706,7 +706,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
   def update(self):
     self.clear()
     self.updateSize()
- 
+
     buckets = dict()
     bucketDisplays = dict()
     bucketOrder = []
