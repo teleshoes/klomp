@@ -29,7 +29,7 @@ NAMED_SORT_ORDERS = { "shuffle": (False, ["random"])
                     }
 SORT_NAME_CYCLE_ORDER = ["shuffle", "artist-group", "album-group", "newest-first"]
 SORT_ATTRIBUTES = ['random', 'dateAdded',
-                   'title', 'album', 'artist', 'genre', 'path', 'number']
+                   'title', 'album', 'artist', 'genre', 'path', 'disc', 'number']
 
 usage = """Usage:
   %(exec)s -h | --help
@@ -476,6 +476,8 @@ class SongSorter():
         key.append(random())
       elif att == "number":
         key.append(self.formatNumber(song[att]))
+      elif att == "disc":
+        key.append(self.formatNumber(song[att]))
       elif att in SORT_ATTRIBUTES:
         key.append(song[att])
       else:
@@ -555,7 +557,7 @@ class KlompLibs():
     self.sep = "///\\\\\\"
     reSep = self.sep.replace('\\', '\\\\')
     self.songRe = re.compile('([^@]*)@(.*)')
-    self.attCols = ["artist", "album", "number", "title", "duration", "query"]
+    self.attCols = ["artist", "album", "number", "disc", "title", "duration", "query"]
     attColsRe = "|".join(self.attCols)
     self.attRe = re.compile("(" + attColsRe + ")=(.*)")
   def toString(self, song):
@@ -564,6 +566,7 @@ class KlompLibs():
         self.sep + "artist=" + song['artist'] +
         self.sep + "album=" + song['album'] +
         self.sep + "number=" + song['number'] +
+        self.sep + "disc=" + song['disc'] +
         self.sep + "title=" + song['title'] +
         self.sep + "duration=" + song['duration'] +
         self.sep + "query=" + song['query'] + "\n")
@@ -622,15 +625,33 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       left = lim/2
       right = length - lim/2 - lim%2 + ellipLen
       return s[:left] + ellip + s[right:]
-  def padNumbers(self, songs):
+  def formatNumbers(self, songs):
+    for s in songs:
+      s['disc'] = re.sub('/\s*\d+', '', s['disc'])
+      s['number'] = re.sub('/\s*\d+', '', s['number'])
     maxLen = max([len(s['number']) for s in songs])
     for s in songs:
       numLen = len(s['number'])
       prefix = ' ' * (maxLen - numLen)
       s['number'] = prefix + s['number']
+
+    maxLen = max([len(s['disc']) for s in songs])
+    for s in songs:
+      numLen = len(s['disc'])
+      prefix = ' ' * (maxLen - numLen)
+      s['disc'] = prefix + s['disc']
+
+    uniqDiscs = set([s['disc'] for s in songs])
+    if len(uniqDiscs) == 1:
+      for s in songs:
+        s['disc'] = ''
   def formatSong(self, s):
     dur = fmtTime(s['duration'])
-    return ' ' + s['number'] + ':' + s['title'] + ' (' + dur + ')'
+    if len(s['disc']) > 0:
+      num = s['disc'] + "-" + s['number']
+    else:
+      num = s['number']
+    return ' ' + num + ':' + s['title'] + ' (' + dur + ')'
   def formatSongBucket(self, s):
     prefix = ''
     sep1 = ' - '
@@ -684,8 +705,8 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
         ["@l^""$"] => @l^"$   {"" is a literal " in quoted string}
        NOT: a ! at the start of a WORD
         [love !"the beatles"] => love AND NOT(the beatles)
-       COLS: @ followed by any of tlagpnd at the start of a WORD
-        t:title  l:album  a:artist  g:genre  p:path  n:number d:duration
+       COLS: @ followed by any of tlagpncd at the start of a WORD
+        t:title  l:album  a:artist  g:genre  p:path  n:number c:disc d:duration
         [@ap"the beatles"] => COLS{ARTIST, PATH}(the beatles)
        AND: whitespace or &&
         [white && album , the] => white AND album AND , AND the
@@ -730,7 +751,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
         break
       self.printLine(bucketDisplays[bucket])
       bucketSongs = buckets[bucket]
-      self.padNumbers(bucketSongs)
+      self.formatNumbers(bucketSongs)
       for fmtSong in [self.formatSong(s) for s in bucketSongs]:
         self.printLine(fmtSong)
     self.win.noutrefresh()
@@ -828,7 +849,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
 
 class KlompQuery():
   def __init__(self):
-    self.cols = ['artist', 'albumartist', 'album', 'number', 'title',
+    self.cols = ['artist', 'albumartist', 'album', 'disc', 'number', 'title',
       'duration', 'relpath', 'library']
     self.query = None
     self.dbQuery = None
@@ -895,6 +916,7 @@ class KlompQuery():
       now = int(round(time.time()))
       for s in songs:
         s['query'] = self.query
+        s['disc'] = re.sub('^0+', '', s['disc'])
         s['number'] = re.sub('^0+', '', s['number'])
         self.tweakArtist(s)
         path = s['library'] + "/" + s['relpath']
