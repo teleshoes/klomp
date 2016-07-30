@@ -19,7 +19,7 @@ my @songSuffixes = ('mp3', 'flac', 'ogg', 'm4a', 'wma', 'wav');
                     #aiff
 
 my @infoCols = qw(library relpath filesize modified md5sum acoustid duration);
-my @tagCols = qw(title artist albumartist album number date genre);
+my @tagCols = qw(title artist albumartist album disc number date genre);
 my @guessTagCols = map{$_ . "_guess"} @tagCols;
 my @searchableCols = (@infoCols, @tagCols);
 my @allCols = (@infoCols, @tagCols, @guessTagCols);
@@ -506,6 +506,7 @@ sub getSubQuerySql($$){
     a => ["artist", "artist_guess", "albumartist", "albumartist_guess"],
     g => ["genre"],
     p => ["relpath"],
+    c => ["disc"],
     n => ["number", "number_guess"],
     d => ["duration"],
   );
@@ -544,6 +545,7 @@ sub getNumericSubQuerySql($){
   my $q = shift;
 
   my %numericColumns = (
+    c => "disc",
     n => "number_guess",
     d => "duration",
   );
