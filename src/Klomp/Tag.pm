@@ -173,6 +173,9 @@ sub readMid3v2($){
       [TOAL => "Original Album"],
       [TSOA => "Album Sort Order key"],
     ],
+    disc => [
+      [TPOS => "Part of a set"],
+    ],
     number => [
       [TRCK => "Track Number"],
     ],
@@ -245,6 +248,7 @@ sub readTags($){
   my $artist='';
   my $albumartist='';
   my $album='';
+  my $disc='';
   my $number='';
   my $date='';
   my $genre='';
@@ -252,9 +256,9 @@ sub readTags($){
     if($MP3_LIB){
       my $mid3v2 = `mid3v2 '$file'`;
       my %m = %{readMid3v2 $mid3v2};
-      ($title, $artist, $albumartist, $album, $number, $date, $genre) = (
+      ($title, $artist, $albumartist, $album, $disc, $number, $date, $genre) = (
         $m{title}, $m{artist}, $m{albumartist},
-        $m{album}, $m{number}, $m{date}, $m{genre});
+        $m{album}, $m{disc}, $m{number}, $m{date}, $m{genre});
     }else{
       print STDERR "WARNING: no tags for $file, missing mid3v2\n";
     }
@@ -265,6 +269,7 @@ sub readTags($){
       $artist      = $1 if $lltag =~ m/^\s*ARTIST=(.*)$/mix;
       $albumartist = $1 if $lltag =~ m/^\s*ALBUMARTIST=(.*)$/mix;
       $album       = $1 if $lltag =~ m/^\s*ALBUM=(.*)$/mix;
+      $disc        = $1 if $lltag =~ m/^\s*DISCNUMBER=(.*)$/mix;
       $number      = $1 if $lltag =~ m/^\s*NUMBER=(.*)$/mix;
       $number      = $1 if $lltag =~ m/^\s*TRACKNUMBER=(.*)$/mix;
       $date        = $1 if $lltag =~ m/^\s*DATE=(.*)$/mix;
@@ -286,6 +291,7 @@ sub readTags($){
       $artist      = $tags{$tag} if $tag =~ m/^AUTHOR$/mix;
       $albumartist = $tags{$tag} if $tag =~ m/^ALBUMARTIST$/mix;
       $album       = $tags{$tag} if $tag =~ m/^ALBUMTITLE$/mix;
+      $disc        = $tags{$tag} if $tag =~ m/^PARTOFSET$/mix;
       $number      = $tags{$tag} if $tag =~ m/^TRACKNUMBER$/mix;
       $date        = $tags{$tag} if $tag =~ m/^YEAR$/mix;
       $genre       = $tags{$tag} if $tag =~ m/^GENRE$/mix;
@@ -297,6 +303,7 @@ sub readTags($){
       $artist      = $1 if $atomic =~ m/^Atom\ "©ART"\ contains:\ (.*)$/mix;
       $albumartist = $1 if $atomic =~ m/^Atom\ "aART"\ contains:\ (.*)$/mix;
       $album       = $1 if $atomic =~ m/^Atom\ "©ALB"\ contains:\ (.*)$/mix;
+      $disc        = $1 if $atomic =~ m/^Atom\ "disk"\ contains:\ (.*)$/mix;
       $number      = $1 if $atomic =~ m/^Atom\ "trkn"\ contains:\ (.*)$/mix;
       $date        = $1 if $atomic =~ m/^Atom\ "©day"\ contains:\ (.*)$/mix;
       $genre       = $1 if $atomic =~ m/^Atom\ "(?:gnre|©gen)"\ contains:\ (.*)$/mix;
@@ -314,6 +321,7 @@ sub readTags($){
     artist => $artist,
     albumartist => $albumartist,
     album => $album,
+    disc => $disc,
     number => $number,
     date => $date,
     genre => $genre);

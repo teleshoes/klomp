@@ -7,7 +7,7 @@ use Klomp::Tag;
 sub formatTags($$$);
 sub guess($$$);
 
-my @cols = qw(title artist albumartist album number date genre);
+my @cols = qw(title artist albumartist album disc number date genre);
 my $colUsage = join "|", @cols;
 
 my $usage = "Usage:
@@ -17,6 +17,7 @@ my $usage = "Usage:
           title:Legions (War)
           artist:Zoë Keating
           album:One Cello x 16: Natoma
+          disc:
           number:1
           date:2005-01-01
           genre:
@@ -26,6 +27,7 @@ my $usage = "Usage:
           title:深海牧場⁞fukami/shinkaibokujou/makiba
           artist:久石譲⁞hisaishijou/yuzuri/yuzuru
           album:崖の上のポニョ [Ghibli]⁞gai/gakenojounoponyo [Ghibli]
+          disc:
           number:01⁞00001
           date:2008
           genre:
@@ -94,6 +96,7 @@ sub formatTags($$$){
     . "artist:$tags{artist}\n"
     . "albumartist:$tags{albumartist}\n"
     . "album:$tags{album}\n"
+    . "disc:$tags{disc}\n"
     . "number:$tags{number}\n"
     . "date:$tags{date}\n"
     . "genre:$tags{genre}\n"
