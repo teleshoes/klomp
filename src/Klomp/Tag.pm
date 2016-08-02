@@ -230,10 +230,19 @@ sub readMid3v2($){
   if(defined $parsedFrames{TYER} and defined $parsedFrames{TDAT}){
     my $y = $parsedFrames{TYER};
     my $dm = $parsedFrames{TDAT};
-    if($y =~ /^\d+$/ and $dm =~ /^(\d\d)[ \=_\/]*(\d\d)$/){
-      $info{date} = "$y-$2-$1"; #Y-M-D
+
+    my $year;
+    if($y =~ /^\s*(\d+)\s*$/){
+      $year = $1;
     }else{
-      $info{date} = "$y $dm";
+      $year = $y;
+    }
+
+    if($dm =~ /^\s*(\d\d)[ =_\/\-]*(\d\d)\s*$/){
+      my ($month, $day) = ($2, $1);
+      $info{date} = "$year-$month-$day";
+    }else{
+      $info{date} = "$year $dm";
     }
   }
   return \%info;
