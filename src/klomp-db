@@ -688,19 +688,16 @@ sub parseCsvCols($){
   chomp $csvrow;
   my @cols;
   while($csvrow =~ /
+    (?:^|,)
     (?:
-      "()"
+      "((?:[^"]|"")*)"
       |
-      "(.*?(?<!"))"
-      |
-      ([^,]+)
+      ([^,"]*)
     )
-    (?:,|$)
   /gsxi){
     my $col;
     $col = $1 if defined $1;
     $col = $2 if defined $2;
-    $col = $3 if defined $3;
     $col =~ s/""/"/g;
     push @cols, $col;
   }
