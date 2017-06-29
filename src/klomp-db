@@ -33,7 +33,7 @@ sub shell(@);
 sub shellQuiet(@);
 sub runSql($$;@);
 sub runSqlBatch($\@;@);
-sub cols($);
+sub parseCsvCols($);
 sub addSongs($$$$);
 sub startThread($$$$$);
 sub joinThread($);
@@ -601,8 +601,8 @@ sub info($$){
   die "more than one song found, use abs path instead of '$songRelPath'\n"
     if @rows > 2;
 
-  my @headers = cols $rows[0];
-  my @data = cols $rows[1];
+  my @headers = parseCsvCols $rows[0];
+  my @data = parseCsvCols $rows[1];
 
   if(@headers != @data){
     die "mismatched headers and data\n";
@@ -683,7 +683,7 @@ sub runSqlBatch($\@;@){
   runSql $db, $sql, @_;
 }
 
-sub cols($){
+sub parseCsvCols($){
   my $csvrow = shift;
   chomp $csvrow;
   my @cols;
