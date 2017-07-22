@@ -697,9 +697,17 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       TAB to view playlist
       ENTER prompts what to do with songs selected by query
         {all songs in default libs are selected by default}
-      Searching is case insensitive against title, album or artist.
-      Guess columns allow for unicode transforms and script transliteration.
-       Query syntax:
+
+      Search syntax is: "<FILTER> <QUERY>"
+      <QUERY> searches using klomp-db, and <FILTER> removes some results
+      both are optional
+
+      FILTER:
+        @@d<NUM>  remove all but the most recently added <NUM> songs (dateAdded)
+          [@@d10 @a"^the beatles$"]  => 10 most recently added songs by the beatles
+      QUERY:
+        Searching is case insensitive against title, album or artist.
+        Guess columns allow for unicode transforms and script transliteration.
        WORD: double-quoted string or non-whitespace, non-special string
         ["a snack"] => a snack
         ["@l^""$"] => @l^"$   {"" is a literal " in quoted string}
