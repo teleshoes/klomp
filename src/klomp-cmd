@@ -2,8 +2,8 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
+use Klomp::Config;
 use Klomp::Files;
-use Klomp::Lib;
 
 my $klomplayerExec = 'klomplayer';
 my $FILES = Klomp::Files::allKlompFiles();
@@ -96,7 +96,7 @@ sub setBreaks($);
 sub maybePropCmd($);
 
 sub main(@){
-  my $targetUser = Klomp::Lib::getProperty "targetUser";
+  my $targetUser = Klomp::Config::getProperty "targetUser";
   if(defined $targetUser and "$targetUser\n" ne `whoami`){
     print "rerunning as $targetUser\n";
     exec "sudo su -c '$0 @ARGV' $targetUser";
@@ -142,7 +142,7 @@ sub main(@){
       start;
       maybePropCmd("hardStartCmd");
     }else{
-      my $disallowPause = Klomp::Lib::getProperty "disallowPause";
+      my $disallowPause = Klomp::Config::getProperty "disallowPause";
       if(defined $disallowPause and $disallowPause =~ /true/i){
         stop;
         maybePropCmd("hardStopCmd");
@@ -359,7 +359,7 @@ sub getNice($){
 }
 
 sub maybeRenice(){
-  my $renice = Klomp::Lib::getProperty "renice";
+  my $renice = Klomp::Config::getProperty "renice";
   if(defined $renice and $renice =~ /^[+\-]?\d+$/){
     print "renicing to '$renice' in 1s..\n";
     sleep 1;
@@ -576,7 +576,7 @@ sub jump($$){
 
 sub maybePropCmd($){
   my $prop = shift;
-  my $cmd = Klomp::Lib::getProperty $prop;
+  my $cmd = Klomp::Config::getProperty $prop;
   if(defined $cmd){
     print "running '$cmd'\n";
     $cmd =~ s/'/'\\''/g;

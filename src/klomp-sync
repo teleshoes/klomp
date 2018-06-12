@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
+use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
 use Safe;
@@ -186,8 +187,8 @@ sub sync($$$$$){
     }
   }
 
-  my $props = Klomp::Lib::getProperties;
-  my $remoteProps = Klomp::Lib::getProperties $klompLib;
+  my $props = Klomp::Config::getProperties;
+  my $remoteProps = Klomp::Config::getProperties $klompLib;
 
   if(defined $host){
     runOrDie "ssh", "$host", "bash -c 'klomp-update --utils-only'";

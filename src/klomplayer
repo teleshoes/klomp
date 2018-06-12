@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 use lib "/opt/klomp/lib";
+use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
 
@@ -23,7 +24,7 @@ sub main(@){
 
   my $cur = readKlompCur;
 
-  my $updateCurCmd = Klomp::Lib::getProperty "updateCurCmd";
+  my $updateCurCmd = Klomp::Config::getProperty "updateCurCmd";
 
   my $songAbsPath = Klomp::Lib::getSongAbsPath $$cur{lib}, $$cur{relpath};
   if(not defined $songAbsPath){

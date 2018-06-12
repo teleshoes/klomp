@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
+use Klomp::Config;
 use Klomp::Files;
 use Klomp::History;
 use Klomp::Lib;
@@ -92,7 +93,7 @@ sub main(@){
     }
   }
 
-  my $props = Klomp::Lib::getProperties;
+  my $props = Klomp::Config::getProperties;
   genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
   genHistoryDir $$props{history} if defined $$props{history} and not $quick;
   genHistoryDateCache if defined $$props{history} and not $quick;

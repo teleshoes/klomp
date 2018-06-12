@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use lib "/opt/klomp/lib";
+use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
 
@@ -11,7 +12,7 @@ my $usage = "Usage:
   $0 [--file=libfile]
     print available libs
   $0 [--file=libfile] -p [PROP]
-    print library properties, one per line in the form \"<prop>=<val>\"
+    print config properties, one per line in the form \"<prop>=<val>\"
     if PROP is given, just print \"<val>\"
   $0 [--file=libfile] -d
     print default libs
@@ -36,10 +37,10 @@ sub main(@){
     print map {"$_\n"} Klomp::Lib::getAllLibNames $klompLib;
   }elsif($cmd eq "-p"){
     if(not defined $arg){
-      my $props = Klomp::Lib::getProperties $klompLib;
+      my $props = Klomp::Config::getProperties $klompLib;
       print "$_ => $$props{$_}\n" foreach sort keys %$props;
     }else{
-      my $val = Klomp::Lib::getProperty $arg, $klompLib;
+      my $val = Klomp::Config::getProperty $arg, $klompLib;
       print "$val\n" if defined $val;
     }
   }elsif($cmd eq "-d" and not defined $arg){

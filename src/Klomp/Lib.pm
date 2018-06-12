@@ -6,33 +6,14 @@ use Klomp::Files;
 my $defaultKlompLib = Klomp::Files::klompFile("lib");
 
 sub getSongAbsPath($$);
-sub getProperties(;$);
 sub getAllLibNames(;$);
 sub getDefaultLibNames(;$);
 sub getLibraryPath($;$);
 sub getFlacmirrorPath($;$);
 sub isPreferMirror($;$);
 
-sub parseLibs(;$);
-sub parseProps(;$);
 sub readLibFile(;$);
 sub getLibArray($;$);
-sub checkPropName($);
-
-my $props = {
-  symlink       => 'dir where all lib subdirs are symlinked by klomp-update',
-  history       => 'git repo where klomp-update tracks database and filenames',
-  startCmd      => 'run when klomp-cmd starts klomplayer',
-  stopCmd       => 'run when klomp-cmd tries to kill klomplayer',
-  hardStartCmd  => 'run after startCmd, but only when previously stopped',
-  hardStopCmd   => 'run after stopCmd, but only when previously running',
-  playlistCmd   => 'run when klomp-cmd changes playlists',
-  updateCurCmd  => 'run by klomplayer every 20s while klompcur is updated',
-  renice        => 'renice klomplayer to this value',
-  targetUser    => 're-run klomp-cmd as this user using sudo su -c',
-  disallowPause => 'klomp-cmd stops instead of pauses, killing klomplayer',
-};
-my $okProps = join "|", sort keys %$props;
 
 sub getSongAbsPath($$){
   my ($lib, $relpath) = @_;
@@ -56,27 +37,15 @@ sub getSongAbsPath($$){
   return undef;
 }
 
-sub getProperties(;$){
-  my ($klompLib) = @_;
-  return parseProps $klompLib;
-}
-
-sub getProperty($;$){
-  my ($prop, $klompLib) = @_;
-  checkPropName $prop;
-  my $props = parseProps $klompLib;
-  return $$props{$prop};
-}
-
 sub getAllLibNames(;$){
   my ($klompLib) = @_;
-  my $libs = parseLibs $klompLib;
+  my $libs = readLibFile $klompLib;
   return sort keys %$libs;
 }
 
 sub getDefaultLibNames(;$){
   my ($klompLib) = @_;
-  my $libs = parseLibs $klompLib;
+  my $libs = readLibFile $klompLib;
   return grep {${$$libs{$_}}[0] eq 'default'} sort keys %$libs;
 }
 
@@ -101,16 +70,6 @@ sub isPreferMirror($;$){
   }
 }
 
-sub parseLibs(;$){
-  my ($klompLib) = @_;
-  return ${readLibFile $klompLib}[0];
-}
-
-sub parseProps(;$){
-  my ($klompLib) = @_;
-  return ${readLibFile $klompLib}[1];
-}
-
 sub readLibFile(;$){
   my ($klompLib) = @_;
   $klompLib = $defaultKlompLib if not defined $klompLib;
@@ -121,50 +80,28 @@ sub readLibFile(;$){
   close FH;
   chomp foreach @lines;
 
-  my %libs;
-  my %props;
+  my $libs = {};
   my (@libLines, @properties);
   for my $line(@lines){
     if($line =~ /^\s*#/ or $line =~ /^\s*$/){
       next;
     }elsif($line =~ /^(.*):(.*):(.*):(.*):(.*)/){
-      $libs{$1} = [$2, $3, $4, $5];
-    }elsif($line =~ /^\s*([^ \t]*)\s*=\s*(.*?)\s*$/){
-      my ($propName, $propValue) = ($1, $2);
-      checkPropName $propName;
-      $props{$propName} = $propValue;
+      $$libs{$1} = [$2, $3, $4, $5];
     }else{
       die "Malformed lib line: $line\n";
     }
   }
-  return [\%libs, \%props];
+  return $libs;
 }
 
 sub getLibArray($;$){
   my ($lib, $klompLib) = @_;
-  my $libs = parseLibs $klompLib;
+  my $libs = readLibFile $klompLib;
   if(not defined $$libs{$lib}){
     my $okLibs = join ', ', sort keys %$libs;
     die "Unknown lib '$lib' (known libs: $okLibs)\n";
   }
   return $$libs{$lib};
-}
-
-sub checkPropName($){
-  my $propName = shift;
-  if($propName !~ /^($okProps)$/){
-    my $maxPropNameLen = 0;
-    for my $propName(sort keys %$props){
-      $maxPropNameLen = length $propName if length $propName > $maxPropNameLen;
-    }
-    my $propMsg = "";
-    for my $propName(sort keys %$props){
-      $propMsg .= "  $propName";
-      $propMsg .= ' ' x ($maxPropNameLen-length $propName);
-      $propMsg .= " => $$props{$propName}\n";
-    }
-    die "Unknown property '$propName'\nknown properties:\n$propMsg";
-  }
 }
 
 1;

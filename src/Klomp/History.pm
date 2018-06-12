@@ -1,7 +1,7 @@
 package Klomp::History;
 use strict;
 use warnings;
-use Klomp::Lib;
+use Klomp::Config;
 
 sub getDateCache();
 sub getFiles();
@@ -76,7 +76,7 @@ sub getCommitInfo($){
 }
 
 sub getHistoryDir(){
-  return ${Klomp::Lib::getProperties()}{'history'};
+  return Klomp::Config::getProperty('history');
 }
 
 sub checkHistoryDir(){

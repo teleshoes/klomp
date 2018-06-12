@@ -13,6 +13,7 @@ my $files = {
   history      => "$ENV{HOME}/.klomp/history",
   datecache    => "$ENV{HOME}/.klomp/datecache",
   lib          => "$ENV{HOME}/.klomp/lib",
+  config       => "$ENV{HOME}/.klomp/config",
   playlistname => "$ENV{HOME}/.klomp/playlist",
   playlistdir  => "$ENV{HOME}/.klomp/list-",
   fifo         => "/tmp/klomplayer_fifo",
