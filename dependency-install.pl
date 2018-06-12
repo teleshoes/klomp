@@ -24,7 +24,7 @@ sub main(@){
   my @translit = qw(libtext-unidecode-perl);
   my @flacmirror = qw(dir2ogg);
   my @japanese = qw(liblingua-ja-romanize-japanese-perl);
-  my @duration = qw(libav-tools);
+  my @duration = qw(ffmpeg);
 
   my $msg = ''
     . "searching for and playing music:\n"
