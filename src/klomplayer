@@ -84,10 +84,10 @@ sub main(@){
     if(not defined $line){
       die "i guess its dead...\n";
     }
+
     if($line =~ /^Exiting... \(End of file\)/){
       exec "$klompCmdExec next";
-    }
-    if($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
+    }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
       $sexPos = $1;
       updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
     }elsif($line =~ /^ANS_pause=(yes|no)$/){
