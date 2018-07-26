@@ -18,6 +18,7 @@ my $klompCmdExec = 'klomp-cmd';
 
 sub readKlompCur();
 sub updateKlompCur($$$$);
+sub nowMillis();
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
@@ -151,7 +152,7 @@ sub updateKlompCur($$$$){
   $$cur{contents} = $contents;
 
   if(defined $updateCurCmd){
-    my $nowMillis = time * 1000;
+    my $nowMillis = nowMillis();
     if(not defined $updateCurCmdNextRunMillis){
       $updateCurCmdNextRunMillis = $nowMillis + $updateCurCmdIntervalMillis;
     }elsif($nowMillis > $updateCurCmdNextRunMillis){
@@ -159,6 +160,10 @@ sub updateKlompCur($$$$){
       $updateCurCmdNextRunMillis = $nowMillis + $updateCurCmdIntervalMillis;
     }
   }
+}
+
+sub nowMillis(){
+  return int(time * 1000.0 + 0.5);
 }
 
 &main(@ARGV);
