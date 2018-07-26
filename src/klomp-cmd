@@ -117,6 +117,7 @@ my $usage = "Usage:
 sub getPid();
 sub isRunning();
 sub isPauseAllowed();
+sub isFifoValid();
 sub fifoCommand(@);
 sub removePause();
 sub pauseToStop();
@@ -334,8 +335,20 @@ sub isPauseAllowed(){
   }
 }
 
+sub isFifoValid(){
+  if(-p $$FILES{fifo}){
+    return 1;
+  }else{
+    return 0;
+  }
+}
+
 sub fifoCommand(@){
-  system "echo \"@_\" > $$FILES{fifo}";
+  if(isFifoValid){
+    system "echo \"@_\" > $$FILES{fifo}";
+  }else{
+    print STDERR "WARNING: $$FILES{fifo} not valid\n";
+  }
 }
 
 sub removePause(){
