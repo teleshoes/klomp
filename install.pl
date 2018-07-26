@@ -20,6 +20,7 @@ my @execs = qw(
   duration
   flacmirror
   presync
+  qtcmdplayer
   klomplayer
   klomp
   klomp-call-handler
