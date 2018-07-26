@@ -88,6 +88,7 @@ class QTCmdPlayerMP3:
 
     self.audioDecoder = QAudioDecoder()
     self.audioDecoder.bufferReady.connect(self.onBufferReady)
+    self.audioDecoder.finished.connect(self.onFinished)
     self.audioDecoder.positionChanged.connect(self.onPositionChanged)
     self.audioDecoder.setAudioFormat(self.audioFormat)
 
@@ -121,6 +122,10 @@ class QTCmdPlayerMP3:
       self.lastInterestingPosition = position
       print "pos: " + str(position)
       sys.stdout.flush()
+  def onFinished(self):
+    print("END")
+    sys.exit(0)
+
 
 if __name__ == "__main__":
   sys.exit(main())
