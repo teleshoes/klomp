@@ -619,6 +619,9 @@ sub jump($$){
   stop;
 
   my ($curPos, $curLen) = getPosLen();
+
+  $curPos += 0.02; #small margin of error for inexact seeking
+
   my $curPct = 100 * $curPos / $curLen;
   my $segmentStart = 0;
   while($segmentStart+$percent <= $curPct){
