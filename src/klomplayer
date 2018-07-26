@@ -25,6 +25,12 @@ sub nowMillis();
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
 
+  my $MPLAYER_EXEC = `which mplayer`;
+  chomp $MPLAYER_EXEC;
+  if($MPLAYER_EXEC !~ /mplayer/){
+    $MPLAYER_EXEC = undef;
+  }
+
   my $cur = readKlompCur;
 
   my $updateCurCmd = Klomp::Config::getProperty "updateCurCmd";
@@ -53,7 +59,7 @@ sub main(@){
   my $pid;
   if($USE_MPLAYER){
     $pid = open FH, '-|',
-      'mplayer',
+      $MPLAYER_EXEC,
       '-vo', 'BUGGYBUGBUGBUG',
       '-quiet',
       '-input', "file=$FIFO",
