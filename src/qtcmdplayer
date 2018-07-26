@@ -42,11 +42,15 @@ def main():
 
   app = QApplication([])
 
-  player = QTCmdPlayer(fileName, pos)
+  if os.path.splitext(fileName)[1].lower() == ".mp3":
+    player = QTCmdPlayerMP3(fileName, pos)
+  else:
+    player = QTCmdPlayer(fileName, pos)
   player.start()
 
   app.exec_()
 
+#doesnt allow seeking on MP3s
 class QTCmdPlayer(QMediaPlayer):
   def __init__(self, songFile, initPos):
     QMediaPlayer.__init__(self)
@@ -70,6 +74,53 @@ class QTCmdPlayer(QMediaPlayer):
   def onPositionChanged(self, pos):
     print("pos: " + str(pos))
     sys.stdout.flush()
+
+#doesnt work on flac at all
+class QTCmdPlayerMP3:
+  def __init__(self, songFile, initPos):
+    self.songFile = songFile
+    self.initPos = initPos
+
+    self.lastInterestingPosition = self.initPos
+    self.posInterval = 850
+
+    self.audioFormat = self.createAudioFormat()
+
+    self.audioDecoder = QAudioDecoder()
+    self.audioDecoder.bufferReady.connect(self.onBufferReady)
+    self.audioDecoder.positionChanged.connect(self.onPositionChanged)
+    self.audioDecoder.setAudioFormat(self.audioFormat)
+
+    self.audioOutput = QAudioOutput(self.audioFormat, self.audioDecoder)
+    self.audioDevice = self.audioOutput.start()
+  def start(self):
+    self.audioDecoder.setSourceFilename(self.songFile)
+    self.audioDecoder.start()
+  def createAudioFormat(self):
+    fmt = QAudioFormat()
+    fmt.setSampleRate(44100)
+    fmt.setChannelCount(2)
+    fmt.setSampleSize(16)
+    fmt.setCodec("audio/pcm")
+    fmt.setByteOrder(QAudioFormat.LittleEndian);
+    fmt.setSampleType(QAudioFormat.SignedInt);
+    return fmt
+  def onBufferReady(self):
+    b = self.audioDecoder.read()
+    pos = self.audioDecoder.position()
+    if pos >= self.initPos:
+      self.playBuffer(b)
+  def playBuffer(self, audioBuffer):
+    byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
+    byteArr = QByteArray.fromRawData(byteStr)
+    while(self.audioOutput.bytesFree() < audioBuffer.byteCount()):
+      time.sleep(0.001)
+    self.audioDevice.write(byteArr)
+  def onPositionChanged(self, position):
+    if position >= self.lastInterestingPosition + self.posInterval:
+      self.lastInterestingPosition = position
+      print "pos: " + str(position)
+      sys.stdout.flush()
 
 if __name__ == "__main__":
   sys.exit(main())
