@@ -4,6 +4,7 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Config;
 use Klomp::Files;
+use File::Basename 'basename';
 
 my $klomplayerExec = 'klomplayer';
 my $FILES = Klomp::Files::allKlompFiles();
@@ -137,8 +138,11 @@ sub addCurTimestamp($);
 sub removeCurTimestamp($);
 sub toggleActivePlaylist($);
 sub playlistPresent();
+sub getPlaylistFileBaseNames();
 sub backupPlaylistFiles($);
 sub restorePlaylistFiles($);
+sub moveFiles($$@);
+sub anyFilesExist(@);
 sub getActivePlaylistName();
 sub setActivePlaylistName($);
 sub setBreaks($);
@@ -261,8 +265,8 @@ sub setActivePlaylistName($){
   }
 }
 
-sub playlistPresent(){
-  return -e $$FILES{cur} || -e $$FILES{list} || -e $$FILES{history};
+sub getPlaylistFileBaseNames(){
+  return map {basename $_} ($$FILES{cur}, $$FILES{list}, $$FILES{history});
 }
 
 sub backupPlaylistFiles($){
@@ -271,18 +275,49 @@ sub backupPlaylistFiles($){
   system "mkdir", "-p", $dir;
   die "error: could not create $dir!\n" if not -e $dir;
 
-  system "mv", "--no-clobber",
-    $$FILES{cur}, $$FILES{list}, $$FILES{hist}, $dir;
-  die "error: playlist still present!\n" if playlistPresent;
+  my $srcDir = $$FILES{baseDir};
+  my $destDir = $dir;
+
+  moveFiles $srcDir, $destDir, getPlaylistFileBaseNames();
+
+  my @playlistFiles = map {"$$FILES{baseDir}/$_"} getPlaylistFileBaseNames();
+  die "error: playlist still present!\n" if anyFilesExist @playlistFiles;
 }
 sub restorePlaylistFiles($){
   my $dir = shift;
-  die "error: playlist exists and would be overridden!\n" if playlistPresent;
-  if(-e $dir){
-    system "mv --no-clobber $dir/* $dir/.* $$FILES{baseDir} 2>/dev/null";
-    system "rmdir", $dir;
-  }
+
+  my @playlistFiles = map {"$$FILES{baseDir}/$_"} getPlaylistFileBaseNames();
+  die "error: playlist exists and would be overridden!\n" if anyFilesExist @playlistFiles;
+
+  my $srcDir = $dir;
+  my $destDir = $$FILES{baseDir};
+
+  moveFiles $srcDir, $destDir, getPlaylistFileBaseNames();
+  system "rmdir", $dir;
+
   die "error: $dir still exists!\n" if -e $dir;
+}
+
+sub moveFiles($$@){
+  my ($srcDir, $destDir, @fileBaseNames) = @_;
+  for my $fileBaseName(@fileBaseNames){
+    my $srcFile = "$srcDir/$fileBaseName";
+    my $destFile = "$destDir/$fileBaseName";
+    if(not -e $srcFile){
+      next;
+    }elsif(-e $destFile){
+      die "ERROR: file would be overwritten: $destFile\n";
+    }else{
+      system "mv", $srcFile, $destFile;
+    }
+  }
+}
+
+sub anyFilesExist(@){
+  for my $file(@_){
+    return 1 if -e $file;
+  }
+  return 0;
 }
 
 sub setBreaks($){
