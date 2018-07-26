@@ -117,6 +117,7 @@ my $usage = "Usage:
 sub getPid();
 sub isRunning();
 sub isPauseAllowed();
+sub fifoCommand(@);
 sub removePause();
 sub pauseToStop();
 sub start(;$);
@@ -193,7 +194,7 @@ sub main(@){
         stop;
         maybePropCmd("hardStopCmd");
       }else{
-        system "echo pause > $$FILES{fifo}";
+        fifoCommand("pause");
       }
     }
   }elsif($cmd eq 'prev' and @_ == 0){
@@ -226,7 +227,7 @@ sub main(@){
     die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
     setBreaks $arg;
   }elsif($cmd eq 'fifo' and @_ > 0){
-    system "echo \"@_\" > $$FILES{fifo}";
+    fifoCommand(@_);
   }else{
     die $usage;
   }
@@ -331,6 +332,10 @@ sub isPauseAllowed(){
   }else{
     return 1;
   }
+}
+
+sub fifoCommand(@){
+  system "echo \"@_\" > $$FILES{fifo}";
 }
 
 sub removePause(){
