@@ -1,0 +1,75 @@
+#!/usr/bin/python
+#
+#qtcmdplayer
+#
+#Copyright 2018 Elliot Wolk
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtMultimedia import *
+from PyQt5.QtWidgets import *
+import os
+import re
+import sys
+import signal
+import time
+
+name = sys.argv[0]
+usage = ("Usage:\n"
+  + "  " + name + " FILE [POSITION_MILLIS]\n"
+)
+
+def printErr(msg):
+  sys.stderr.write(msg + "\n")
+
+def main():
+  if len(sys.argv) == 2 and sys.argv[1] == '-h':
+    print(usage)
+    return 0
+  elif len(sys.argv) == 2:
+    fileName = sys.argv[1]
+    pos = 0
+  elif len(sys.argv) == 3 and re.match('^\d+$', sys.argv[2]):
+    fileName = sys.argv[1]
+    pos = int(sys.argv[2])
+  else:
+    printErr(usage)
+    return 1
+
+  app = QApplication([])
+
+  player = QTCmdPlayer(fileName, pos)
+  player.start()
+
+  app.exec_()
+
+class QTCmdPlayer(QMediaPlayer):
+  def __init__(self, songFile, initPos):
+    QMediaPlayer.__init__(self)
+    self.songFile = songFile
+    self.initPos = initPos
+
+    self.started = False
+    self.mediaStatusChanged.connect(self.onMediaStatusChanged)
+    self.positionChanged.connect(self.onPositionChanged)
+  def start(self):
+    self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
+  def onMediaStatusChanged(self, status):
+    if(status == QMediaPlayer.LoadedMedia or status == QMediaPlayer.BufferedMedia):
+      if not self.started:
+        self.play()
+        self.started = True
+        self.setPosition(self.initPos)
+    elif(status == QMediaPlayer.EndOfMedia):
+      print("END")
+      sys.exit(0)
+  def onPositionChanged(self, pos):
+    print("pos: " + str(pos))
+    sys.stdout.flush()
+
+if __name__ == "__main__":
+  sys.exit(main())
