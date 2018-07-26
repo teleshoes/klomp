@@ -78,6 +78,8 @@ sub main(@){
     }
   }
 
+  my $startMillis = nowMillis();
+
   my $sexPos = $$cur{pos};
   my $paused = 0;
 
@@ -118,8 +120,22 @@ sub main(@){
       if($line =~ /^END$/){
         exec $klompCmdExec, "next";
       }elsif($line =~ /^pos: (\d+)$/){
-        $sexPos = $1 / 1000.0;
-        updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
+        my $posMillis = $1;
+
+        my $updatePos = 1;
+        my $sexPosMillis = int($sexPos * 1000.0 + 0.5);
+        if($posMillis < $sexPosMillis){
+          my $elapsedMillis = nowMillis() - $startMillis;
+          if($elapsedMillis < 2000){
+            #ignore invalid position for the first 2s of playback
+            $updatePos = 0;
+          }
+        }
+
+        if($updatePos){
+          $sexPos = $1 / 1000.0;
+          updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
+        }
       }
     }
   }
