@@ -58,6 +58,10 @@ sub main(@){
       '-input', "file=$FIFO",
       '-ss', $$cur{pos},
       $songAbsPath;
+  }else{
+    my $curPosMillis = int($$cur{pos} * 1000.0 + 0.5);
+    $pid = open FH, '-|', 'qtcmdplayer', $songAbsPath, $curPosMillis
+      or die "could not run qtcmdplayer\n$!\n";
   }
 
   system "echo $pid > $PID_FILE";
@@ -108,6 +112,13 @@ sub main(@){
       }elsif($line =~ /^ANS_pause=(yes|no)$/){
         my $ansPause = $1;
         $paused = $ansPause =~ /yes/ ? 1 : 0;
+        updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
+      }
+    }else{
+      if($line =~ /^END$/){
+        exec $klompCmdExec, "next";
+      }elsif($line =~ /^pos: (\d+)$/){
+        $sexPos = $1 / 1000.0;
         updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
       }
     }
