@@ -108,10 +108,10 @@ my $usage = "Usage:
      on: remove all stops, and place a stop after each song except the last
      off: remove all stops
      toggle: if any stops are present, same as off, else same as on
-  $0 <mplayer slave input command>
-     see: mplayer -input cmdlist
-     for complete command list
-     {e.g.: $0 seek 10}
+  $0 fifo <mplayer slave input command>
+     send mplayer commands to the FIFO
+       see `mplayer -input cmdlist` for valid commands
+       {e.g.: $0 fifo seek 10}
 ";
 
 sub getPid();
@@ -225,13 +225,10 @@ sub main(@){
     my $arg = shift;
     die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
     setBreaks $arg;
+  }elsif($cmd eq 'fifo' and @_ > 0){
+    system "echo \"@_\" > $$FILES{fifo}";
   }else{
-    my $okCmds = getAvailableInputCommands();
-    if(defined $$okCmds{$cmd}){
-      system "echo \"$cmd @_\" > $$FILES{fifo}";
-    }else{
-      die $usage;
-    }
+    die $usage;
   }
 }
 
@@ -305,15 +302,6 @@ sub setBreaks($){
   open FH, "> $$FILES{list}" or die "Couldn't write $$FILES{list}\n";
   print FH @newLines;
   close FH;
-}
-
-sub getAvailableInputCommands(){
-  my %cmds;
-  my $cmdlist = `mplayer -input cmdlist`;
-  while($cmdlist =~ /^([a-z_]+)/mg){
-    $cmds{$1} = 1;
-  }
-  return \%cmds;
 }
 
 sub getPid(){
