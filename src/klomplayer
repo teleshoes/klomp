@@ -43,8 +43,9 @@ sub main(@){
     system "rm $PID_FILE";
   }
 
+  system "rm", "-f", $FIFO;
+
   if($USE_MPLAYER){
-    system "rm", "-f", $FIFO;
     system "mkfifo", $FIFO;
     fork or exec "klomp-fifo-writer";
   }
