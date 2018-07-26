@@ -7,8 +7,6 @@ use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
 
-my $USE_MPLAYER = 1;
-
 my $updateCurCmdIntervalMillis = 20 * 1000;
 my $updateCurCmdNextRunMillis = undef;
 
@@ -30,6 +28,8 @@ sub main(@){
   if($MPLAYER_EXEC !~ /mplayer/){
     $MPLAYER_EXEC = undef;
   }
+
+  my $USE_MPLAYER = defined $MPLAYER_EXEC ? 1 : 0;
 
   my $cur = readKlompCur;
 
