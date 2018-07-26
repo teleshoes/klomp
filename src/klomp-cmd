@@ -116,6 +116,7 @@ my $usage = "Usage:
 
 sub getPid();
 sub isRunning();
+sub isPauseAllowed();
 sub removePause();
 sub pauseToStop();
 sub start(;$);
@@ -188,8 +189,7 @@ sub main(@){
       start;
       maybePropCmd("hardStartCmd");
     }else{
-      my $disallowPause = Klomp::Config::getProperty "disallowPause";
-      if(defined $disallowPause and $disallowPause =~ /true/i){
+      if(not isPauseAllowed()){
         stop;
         maybePropCmd("hardStopCmd");
       }else{
@@ -321,6 +321,15 @@ sub isRunning(){
     return $? == 0 ? 1 : 0;
   }else{
     return 0;
+  }
+}
+
+sub isPauseAllowed(){
+  my $disallowPause = Klomp::Config::getProperty "disallowPause";
+  if(defined $disallowPause and $disallowPause =~ /true/i){
+    return 0;
+  }else{
+    return 1;
   }
 }
 
