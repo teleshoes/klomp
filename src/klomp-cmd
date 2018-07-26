@@ -186,17 +186,15 @@ sub main(@){
       start 1;
     }
   }elsif($cmd eq 'pause' and @_ == 0){
-    if(not $wasRunning){
+    if($wasRunning and isPauseAllowed() and isFifoValid()){
+      fifoCommand("pause");
+    }elsif($wasRunning){
+      stop;
+      maybePropCmd("hardStopCmd");
+    }else{
       stop;
       start;
       maybePropCmd("hardStartCmd");
-    }else{
-      if(not isPauseAllowed()){
-        stop;
-        maybePropCmd("hardStopCmd");
-      }else{
-        fifoCommand("pause");
-      }
     }
   }elsif($cmd eq 'prev' and @_ == 0){
     stop;
