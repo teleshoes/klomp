@@ -17,7 +17,7 @@ my $KLOMPCUR = Klomp::Files::klompFile("cur");
 my $klompCmdExec = 'klomp-cmd';
 
 sub readKlompCur();
-sub updateKlompCur($$$$$);
+sub updateKlompCur($$$$);
 
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
@@ -63,7 +63,6 @@ sub main(@){
   }
 
   my $sexPos = undef;
-  my $sexLen = undef;
   my $paused = 0;
 
   while(1){
@@ -88,16 +87,13 @@ sub main(@){
     if($line =~ /^Exiting... \(End of file\)/){
       exec "$klompCmdExec next";
     }
-    if($line =~ /^ANS_LENGTH=([0-9\.\-]+)/){
-      $sexLen = $1;
-      updateKlompCur $cur, $sexPos, $sexLen, $paused, $updateCurCmd;
-    }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
+    if($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
       $sexPos = $1;
-      updateKlompCur $cur, $sexPos, $sexLen, $paused, $updateCurCmd;
+      updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
     }elsif($line =~ /^ANS_pause=(yes|no)$/){
       my $ansPause = $1;
       $paused = $ansPause =~ /yes/ ? 1 : 0;
-      updateKlompCur $cur, $sexPos, $sexLen, $paused, $updateCurCmd;
+      updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
     }
   }
 }
@@ -122,14 +118,11 @@ sub readKlompCur(){
   };
 }
 
-sub updateKlompCur($$$$$){
-  my ($cur, $pos, $len, $paused, $updateCurCmd) = @_;
+sub updateKlompCur($$$$){
+  my ($cur, $pos, $paused, $updateCurCmd) = @_;
   my $pausedDisplay = $paused ? "paused " : "";
 
-  if(not defined $pos or not defined $len){
-    return;
-  }
-  if($$cur{pos} eq $pos and $$cur{len} eq $len and $$cur{paused} eq $paused){
+  if($$cur{pos} eq $pos and $$cur{paused} eq $paused){
     return;
   }
 
@@ -140,7 +133,11 @@ sub updateKlompCur($$$$$){
 
   my $contents = $$cur{contents};
 
-  my $new = "$pos $len $pausedDisplay$$newCur{lib}\@$$newCur{relpath}";
+  $pos = 0 if $pos < 0;
+  $pos = sprintf "%.2f", $pos;
+
+
+  my $new = "$pos $$newCur{len} $pausedDisplay$$newCur{lib}\@$$newCur{relpath}";
   if($contents !~ s/^([0-9\.\-]+) ([0-9\.]+) (paused )?([^@]*)\@(.*)/$new/){
     die "$KLOMPCUR is malformed:\n$contents\n";
   }
@@ -150,7 +147,6 @@ sub updateKlompCur($$$$$){
   close CURFILE;
 
   $$cur{pos} = $pos;
-  $$cur{len} = $len;
   $$cur{paused} = $paused;
   $$cur{contents} = $contents;
 
