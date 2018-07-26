@@ -7,6 +7,8 @@ use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
 
+my $USE_MPLAYER = 1;
+
 my $updateCurCmdIntervalMillis = 20 * 1000;
 my $updateCurCmdNextRunMillis = undef;
 
@@ -41,26 +43,35 @@ sub main(@){
     system "rm $PID_FILE";
   }
 
-  system "rm", "-f", $FIFO;
-  system "mkfifo", $FIFO;
-  fork or exec "klomp-fifo-writer";
+  if($USE_MPLAYER){
+    system "rm", "-f", $FIFO;
+    system "mkfifo", $FIFO;
+    fork or exec "klomp-fifo-writer";
+  }
 
-  my $pid = open FH, '-|',
-    'mplayer',
-    '-vo', 'BUGGYBUGBUGBUG',
-    '-quiet',
-    '-input', "file=$FIFO",
-    '-ss', $$cur{pos},
-    $songAbsPath;
-
-  system "echo pause > $FIFO" if $$cur{paused};
+  my $pid;
+  if($USE_MPLAYER){
+    $pid = open FH, '-|',
+      'mplayer',
+      '-vo', 'BUGGYBUGBUGBUG',
+      '-quiet',
+      '-input', "file=$FIFO",
+      '-ss', $$cur{pos},
+      $songAbsPath;
+  }
 
   system "echo $pid > $PID_FILE";
 
-  my $line = '';
-  while($line !~ /^Starting playback\.\.\./){
-    $line = <FH>;
-    die "Error starting mplayer\n" if not defined $line;
+  if($USE_MPLAYER){
+    system "echo pause > $FIFO" if $$cur{paused};
+  }
+
+  if($USE_MPLAYER){
+    my $line = '';
+    while($line !~ /^Starting playback\.\.\./){
+      $line = <FH>;
+      die "Error starting mplayer\n" if not defined $line;
+    }
   }
 
   my $sexPos = undef;
@@ -77,8 +88,10 @@ sub main(@){
       }
     }
 
-    if(not -p $FIFO){
-      die "fifo $FIFO is broken\n";
+    if($USE_MPLAYER){
+      if(not -p $FIFO){
+        die "fifo $FIFO is broken\n";
+      }
     }
 
     my $line = <FH>;
@@ -86,15 +99,17 @@ sub main(@){
       die "i guess its dead...\n";
     }
 
-    if($line =~ /^Exiting... \(End of file\)/){
-      exec "$klompCmdExec next";
-    }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
-      $sexPos = $1;
-      updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
-    }elsif($line =~ /^ANS_pause=(yes|no)$/){
-      my $ansPause = $1;
-      $paused = $ansPause =~ /yes/ ? 1 : 0;
-      updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
+    if($USE_MPLAYER){
+      if($line =~ /^Exiting... \(End of file\)/){
+        exec "$klompCmdExec next";
+      }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
+        $sexPos = $1;
+        updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
+      }elsif($line =~ /^ANS_pause=(yes|no)$/){
+        my $ansPause = $1;
+        $paused = $ansPause =~ /yes/ ? 1 : 0;
+        updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
+      }
     }
   }
 }
