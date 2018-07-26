@@ -78,7 +78,7 @@ sub main(@){
     }
   }
 
-  my $sexPos = undef;
+  my $sexPos = $$cur{pos};
   my $paused = 0;
 
   while(1){
