@@ -157,6 +157,12 @@ class QTCmdPlayerMP3:
       self.paused = not self.paused
       print "paused=" + str(self.paused)
       return
+    m = re.match('^seek\s*(\d+)$', cmd)
+    if m:
+      self.waitingSeek = True
+      self.seekPosMicroSex = int(m.group(1)) * 1000
+      self.stopPlaying()
+      self.attemptSeek()
   def onBufferReady(self):
     b = self.audioDecoder.read()
     if self.audioOutput == None or self.audioDevice == None:
