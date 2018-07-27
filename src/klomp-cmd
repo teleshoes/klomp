@@ -398,6 +398,14 @@ sub fifoCommandPause(){
     fifoCommand("pause");
   }
 }
+sub fifoCommandSeek($){
+  my ($sexPos) = @_;
+  if(Klomp::Config::USE_MPLAYER()){
+    fifoCommand("seek $sexPos 2");
+  }elsif(Klomp::Config::USE_QTCMDPLAYER()){
+    fifoCommand("seek " . int($sexPos * 1000 + 0.5));
+  }
+}
 
 sub removePause(){
   return if not -e $$FILES{cur};
