@@ -135,6 +135,10 @@ sub main(@){
           $sexPos = $1 / 1000.0;
           updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
         }
+      }elsif($line =~ /^paused=(True|False)$/i){
+        my $isPaused = $1;
+        $paused = $isPaused =~ /True/i ? 1 : 0;
+        updateKlompCur $cur, $sexPos, $paused, $updateCurCmd;
       }
     }
   }
