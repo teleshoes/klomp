@@ -113,6 +113,13 @@ class QTCmdPlayer(QMediaPlayer):
     print("pos: " + str(pos))
     sys.stdout.flush()
 
+class PlayerThread(QThread):
+  def __init__(self, player):
+    QThread.__init__(self)
+    self.player = player
+  def run(self):
+    self.player.playAvailableBuffers()
+
 #doesnt work on flac at all
 class QTCmdPlayerMP3:
   def __init__(self, songFile, seekPos):
@@ -136,6 +143,8 @@ class QTCmdPlayerMP3:
 
     self.audioOutput = None
     self.audioDevice = None
+
+    self.playerThread = PlayerThread(self)
   def start(self):
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
@@ -154,19 +163,25 @@ class QTCmdPlayerMP3:
 
     if self.waitingSeek:
       self.attemptSeek()
-
-    self.playAvailableBuffers()
+    else:
+      self.ensurePlaying()
   def attemptSeek(self):
     index = bisect.bisect_left(self.bufferStartTimesMicroSex, self.seekPosMicroSex)
     if index >= 0 and index < len(self.buffers):
       self.curBufferIndex = index
       self.waitingSeek = False
+  def ensurePlaying(self):
+    if not self.isPlaying():
+      self.playerThread.start()
+  def stopPlaying(self):
+    self.playerThread.quit()
+  def isPlaying(self):
+    return self.playerThread.isRunning()
   def playAvailableBuffers(self):
-    if self.waitingSeek:
-      return
-    while self.curBufferIndex >= 0 and self.curBufferIndex < len(self.buffers):
-      self.playBuffer(self.buffers[self.curBufferIndex])
-      self.curBufferIndex += 1
+    while True:
+      while self.curBufferIndex >= 0 and self.curBufferIndex < len(self.buffers):
+        self.playBuffer(self.buffers[self.curBufferIndex])
+        self.curBufferIndex += 1
   def playBuffer(self, audioBuffer):
     byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
     byteArr = QByteArray.fromRawData(byteStr)
