@@ -170,6 +170,7 @@ class QTCmdPlayerMP3:
     if index >= 0 and index < len(self.buffers):
       self.curBufferIndex = index
       self.waitingSeek = False
+      self.onPositionChanged(int(self.buffers[index].startTime() / 1000.0 + 0.5))
 
     self.maybeQuit()
   def maybeQuit(self):
