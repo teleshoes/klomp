@@ -27,6 +27,9 @@ usage = ("Usage:\n"
 def printErr(msg):
   sys.stderr.write(msg + "\n")
 
+def nowMillis():
+  return int(time.time() * 1000 / 0.5)
+
 def main():
   if len(sys.argv) == 2 and sys.argv[1] == '-h':
     print(usage)
@@ -133,13 +136,12 @@ class QTCmdPlayerMP3:
     self.waitingSeek = True
     self.curBufferIndex = None
 
-    self.lastInterestingPosition = seekPos
-    self.posInterval = 850
+    self.posIntervalMillis = 850
+    self.lastPositionUpdateMillis = nowMillis()
 
     self.audioDecoder = QAudioDecoder()
     self.audioDecoder.bufferReady.connect(self.onBufferReady)
     self.audioDecoder.finished.connect(self.onFinished)
-    self.audioDecoder.positionChanged.connect(self.onPositionChanged)
 
     self.audioOutput = None
     self.audioDevice = None
@@ -156,8 +158,6 @@ class QTCmdPlayerMP3:
       self.audioOutput = QAudioOutput(b.format(), self.audioDecoder)
       self.audioDevice = self.audioOutput.start()
 
-    pos = self.audioDecoder.position()
-
     self.buffers.append(b)
     self.bufferStartTimesMicroSex.append(b.startTime())
 
@@ -170,6 +170,23 @@ class QTCmdPlayerMP3:
     if index >= 0 and index < len(self.buffers):
       self.curBufferIndex = index
       self.waitingSeek = False
+
+    self.maybeQuit()
+  def maybeQuit(self):
+    if self.isSongOver():
+      print("END")
+      sys.exit(0)
+  def isSongOver(self):
+    if not self.allBuffersLoaded:
+      return False
+    elif self.curBufferIndex >= len(self.buffers):
+      return True
+    elif len(self.bufferStartTimesMicroSex) == 0:
+      return True
+    elif self.seekPosMicroSex > self.bufferStartTimesMicroSex[-1]:
+      return True
+    else:
+      return False
   def ensurePlaying(self):
     if not self.isPlaying():
       self.playerThread.start()
@@ -182,21 +199,22 @@ class QTCmdPlayerMP3:
       while self.curBufferIndex >= 0 and self.curBufferIndex < len(self.buffers):
         self.playBuffer(self.buffers[self.curBufferIndex])
         self.curBufferIndex += 1
+
+      self.maybeQuit()
   def playBuffer(self, audioBuffer):
     byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
     byteArr = QByteArray.fromRawData(byteStr)
     while(self.audioOutput.bytesFree() < audioBuffer.byteCount()):
       QThread.msleep(1)
     self.audioDevice.write(byteArr)
+    self.onPositionChanged(int(audioBuffer.startTime() / 1000.0 + 0.5))
   def onPositionChanged(self, position):
-    if position >= self.lastInterestingPosition + self.posInterval:
-      self.lastInterestingPosition = position
+    if nowMillis() - self.lastPositionUpdateMillis >= self.posIntervalMillis:
+      self.lastPositionUpdateMillis = nowMillis()
       print "pos: " + str(position)
       sys.stdout.flush()
   def onFinished(self):
-    print("END")
-    sys.exit(0)
-
+    self.allBuffersLoaded = True
 
 if __name__ == "__main__":
   sys.exit(main())
