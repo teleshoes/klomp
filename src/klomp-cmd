@@ -139,6 +139,7 @@ sub prevItem();
 sub nextItem();
 sub seekPos($);
 sub jump($$);
+sub setPosition($);
 sub setKlompCurPos($);
 sub getPosLen();
 sub addCurTimestamp($);
@@ -640,6 +641,8 @@ sub seekPos($){
 
   $seekSign = "=" if not defined $seekSign or $seekSign !~ /^$signRE$/;
 
+  my $wasRunning = isRunning();
+
   my $newPos;
   if($seekSign eq "="){
     $newPos = $seekSexPos;
@@ -651,10 +654,19 @@ sub seekPos($){
 
   $newPos = 0 if $newPos < 0;
 
+  setPosition $newPos;
+}
+
+sub setPosition($){
+  my ($sexPos) = @_;
   my $wasRunning = isRunning();
-  stop;
-  setKlompCurPos $newPos;
-  start(1) if $wasRunning;
+  if($wasRunning and isFifoValid()){
+    fifoCommandSeek($sexPos);
+  }else{
+    stop;
+    setKlompCurPos $sexPos;
+    start(1) if $wasRunning;
+  }
 }
 
 sub setKlompCurPos($){
@@ -696,9 +708,6 @@ sub getPosLen(){
 
 sub jump($$){
   my ($dir, $percent) = @_;
-  pauseToStop();
-  my $wasRunning = isRunning();
-  stop;
 
   my ($curPos, $curLen) = getPosLen();
 
@@ -723,11 +732,20 @@ sub jump($$){
     }
   }
 
+  my $wasRunningAndThenStopped = 0;
   if($target >= 100){
+    pauseToStop();
+    $wasRunningAndThenStopped = isRunning();
+    stop;
+
     nextItem();
     $target = 0;
     ($curPos, $curLen) = getPosLen();
   }elsif($target < 0){
+    pauseToStop();
+    $wasRunningAndThenStopped = isRunning();
+    stop;
+
     prevItem();
     $target += 100;
     ($curPos, $curLen) = getPosLen();
@@ -735,9 +753,9 @@ sub jump($$){
 
   my $newPos = $target / 100 * $curLen;
 
-  setKlompCurPos $newPos;
+  setPosition $newPos;
 
-  start(1) if $wasRunning;
+  start(1) if $wasRunningAndThenStopped;
 }
 
 sub maybePropCmd($){
