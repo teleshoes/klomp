@@ -81,12 +81,24 @@ class QTCmdPlayer(QMediaPlayer):
     self.initPos = initPos
 
     self.started = False
+    self.paused = False
     self.mediaStatusChanged.connect(self.onMediaStatusChanged)
     self.positionChanged.connect(self.onPositionChanged)
   def start(self):
     self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
   def onCommand(self, cmd):
-    pass
+    m = re.match('^\s*(play|pause)\s*$', cmd)
+    if m:
+      self.paused = not self.paused
+      print "paused=" + str(self.paused)
+      if self.paused:
+        self.pause()
+      else:
+        self.play()
+      return
+    m = re.match('^seek\s*(\d+)$', cmd)
+    if m:
+      self.setPosition(int(m.group(1)))
   def onMediaStatusChanged(self, status):
     if(status == QMediaPlayer.LoadedMedia or status == QMediaPlayer.BufferedMedia):
       if not self.started:
