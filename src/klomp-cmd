@@ -109,10 +109,18 @@ my $usage = "Usage:
      on: remove all stops, and place a stop after each song except the last
      off: remove all stops
      toggle: if any stops are present, same as off, else same as on
-  $0 fifo <mplayer slave input command>
-     send mplayer commands to the FIFO
-       see `mplayer -input cmdlist` for valid commands
-       {e.g.: $0 fifo seek 10}
+  $0 fifo <FIFO input command>
+     send mplayer or qtcmdplayer commands to the FIFO
+       mplayer comands:
+         see `mplayer -input cmdlist`
+         {e.g.: $0 fifo seek 10}
+       qtcmdplayer commands:
+         pause
+           toggle play/pause
+         play
+           toggle play/pause
+         seek <ABSOLUTE_POSITION_MILLIS>
+           seek to the indicated position in the song
 ";
 
 sub getPid();
@@ -190,7 +198,7 @@ sub main(@){
     }
   }elsif($cmd eq 'pause' and @_ == 0){
     if($wasRunning and isPauseAllowed() and isFifoValid()){
-      fifoCommand("pause");
+      fifoCommandPause();
     }elsif($wasRunning){
       stop;
       maybePropCmd("hardStopCmd");
@@ -380,6 +388,14 @@ sub fifoCommand(@){
     system "echo \"@_\" > $$FILES{fifo}";
   }else{
     print STDERR "WARNING: $$FILES{fifo} not valid\n";
+  }
+}
+
+sub fifoCommandPause(){
+  if(Klomp::Config::USE_MPLAYER()){
+    fifoCommand("pause");
+  }elsif(Klomp::Config::USE_QTCMDPLAYER()){
+    fifoCommand("pause");
   }
 }
 
