@@ -5,6 +5,7 @@ use Klomp::Files;
 
 my $defaultKlompConfigFile = Klomp::Files::klompFile("config");
 
+sub USE_MPLAYER();
 sub getProperties(;$);
 sub getProperty($;$);
 sub readConfigFile(;$);
@@ -13,6 +14,7 @@ sub checkPropName($);
 my $props = {
   symlink       => 'dir where all lib subdirs are symlinked by klomp-update',
   history       => 'git repo where klomp-update tracks database and filenames',
+  playerType    => 'music playing engine, either mplayer or qtcmdplayer',
   startCmd      => 'run when klomp-cmd starts klomplayer',
   stopCmd       => 'run when klomp-cmd tries to kill klomplayer',
   hardStartCmd  => 'run after startCmd, but only when previously stopped',
@@ -24,6 +26,19 @@ my $props = {
   disallowPause => 'klomp-cmd stops instead of pauses, killing klomplayer',
 };
 my $okProps = join "|", sort keys %$props;
+
+sub USE_MPLAYER(){
+  return USE_QTCMDPLAYER() ? 0 : 1;
+}
+
+sub USE_QTCMDPLAYER(){
+  my $playerType = getProperty "playerType";
+  if(defined $playerType and $playerType =~ /^qtcmdplayer$/){
+    return 1;
+  }else{
+    return 0;
+  }
+}
 
 sub getProperties(;$){
   my ($klompConfigFile) = @_;

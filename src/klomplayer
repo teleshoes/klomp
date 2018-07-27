@@ -23,14 +23,6 @@ sub nowMillis();
 sub main(@){
   die "Usage: $0\n" if @_ > 0;
 
-  my $MPLAYER_EXEC = `which mplayer`;
-  chomp $MPLAYER_EXEC;
-  if($MPLAYER_EXEC !~ /mplayer/){
-    $MPLAYER_EXEC = undef;
-  }
-
-  my $USE_MPLAYER = defined $MPLAYER_EXEC ? 1 : 0;
-
   my $cur = readKlompCur;
 
   my $updateCurCmd = Klomp::Config::getProperty "updateCurCmd";
@@ -51,15 +43,15 @@ sub main(@){
 
   system "rm", "-f", $FIFO;
 
-  if($USE_MPLAYER){
+  if(Klomp::Config::USE_MPLAYER()){
     system "mkfifo", $FIFO;
     fork or exec "klomp-fifo-writer";
   }
 
   my $pid;
-  if($USE_MPLAYER){
+  if(Klomp::Config::USE_MPLAYER()){
     $pid = open FH, '-|',
-      $MPLAYER_EXEC,
+      "mplayer",
       '-vo', 'BUGGYBUGBUGBUG',
       '-quiet',
       '-input', "file=$FIFO",
@@ -73,11 +65,11 @@ sub main(@){
 
   system "echo $pid > $PID_FILE";
 
-  if($USE_MPLAYER){
+  if(Klomp::Config::USE_MPLAYER()){
     system "echo pause > $FIFO" if $$cur{paused};
   }
 
-  if($USE_MPLAYER){
+  if(Klomp::Config::USE_MPLAYER()){
     my $line = '';
     while($line !~ /^Starting playback\.\.\./){
       $line = <FH>;
@@ -101,7 +93,7 @@ sub main(@){
       }
     }
 
-    if($USE_MPLAYER){
+    if(Klomp::Config::USE_MPLAYER()){
       if(not -p $FIFO){
         die "fifo $FIFO is broken\n";
       }
@@ -112,7 +104,7 @@ sub main(@){
       die "i guess its dead...\n";
     }
 
-    if($USE_MPLAYER){
+    if(Klomp::Config::USE_MPLAYER()){
       if($line =~ /^Exiting... \(End of file\)/){
         exec "$klompCmdExec next";
       }elsif($line =~ /^ANS_TIME_POSITION=([0-9\.\-]+)/){
