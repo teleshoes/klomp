@@ -42,9 +42,9 @@ sub main(@){
   }
 
   system "rm", "-f", $FIFO;
+  system "mkfifo", $FIFO;
 
   if(Klomp::Config::USE_MPLAYER()){
-    system "mkfifo", $FIFO;
     fork or exec "klomp-fifo-writer";
   }
 
@@ -59,7 +59,7 @@ sub main(@){
       $songAbsPath;
   }else{
     my $curPosMillis = int($$cur{pos} * 1000.0 + 0.5);
-    $pid = open FH, '-|', 'qtcmdplayer', $songAbsPath, $curPosMillis
+    $pid = open FH, '-|', 'qtcmdplayer', $songAbsPath, $curPosMillis, $FIFO
       or die "could not run qtcmdplayer\n$!\n";
   }
 
