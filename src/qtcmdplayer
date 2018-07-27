@@ -121,32 +121,24 @@ class QTCmdPlayerMP3:
     self.lastInterestingPosition = self.initPos
     self.posInterval = 850
 
-    self.audioFormat = self.createAudioFormat()
-
     self.audioDecoder = QAudioDecoder()
     self.audioDecoder.bufferReady.connect(self.onBufferReady)
     self.audioDecoder.finished.connect(self.onFinished)
     self.audioDecoder.positionChanged.connect(self.onPositionChanged)
-    self.audioDecoder.setAudioFormat(self.audioFormat)
 
-    self.audioOutput = QAudioOutput(self.audioFormat, self.audioDecoder)
-    self.audioDevice = self.audioOutput.start()
+    self.audioOutput = None
+    self.audioDevice = None
   def start(self):
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
   def onCommand(self, cmd):
     pass
-  def createAudioFormat(self):
-    fmt = QAudioFormat()
-    fmt.setSampleRate(44100)
-    fmt.setChannelCount(2)
-    fmt.setSampleSize(16)
-    fmt.setCodec("audio/pcm")
-    fmt.setByteOrder(QAudioFormat.LittleEndian);
-    fmt.setSampleType(QAudioFormat.SignedInt);
-    return fmt
   def onBufferReady(self):
     b = self.audioDecoder.read()
+    if self.audioOutput == None or self.audioDevice == None:
+      self.audioOutput = QAudioOutput(b.format(), self.audioDecoder)
+      self.audioDevice = self.audioOutput.start()
+
     pos = self.audioDecoder.position()
     if pos >= self.initPos:
       self.playBuffer(b)
