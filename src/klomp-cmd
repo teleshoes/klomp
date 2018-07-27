@@ -131,8 +131,7 @@ sub prevItem();
 sub nextItem();
 sub seekPos($);
 sub jump($$);
-sub setKlompCurPos($$);
-sub getCurPosFromPercent($);
+sub setKlompCurPos($);
 sub getPosLen();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
@@ -588,6 +587,8 @@ sub nextItem(){
 sub seekPos($){
   my ($seekArg) = @_;
 
+  my ($oldPos, $oldLen) = getPosLen();
+
   my $signRE = "(?:\\+|-|=)";
   my $numRE = "(?:\\d+|\\d*\\.\\d+)";
 
@@ -596,7 +597,7 @@ sub seekPos($){
   if($seekArg =~ /^($signRE?)($numRE)%$/){
     my ($sign, $percentPos) = ($1, $2);
     $seekSign = $sign;
-    $seekSexPos = getCurPosFromPercent($percentPos);
+    $seekSexPos = $percentPos / 100 * $oldLen;
   }elsif($seekArg =~ /^($signRE?)($numRE)$/){
     my ($sign, $sexPos) = ($1, $2);
     $seekSign = $sign;
@@ -615,17 +616,26 @@ sub seekPos($){
 
   $seekSign = "=" if not defined $seekSign or $seekSign !~ /^$signRE$/;
 
+  my $newPos;
+  if($seekSign eq "="){
+    $newPos = $seekSexPos;
+  }elsif($seekSign eq "+"){
+    $newPos = $oldPos + $seekSexPos;
+  }elsif($seekSign eq "-"){
+    $newPos = $oldPos - $seekSexPos;
+  }
+
+  $newPos = 0 if $newPos < 0;
+
   my $wasRunning = isRunning();
   stop;
-
-  setKlompCurPos($seekSign, $seekSexPos);
-
+  setKlompCurPos $newPos;
   start(1) if $wasRunning;
 }
 
-sub setKlompCurPos($$){
+sub setKlompCurPos($){
   return if not -e $$FILES{cur};
-  my ($sign, $sexPos) = @_;
+  my ($sexPos) = @_;
 
   open FH, "< $$FILES{cur}";
   my @lines = <FH>;
@@ -635,21 +645,9 @@ sub setKlompCurPos($$){
   if($lines[0] !~ /^([0-9.]+) ([0-9.]+) /){
     die "MALFORMED CUR FILE, COULD NOT SEEK\n";
   }
-  my ($oldPos, $oldLen) = ($1, $2);
+  $sexPos = sprintf "%.2f", $sexPos;
 
-  my $newPos;
-  if($sign eq "="){
-    $newPos = $sexPos;
-  }elsif($sign eq "+"){
-    $newPos = $oldPos + $sexPos;
-  }elsif($sign eq "-"){
-    $newPos = $oldPos - $sexPos;
-  }
-
-  $newPos = 0 if $newPos < 0;
-  $newPos = sprintf "%.2f", $newPos;
-
-  $lines[0] =~ s/^([0-9.]+) ([0-9.]+) /$newPos $oldLen /;
+  $lines[0] =~ s/^([0-9.]+) ([0-9.]+) /$sexPos $2 /;
 
   open FH, "> $$FILES{cur}";
   print FH @lines;
@@ -704,12 +702,16 @@ sub jump($$){
   if($target >= 100){
     nextItem();
     $target = 0;
+    ($curPos, $curLen) = getPosLen();
   }elsif($target < 0){
     prevItem();
     $target += 100;
+    ($curPos, $curLen) = getPosLen();
   }
 
-  setKlompCurPos "=", getCurPosFromPercent($target);
+  my $newPos = $target / 100 * $curLen;
+
+  setKlompCurPos $newPos;
 
   start(1) if $wasRunning;
 }
