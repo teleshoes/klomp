@@ -132,6 +132,7 @@ class QTCmdPlayerMP3:
     self.bufferStartTimesMicroSex = []
 
     self.allBuffersLoaded = False
+    self.paused = False
 
     self.waitingSeek = True
     self.curBufferIndex = None
@@ -151,7 +152,11 @@ class QTCmdPlayerMP3:
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
   def onCommand(self, cmd):
-    pass
+    m = re.match('^\s*(play|pause)\s*$', cmd)
+    if m:
+      self.paused = not self.paused
+      print "paused=" + str(self.paused)
+      return
   def onBufferReady(self):
     b = self.audioDecoder.read()
     if self.audioOutput == None or self.audioDevice == None:
@@ -197,11 +202,11 @@ class QTCmdPlayerMP3:
     return self.playerThread.isRunning()
   def playAvailableBuffers(self):
     while True:
-      if self.waitingSeek:
+      if self.paused or self.waitingSeek:
         QThread.msleep(100)
 
       while self.curBufferIndex >= 0 and self.curBufferIndex < len(self.buffers):
-        if self.waitingSeek:
+        if self.paused or self.waitingSeek:
           break
         self.playBuffer(self.buffers[self.curBufferIndex])
         self.curBufferIndex += 1
