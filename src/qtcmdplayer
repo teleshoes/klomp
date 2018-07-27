@@ -12,6 +12,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
+import bisect
 import os
 import re
 import sys
@@ -114,11 +115,18 @@ class QTCmdPlayer(QMediaPlayer):
 
 #doesnt work on flac at all
 class QTCmdPlayerMP3:
-  def __init__(self, songFile, initPos):
+  def __init__(self, songFile, seekPos):
     self.songFile = songFile
-    self.initPos = initPos
+    self.seekPosMicroSex = seekPos * 1000
+    self.buffers = []
+    self.bufferStartTimesMicroSex = []
 
-    self.lastInterestingPosition = self.initPos
+    self.allBuffersLoaded = False
+
+    self.waitingSeek = True
+    self.curBufferIndex = None
+
+    self.lastInterestingPosition = seekPos
     self.posInterval = 850
 
     self.audioDecoder = QAudioDecoder()
@@ -140,13 +148,30 @@ class QTCmdPlayerMP3:
       self.audioDevice = self.audioOutput.start()
 
     pos = self.audioDecoder.position()
-    if pos >= self.initPos:
-      self.playBuffer(b)
+
+    self.buffers.append(b)
+    self.bufferStartTimesMicroSex.append(b.startTime())
+
+    if self.waitingSeek:
+      self.attemptSeek()
+
+    self.playAvailableBuffers()
+  def attemptSeek(self):
+    index = bisect.bisect_left(self.bufferStartTimesMicroSex, self.seekPosMicroSex)
+    if index >= 0 and index < len(self.buffers):
+      self.curBufferIndex = index
+      self.waitingSeek = False
+  def playAvailableBuffers(self):
+    if self.waitingSeek:
+      return
+    while self.curBufferIndex >= 0 and self.curBufferIndex < len(self.buffers):
+      self.playBuffer(self.buffers[self.curBufferIndex])
+      self.curBufferIndex += 1
   def playBuffer(self, audioBuffer):
     byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
     byteArr = QByteArray.fromRawData(byteStr)
     while(self.audioOutput.bytesFree() < audioBuffer.byteCount()):
-      time.sleep(0.001)
+      QThread.msleep(1)
     self.audioDevice.write(byteArr)
   def onPositionChanged(self, position):
     if position >= self.lastInterestingPosition + self.posInterval:
