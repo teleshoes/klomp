@@ -20,7 +20,7 @@ import time
 
 name = sys.argv[0]
 usage = ("Usage:\n"
-  + "  " + name + " FILE [POSITION_MILLIS]\n"
+  + "  " + name + " FILE [POSITION_MILLIS] [COMMAND_FIFO]\n"
 )
 
 def printErr(msg):
@@ -33,9 +33,15 @@ def main():
   elif len(sys.argv) == 2:
     fileName = sys.argv[1]
     pos = 0
+    fifoPath = None
   elif len(sys.argv) == 3 and re.match('^\d+$', sys.argv[2]):
     fileName = sys.argv[1]
     pos = int(sys.argv[2])
+    fifoPath = None
+  elif len(sys.argv) == 4 and re.match('^\d+$', sys.argv[2]):
+    fileName = sys.argv[1]
+    pos = int(sys.argv[2])
+    fifoPath = sys.argv[3]
   else:
     printErr(usage)
     return 1
@@ -46,9 +52,26 @@ def main():
     player = QTCmdPlayerMP3(fileName, pos)
   else:
     player = QTCmdPlayer(fileName, pos)
+
+  if fifoPath != None:
+    fifoReader = FIFOReader(fifoPath)
+    fifoReader.fifoCommandSignal.connect(player.onCommand)
+    fifoReader.start()
+
   player.start()
 
   app.exec_()
+
+class FIFOReader(QThread):
+  fifoCommandSignal = pyqtSignal(str)
+  def __init__(self, fifoPath):
+    QThread.__init__(self)
+    self.fifoPath = fifoPath
+  def run(self):
+    while True:
+      with open(self.fifoPath) as fifo:
+        for cmd in fifo.read().splitlines():
+          self.fifoCommandSignal.emit(cmd)
 
 #doesnt allow seeking on MP3s
 class QTCmdPlayer(QMediaPlayer):
@@ -62,6 +85,8 @@ class QTCmdPlayer(QMediaPlayer):
     self.positionChanged.connect(self.onPositionChanged)
   def start(self):
     self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
+  def onCommand(self, cmd):
+    pass
   def onMediaStatusChanged(self, status):
     if(status == QMediaPlayer.LoadedMedia or status == QMediaPlayer.BufferedMedia):
       if not self.started:
@@ -97,6 +122,8 @@ class QTCmdPlayerMP3:
   def start(self):
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
+  def onCommand(self, cmd):
+    pass
   def createAudioFormat(self):
     fmt = QAudioFormat()
     fmt.setSampleRate(44100)
