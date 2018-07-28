@@ -64,6 +64,7 @@ my $usage = "Usage:
       0     current song in klompcur
       +N    line number in playlist {+1 is the next song to be played}
       -N    line number in history {-1 is the song that finished most recently}
+      X..Y  use all indices between X and Y  {X<=Y}
       [X,Y] use all indices between X and Y  {X<=Y}
 
       song information is printed, one per line, for each indicated index.
@@ -119,6 +120,8 @@ sub main(@){
       push @cols, $col;
     }elsif($arg =~ /^($indexRE)$/){
       push @indices, parseIndex($1);
+    }elsif($arg =~ /^($indexRE)\.\.($indexRE)$/){
+      @indices = (@indices, parseIndexRange($1, $2));
     }elsif($arg =~ /^\[($indexRE),($indexRE)\]$/){
       @indices = (@indices, parseIndexRange($1, $2));
     }else{
