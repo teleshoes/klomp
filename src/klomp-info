@@ -95,38 +95,40 @@ sub readKlompInfo($$);
 sub selectKlompInfo($$$$);
 sub formatHMS($);
 sub formatSep($$);
-sub parseIndices($);
+sub parseIndex($);
+sub parseIndexRange($$);
 
 sub main(@){
+  my (@cols, @indices);
   my $newline = 1;
   my $csv = 0;
   my $header = 0;
   my $seconds = 0;
   my $format;
-  while(@_ > 0 and $_[0] =~ /^(-n|-c|-h|-s|--format=.*)$/){
+  my $indexRE = '[+\-]?\d+';
+  while(@_ > 0){
     my $arg = shift;
-    $newline = 0 if $arg eq '-n';
-    $csv = 1 if $arg eq '-c';
-    $header = 1 if $arg eq '-h';
-    $seconds = 1 if $arg eq '-s';
-    $format = $1 if $arg =~ /^--format=(.*)$/;
+    if($arg =~ /^(-n|-c|-h|-s|--format=.*)$/){
+      $newline = 0 if $arg eq '-n';
+      $csv = 1 if $arg eq '-c';
+      $header = 1 if $arg eq '-h';
+      $seconds = 1 if $arg eq '-s';
+      $format = $1 if $arg =~ /^--format=(.*)$/;
+    }elsif($arg =~ /^($validColNames|$validColSyns)$/){
+      my $col = defined $colSynonyms{$arg} ? $colSynonyms{$arg} : $arg;
+      push @cols, $col;
+    }elsif($arg =~ /^($indexRE)$/){
+      push @indices, parseIndex($1);
+    }elsif($arg =~ /^\[($indexRE),($indexRE)\]$/){
+      @indices = (@indices, parseIndexRange($1, $2));
+    }else{
+      die "$usage\ninvalid arg: $arg\n";
+    }
   }
   die $usage if $csv and defined $format;
 
-  my @cols;
-  while(@_ > 0 and $_[0] =~ /^($validColNames|$validColSyns)$/){
-    my $col = shift;
-    $col = $colSynonyms{$col} if defined $colSynonyms{$col};
-    push @cols, $col;
-  }
   @cols = @defaultColNames if @cols == 0;
 
-  my @indices;
-  while(@_ > 0){
-    my $newIndices = parseIndices shift;
-    die $usage if not defined $newIndices;
-    @indices = (@indices, @$newIndices);
-  }
   @indices = (0) if @indices == 0;
   my $max = 0;
   my $min = 0;
@@ -135,8 +137,6 @@ sub main(@){
     $min = $index if $index < $min;
   }
   $max = 0 if $max<0;
-
-  die $usage if @_ != 0;
 
   print join(",", @cols) . "\n" if $header;
 
@@ -309,24 +309,24 @@ sub formatSep($$){
   return $csv ? $s : "|$s|";
 }
 
-sub parseIndices($){
-  my $index = shift;
-  if($index eq "0"){
-    return [0];
-  }elsif($index =~ /^\+(\d+)$/){
-    my $val = 0 + $1;
-    return [$val] if $val > 0;
-  }elsif($index =~ /^\-(\d+)$/){
-    my $val = 0 - $1;
-    return [$val] if $val < 0;
-  }elsif($index =~ /^\[  ([+\-]?\d+)  ,  ([+\-]?\d+)  \]$/x){
-    my $lower = parseIndices $1;
-    my $upper = parseIndices $2;
-    if(defined $lower and defined $upper and $$lower[0] <= $$upper[0]){
-      return [$$lower[0] .. $$upper[0]];
-    }
+sub parseIndex($){
+  my ($indexArg) = @_;
+  if($indexArg =~ /^\+?(\d+)$/){
+    return 0 + $1;
+  }elsif($indexArg =~ /^-(\d+)$/){
+    return 0 - $1;
+  }else{
+    die "invalid index: $indexArg\n";
   }
-  return undef;
+}
+
+sub parseIndexRange($$){
+  my ($lowerArg, $upperArg) = @_;
+  my $lower = parseIndex $lowerArg;
+  my $upper = parseIndex $upperArg;
+  die "invalid index range: $lower - $upper\n" if $lower > $upper;
+
+  return ($lower .. $upper);
 }
 
 &main(@ARGV);
