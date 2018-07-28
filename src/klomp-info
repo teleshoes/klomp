@@ -12,11 +12,23 @@ my $KLOMP_LIST = Klomp::Files::klompFile("list");
 my @attColNames = qw(title artist album number);
 my @calcColNames = qw(pos len percent playlist ended breaks);
 my @extraColNames = qw(file);
+my %colSynonyms = (
+  "position" => "pos",
+  "dur"      => "len",
+  "duration" => "len",
+  "length"   => "len",
+  "pl"       => "playlist",
+  "br"       => "breaks",
+);
+my $colSynFmt = join '', map {
+  sprintf "\n        %-10s => %s", $_, $colSynonyms{$_}
+} sort keys %colSynonyms;
 
 my @allColNames = (@attColNames, @calcColNames, @extraColNames);
 my @defaultColNames = (@attColNames, @calcColNames);
 my $validAttColNames = join "|", @attColNames;
 my $validColNames = join "|", @allColNames;
+my $validColSyns = join "|", sort(keys %colSynonyms);
 
 my $breakLine = "!klomp-cmd stop";
 
@@ -43,6 +55,8 @@ my $usage = "Usage:
       non-empty values for playlist, ended, and percent
       are wrapped in |s unless CSV output is on
       e.g.: \"|ended|\"
+
+      synonyms:$colSynFmt
 
   INDEX:
       0     current song in klompcur
@@ -98,8 +112,10 @@ sub main(@){
   die $usage if $csv and defined $format;
 
   my @cols;
-  while(@_ > 0 and $_[0] =~ /^($validColNames)$/){
-    push @cols, shift;
+  while(@_ > 0 and $_[0] =~ /^($validColNames|$validColSyns)$/){
+    my $col = shift;
+    $col = $colSynonyms{$col} if defined $colSynonyms{$col};
+    push @cols, $col;
   }
   @cols = @defaultColNames if @cols == 0;
 
