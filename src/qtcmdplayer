@@ -19,6 +19,8 @@ import sys
 import signal
 import time
 
+BUFFER_LOG_FILE = "/tmp/qtcmdplayer-buffer.log"
+
 name = sys.argv[0]
 usage = ("Usage:\n"
   + "  " + name + " FILE [POSITION_MILLIS] [COMMAND_FIFO]\n"
@@ -139,6 +141,7 @@ class QTCmdPlayerMP3:
 
     self.posIntervalMillis = 850
     self.lastPositionUpdateMillis = nowMillis()
+    self.lastBufferPositionUpdateMillis = nowMillis()
 
     self.audioDecoder = QAudioDecoder()
     self.audioDecoder.bufferReady.connect(self.onBufferReady)
@@ -169,8 +172,11 @@ class QTCmdPlayerMP3:
       self.audioOutput = QAudioOutput(b.format(), self.audioDecoder)
       self.audioDevice = self.audioOutput.start()
 
+    bufferPos = b.startTime()
+    self.onBufferPositionChanged(bufferPos)
+
     self.buffers.append(b)
-    self.bufferStartTimesMicroSex.append(b.startTime())
+    self.bufferStartTimesMicroSex.append(bufferPos)
 
     if self.waitingSeek:
       self.attemptSeek()
@@ -230,6 +236,11 @@ class QTCmdPlayerMP3:
       self.lastPositionUpdateMillis = nowMillis()
       print "pos: " + str(position)
       sys.stdout.flush()
+  def onBufferPositionChanged(self, bufferPosition):
+    if nowMillis() - self.lastBufferPositionUpdateMillis >= self.posIntervalMillis:
+      self.lastBufferPositionUpdateMillis = nowMillis()
+      with open(BUFFER_LOG_FILE, 'w') as log:
+        log.write('%.2f\n' % (bufferPosition / 1000000.0))
   def onFinished(self):
     self.allBuffersLoaded = True
 
