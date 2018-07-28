@@ -44,6 +44,8 @@ sub main(@){
   system "rm", "-f", $FIFO;
   system "mkfifo", $FIFO;
 
+  system "rm", "-f", Klomp::Files::klompFile("bufferlog");
+
   if(Klomp::Config::USE_MPLAYER()){
     fork or exec "klomp-fifo-writer";
   }
