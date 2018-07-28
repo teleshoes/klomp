@@ -350,7 +350,7 @@ class TextEdit(LinePrinter):
       elif key == c.KEY_RIGHT:
         self.preText += self.postText[:1]
         self.postText = self.postText[1:]
-      elif key == c.KEY_BACKSPACE:
+      elif key == c.KEY_BACKSPACE or key == 127:
         self.preText = self.preText[:-1]
       elif key == c.KEY_DC: #delete
         self.postText = self.postText[1:]
