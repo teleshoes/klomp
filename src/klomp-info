@@ -10,13 +10,14 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @calcColNames = qw(pos len percent playlist ended breaks);
+my @calcColNames = qw(pos len percent paused playlist ended breaks);
 my @extraColNames = qw(file);
 my %colSynonyms = (
   "position" => "pos",
   "dur"      => "len",
   "duration" => "len",
   "length"   => "len",
+  "pause"    => "paused",
   "pl"       => "playlist",
   "br"       => "breaks",
 );
@@ -50,6 +51,7 @@ my $usage = "Usage:
       pos:      current position in M:SS or H:MM:SS {or S.ss if -s}
       len:      length in M:SS or H:MM:SS {or S.ss if -s}
       percent:  integer between 0 and 100 for pos/len
+      paused:   either 'paused' or empty
       breaks:   \"{BR}\" if playlist contains the line \"$breakLine\"
 
       non-empty values for playlist, ended, and percent
@@ -200,6 +202,8 @@ sub parseInfo($$$$$$){
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
       push @info, formatSep "$percent", $csv if $col eq 'percent';
+    }elsif($col =~ /^(paused)$/){
+      push @info, $info{paused};
     }elsif($col eq 'breaks'){
       my $count = `grep "$breakLine" "$KLOMP_LIST" | wc -l`;
       push @info, $count > 0 ? "{BR}" : "";
