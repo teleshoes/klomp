@@ -209,7 +209,7 @@ sub parseInfo($$$$$$$){
     }elsif($col =~ /^(index)$/){
       push @info, $index;
     }elsif($col =~ /^(paused)$/){
-      push @info, $info{paused};
+      push @info, defined $info{paused} ? $info{paused} : "";
     }elsif($col eq 'breaks'){
       my $count = `grep "$breakLine" "$KLOMP_LIST" | wc -l`;
       push @info, $count > 0 ? "{BR}" : "";
