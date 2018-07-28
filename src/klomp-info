@@ -10,7 +10,7 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @calcColNames = qw(pos len percent index paused playlist ended breaks);
+my @calcColNames = qw(pos len percent index running paused playlist ended breaks);
 my @extraColNames = qw(file);
 my %colSynonyms = (
   "position" => "pos",
@@ -52,7 +52,8 @@ my $usage = "Usage:
       len:      length in M:SS or H:MM:SS {or S.ss if -s}
       percent:  integer between 0 and 100 for pos/len
       index:    position in playlist (0 for current, 1 for next, -1 for previous)
-      paused:   either 'paused' or empty
+      running:  'running' if pid in pidfile is mplayer/qtcmdplayer, otherwise ''
+      paused:   'paused' if klomp cur file has paused, otherwise ''
       breaks:   \"{BR}\" if playlist contains the line \"$breakLine\"
 
       non-empty values for playlist, ended, and percent
@@ -208,6 +209,21 @@ sub parseInfo($$$$$$$){
       push @info, formatSep "$percent", $csv if $col eq 'percent';
     }elsif($col =~ /^(index)$/){
       push @info, $index;
+    }elsif($col =~ /^(running)$/){
+      my $isRunning = 0;
+      my $pidfile = Klomp::Files::klompFile("pidfile");
+      if(-f $pidfile){
+        my $pid = `cat $pidfile`;
+        chomp $pid;
+        if($pid =~ /^\d+$/){
+          my $proc = `ps -p $pid -o comm --no-headers`;
+          chomp $proc;
+          if($proc =~ /^(mplayer|qtcmdplayer)$/){
+            $isRunning = 1;
+          }
+        }
+      }
+      push @info, $isRunning ? "running" :"";
     }elsif($col =~ /^(paused)$/){
       push @info, defined $info{paused} ? $info{paused} : "";
     }elsif($col eq 'breaks'){
