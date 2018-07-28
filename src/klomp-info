@@ -10,7 +10,7 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @calcColNames = qw(pos len percent paused playlist ended breaks);
+my @calcColNames = qw(pos len percent index paused playlist ended breaks);
 my @extraColNames = qw(file);
 my %colSynonyms = (
   "position" => "pos",
@@ -51,6 +51,7 @@ my $usage = "Usage:
       pos:      current position in M:SS or H:MM:SS {or S.ss if -s}
       len:      length in M:SS or H:MM:SS {or S.ss if -s}
       percent:  integer between 0 and 100 for pos/len
+      index:    position in playlist (0 for current, 1 for next, -1 for previous)
       paused:   either 'paused' or empty
       breaks:   \"{BR}\" if playlist contains the line \"$breakLine\"
 
@@ -91,7 +92,7 @@ my $usage = "Usage:
              Rinse The Raindrops
 ";
 
-sub parseInfo($$$$$$);
+sub parseInfo($$$$$$$);
 sub readKlompInfo($$);
 sub selectKlompInfo($$$$);
 sub formatHMS($);
@@ -155,7 +156,7 @@ sub main(@){
       print STDERR "No song info found\n";
       $klompInfo = "";
     }
-    my $info = parseInfo $klompInfo, $playlist, \@cols, $csv, $seconds, $format;
+    my $info = parseInfo $klompInfo, $index, $playlist, \@cols, $csv, $seconds, $format;
     print "\n" unless $first;
     $first = 0;
     print $info;
@@ -163,8 +164,8 @@ sub main(@){
   print "\n" if $newline;
 }
 
-sub parseInfo($$$$$$){
-  my ($klompInfo, $playlist, $cols, $csv, $seconds, $format) = @_;
+sub parseInfo($$$$$$$){
+  my ($klompInfo, $index, $playlist, $cols, $csv, $seconds, $format) = @_;
   my %info;
   my $okLibs = join "|", Klomp::Lib::getAllLibNames();
   for my $line(split /\n/, $klompInfo){
@@ -205,6 +206,8 @@ sub parseInfo($$$$$$){
       push @info, ($seconds ? $pos : formatHMS $pos) if $col eq 'pos';
       push @info, ($seconds ? $len : formatHMS $len) if $col eq 'len';
       push @info, formatSep "$percent", $csv if $col eq 'percent';
+    }elsif($col =~ /^(index)$/){
+      push @info, $index;
     }elsif($col =~ /^(paused)$/){
       push @info, $info{paused};
     }elsif($col eq 'breaks'){
