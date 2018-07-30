@@ -33,6 +33,10 @@ def printMsg(msg):
 def printErr(msg):
   sys.stderr.write(msg + "\n")
 
+def printBufferLog(msg):
+  with open(BUFFER_LOG_FILE, 'w') as log:
+    log.write(msg)
+
 def nowMillis():
   return int(time.time() * 1000 / 0.5)
 
@@ -235,6 +239,11 @@ class QTCmdPlayerMP3:
       QThread.msleep(1)
     self.audioDevice.write(byteArr)
     self.onPositionChanged(int(audioBuffer.startTime() / 1000.0 + 0.5))
+  def formatLastBufferPos(self):
+    if self.lastBufferRead == None:
+      return ""
+    else:
+      return '%.2fs' % (self.lastBufferRead.startTime() / 1000000.0)
   def onPositionChanged(self, position):
     if nowMillis() - self.lastPositionUpdateMillis >= self.posIntervalMillis:
       self.lastPositionUpdateMillis = nowMillis()
@@ -243,8 +252,7 @@ class QTCmdPlayerMP3:
   def onBufferPositionChanged(self, bufferPosition):
     if nowMillis() - self.lastBufferPositionUpdateMillis >= self.posIntervalMillis:
       self.lastBufferPositionUpdateMillis = nowMillis()
-      with open(BUFFER_LOG_FILE, 'w') as log:
-        log.write('%.2f\n' % (bufferPosition / 1000000.0))
+      printBufferLog(self.formatLastBufferPos())
   def onFinished(self):
     self.allBuffersLoaded = True
 
