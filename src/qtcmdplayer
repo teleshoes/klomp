@@ -174,11 +174,14 @@ class QTCmdPlayerMP3:
       self.seekPosMicroSex = int(m.group(1)) * 1000
       self.stopPlaying()
       self.attemptSeek()
+  def initializeAudioDevice(self):
+    if self.lastBufferRead != None:
+      self.audioOutput = QAudioOutput(self.lastBufferRead.format(), self.audioDecoder)
+      self.audioDevice = self.audioOutput.start()
   def onBufferReady(self):
     self.lastBufferRead = self.audioDecoder.read()
     if self.audioOutput == None or self.audioDevice == None:
-      self.audioOutput = QAudioOutput(self.lastBufferRead.format(), self.audioDecoder)
-      self.audioDevice = self.audioOutput.start()
+      self.initializeAudioDevice()
 
     bufferPos = self.lastBufferRead.startTime()
     self.onBufferPositionChanged(bufferPos)
