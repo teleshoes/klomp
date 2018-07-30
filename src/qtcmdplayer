@@ -26,6 +26,10 @@ usage = ("Usage:\n"
   + "  " + name + " FILE [POSITION_MILLIS] [COMMAND_FIFO]\n"
 )
 
+def printMsg(msg):
+  sys.stdout.write(msg + "\n")
+  sys.stdout.flush()
+
 def printErr(msg):
   sys.stderr.write(msg + "\n")
 
@@ -96,7 +100,7 @@ class QTCmdPlayer(QMediaPlayer):
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
       self.paused = not self.paused
-      print "paused=" + str(self.paused)
+      printMsg("paused=" + str(self.paused))
       if self.paused:
         self.pause()
       else:
@@ -112,11 +116,10 @@ class QTCmdPlayer(QMediaPlayer):
         self.started = True
         self.setPosition(self.initPos)
     elif(status == QMediaPlayer.EndOfMedia):
-      print("END")
+      printMsg("END")
       sys.exit(0)
   def onPositionChanged(self, pos):
-    print("pos: " + str(pos))
-    sys.stdout.flush()
+    printMsg("pos: " + str(pos))
 
 class PlayerThread(QThread):
   def __init__(self, player):
@@ -158,7 +161,7 @@ class QTCmdPlayerMP3:
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
       self.paused = not self.paused
-      print "paused=" + str(self.paused)
+      printMsg("paused=" + str(self.paused))
       return
     m = re.match('^seek\s*(\d+)$', cmd)
     if m:
@@ -192,7 +195,7 @@ class QTCmdPlayerMP3:
     self.maybeQuit()
   def maybeQuit(self):
     if self.isSongOver():
-      print("END")
+      printMsg("END")
       sys.exit(0)
   def isSongOver(self):
     if not self.allBuffersLoaded:
@@ -234,7 +237,7 @@ class QTCmdPlayerMP3:
   def onPositionChanged(self, position):
     if nowMillis() - self.lastPositionUpdateMillis >= self.posIntervalMillis:
       self.lastPositionUpdateMillis = nowMillis()
-      print "pos: " + str(position)
+      printMsg("pos: " + str(position))
       sys.stdout.flush()
   def onBufferPositionChanged(self, bufferPosition):
     if nowMillis() - self.lastBufferPositionUpdateMillis >= self.posIntervalMillis:
