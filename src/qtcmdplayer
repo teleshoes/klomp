@@ -255,6 +255,7 @@ class QTCmdPlayerMP3:
       printBufferLog(self.formatLastBufferPos())
   def onFinished(self):
     self.allBuffersLoaded = True
+    printBufferLog("finished: " + self.formatLastBufferPos())
 
 if __name__ == "__main__":
   sys.exit(main())
