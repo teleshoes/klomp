@@ -165,6 +165,8 @@ class QTCmdPlayerMP3:
   def onCommand(self, cmd):
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
+      if self.paused:
+        self.initializeAudioDevice()
       self.paused = not self.paused
       printMsg("paused=" + str(self.paused))
       return
