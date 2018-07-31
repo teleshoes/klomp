@@ -237,12 +237,14 @@ class QTCmdPlayerMP3:
         self.curBufferIndex += 1
 
       self.maybeQuit()
-  def playBuffer(self, audioBuffer):
+  def bufferToByteArray(self,audioBuffer):
     byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
-    byteArr = QByteArray.fromRawData(byteStr)
+    return bytearray(byteStr)
+  def playBuffer(self, audioBuffer):
+    byteArray = self.bufferToByteArray(audioBuffer)
     while(self.audioOutput.bytesFree() < audioBuffer.byteCount()):
       QThread.msleep(1)
-    self.audioDevice.write(byteArr)
+    self.audioDevice.write(byteArray)
     self.onPositionChanged(int(audioBuffer.startTime() / 1000.0 + 0.5))
   def formatLastBufferPos(self):
     if self.lastBufferRead == None:
