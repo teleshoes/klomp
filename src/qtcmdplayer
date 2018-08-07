@@ -182,6 +182,11 @@ class QTCmdPlayerMP3(QObject):
     self.initAudioDeviceSignal.connect(self.initAudioDevice)
 
   def start(self):
+    if FileCache(self.songFile, BUFFER_CACHE_LAST_SONG_INFO_FILE).compareCache():
+      self.startFromCache()
+    else:
+      self.startFromDecoder()
+  def startFromDecoder(self):
     if not os.path.isdir(CACHE_DIR):
       os.makedirs(CACHE_DIR)
     rmFile(BUFFER_CACHE_BYTES_FILE)
@@ -193,6 +198,21 @@ class QTCmdPlayerMP3(QObject):
 
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
+  def startFromCache(self):
+    self.readBufferInfoCache()
+    self.readAudioFormatCache()
+    self.ensurePlaying()
+
+    self.audioDecoder = None
+    self.bufferCacheWriteFH = None
+    self.bufferCacheReadFH = open(BUFFER_CACHE_BYTES_FILE, 'r')
+
+    self.refreshAudioDevice()
+
+    if self.waitingSeek:
+      self.attemptSeek()
+    else:
+      self.ensurePlaying()
   def readBufferInfoCache(self):
     lines = None
     with open(BUFFER_CACHE_INFO_FILE, 'r') as f:
