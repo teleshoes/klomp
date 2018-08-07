@@ -235,6 +235,7 @@ class QTCmdPlayerMP3(QObject):
       else:
         printErr("malformed buffer-info cache line: " + str(line))
         sys.exit(1)
+    self.allBuffersLoaded = True
   def writeBufferInfoCache(self):
     with open(BUFFER_CACHE_INFO_FILE, 'w') as f:
       i = 0
