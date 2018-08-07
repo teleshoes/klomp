@@ -13,6 +13,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
 import bisect
+import io
 import os
 import re
 import sys
@@ -20,6 +21,8 @@ import signal
 import time
 
 BUFFER_LOG_FILE = "/tmp/qtcmdplayer-buffer.log"
+CACHE_DIR = os.path.expanduser("~/.cache/qtcmdplayer")
+BUFFER_CACHE_FILE = CACHE_DIR + "/buffer-bytes.cache"
 
 name = sys.argv[0]
 usage = ("Usage:\n"
@@ -137,8 +140,11 @@ class QTCmdPlayerMP3:
   def __init__(self, songFile, seekPos):
     self.songFile = songFile
     self.seekPosMicroSex = seekPos * 1000
-    self.bufferByteArrs = []
+
     self.bufferStartTimes = []
+    self.bufferByteOffsets = []
+    self.bufferByteSizes = []
+    self.nextByteOffset = 0
 
     self.allBuffersLoaded = False
     self.paused = False
@@ -160,18 +166,37 @@ class QTCmdPlayerMP3:
     self.audioDevice = None
 
     self.playerThread = PlayerThread(self)
+
   def start(self):
+    if not os.path.isdir(CACHE_DIR):
+      os.makedirs(CACHE_DIR)
+    if os.path.isfile(BUFFER_CACHE_FILE):
+      os.remove(BUFFER_CACHE_FILE)
+    self.bufferCacheWriteFH = open(BUFFER_CACHE_FILE, 'w')
+    self.bufferCacheReadFH = open(BUFFER_CACHE_FILE, 'r')
+
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
   def bufferCount(self):
     return len(self.bufferStartTimes)
   def readBufferByteArr(self, index):
-    return self.bufferByteArrs[index]
+    byteSize = self.bufferByteSizes[index]
+    byteOffset = self.bufferByteOffsets[index]
+    self.bufferCacheReadFH.seek(byteOffset, io.SEEK_SET)
+    return bytearray(self.bufferCacheReadFH.read(byteSize))
   def readBufferStartTime(self, index):
     return self.bufferStartTimes[index]
   def appendBuffer(self, byteArr, startTime):
-    self.bufferByteArrs.append(byteArr)
+    self.bufferCacheWriteFH.seek(0, io.SEEK_END)
+    self.bufferCacheWriteFH.write(byteArr)
+
+    byteSize = len(byteArr)
+    byteOffset = self.nextByteOffset
+    self.nextByteOffset += byteSize
+
     self.bufferStartTimes.append(startTime)
+    self.bufferByteSizes.append(byteSize)
+    self.bufferByteOffsets.append(byteOffset)
 
     self.onBufferPositionChanged(startTime)
   def onCommand(self, cmd):
