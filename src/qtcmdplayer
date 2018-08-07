@@ -25,6 +25,7 @@ CACHE_DIR = os.path.expanduser("~/.cache/qtcmdplayer")
 BUFFER_CACHE_BYTES_FILE = CACHE_DIR + "/buffer-bytes.cache"
 BUFFER_CACHE_INFO_FILE = CACHE_DIR + "/buffer-info.cache"
 BUFFER_CACHE_AUDIOFORMAT_FILE = CACHE_DIR + "/buffer-audioformat.cache"
+BUFFER_CACHE_LAST_SONG_INFO_FILE = CACHE_DIR + "/buffer-lastsonginfo.cache"
 
 name = sys.argv[0]
 usage = ("Usage:\n"
@@ -186,6 +187,7 @@ class QTCmdPlayerMP3(QObject):
     rmFile(BUFFER_CACHE_BYTES_FILE)
     rmFile(BUFFER_CACHE_INFO_FILE)
     rmFile(BUFFER_CACHE_AUDIOFORMAT_FILE)
+    rmFile(BUFFER_CACHE_LAST_SONG_INFO_FILE)
     self.bufferCacheWriteFH = open(BUFFER_CACHE_BYTES_FILE, 'w')
     self.bufferCacheReadFH = open(BUFFER_CACHE_BYTES_FILE, 'r')
 
@@ -409,6 +411,42 @@ class QTCmdPlayerMP3(QObject):
 
     self.writeBufferInfoCache()
     self.writeAudioFormatCache()
+
+    FileCache(self.songFile, BUFFER_CACHE_LAST_SONG_INFO_FILE).writeInfoCache()
+
+class FileCache:
+  def __init__(self, srcFile, infoCacheFile):
+    self.srcFile = srcFile
+    self.infoCacheFile = infoCacheFile
+  def getSrcFileMtime(self):
+    return int(os.path.getmtime(self.srcFile))
+  def getSrcFileSize(self):
+    return int(os.path.getsize(self.srcFile))
+  def readInfoCache(self):
+    try:
+      with open(self.infoCacheFile, 'r') as f:
+        s = f.read()
+        m = re.match("^(\\d+) (\\d+) (.+)$", s)
+        if m:
+          return { "mtime": int(m.group(1))
+                 , "size": int(m.group(2))
+                 , "path": m.group(3)
+                 }
+        else:
+          return None
+    except:
+      return None
+  def writeInfoCache(self):
+    with open(self.infoCacheFile, 'w') as f:
+      f.write("%d %d %s" % (self.getSrcFileMtime(), self.getSrcFileSize(), self.srcFile))
+  def compareCache(self):
+    info = self.readInfoCache()
+    return (
+      info != None
+      and info["path"] == self.srcFile
+      and info["mtime"] == self.getSrcFileMtime()
+      and info["size"] == self.getSrcFileSize()
+    )
 
 if __name__ == "__main__":
   sys.exit(main())
