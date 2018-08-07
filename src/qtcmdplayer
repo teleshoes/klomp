@@ -23,6 +23,7 @@ import time
 BUFFER_LOG_FILE = "/tmp/qtcmdplayer-buffer.log"
 CACHE_DIR = os.path.expanduser("~/.cache/qtcmdplayer")
 BUFFER_CACHE_BYTES_FILE = CACHE_DIR + "/buffer-bytes.cache"
+BUFFER_CACHE_INFO_FILE = CACHE_DIR + "/buffer-info.cache"
 BUFFER_CACHE_AUDIOFORMAT_FILE = CACHE_DIR + "/buffer-audioformat.cache"
 
 name = sys.argv[0]
@@ -183,12 +184,43 @@ class QTCmdPlayerMP3(QObject):
     if not os.path.isdir(CACHE_DIR):
       os.makedirs(CACHE_DIR)
     rmFile(BUFFER_CACHE_BYTES_FILE)
+    rmFile(BUFFER_CACHE_INFO_FILE)
     rmFile(BUFFER_CACHE_AUDIOFORMAT_FILE)
     self.bufferCacheWriteFH = open(BUFFER_CACHE_BYTES_FILE, 'w')
     self.bufferCacheReadFH = open(BUFFER_CACHE_BYTES_FILE, 'r')
 
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
+  def readBufferInfoCache(self):
+    lines = None
+    with open(BUFFER_CACHE_INFO_FILE, 'r') as f:
+      lines = f.readlines()
+
+    self.bufferStartTimes = []
+    self.bufferByteOffsets = []
+    self.bufferByteSizes = []
+    self.nextByteOffset = 0
+    for line in lines:
+      m = re.match("^(\\d+) (\\d+)$", line)
+      if m:
+        startTime = int(m.group(1))
+        byteSize = int(m.group(2))
+        self.bufferStartTimes.append(startTime)
+        self.bufferByteOffsets.append(self.nextByteOffset)
+        self.bufferByteSizes.append(byteSize)
+        self.nextByteOffset += byteSize
+        self.lastBufferReadStartTime = startTime
+      else:
+        printErr("malformed buffer-info cache line: " + str(line))
+        sys.exit(1)
+  def writeBufferInfoCache(self):
+    with open(BUFFER_CACHE_INFO_FILE, 'w') as f:
+      i = 0
+      while i < len(self.bufferStartTimes):
+        startTime = self.bufferStartTimes[i]
+        byteSize = self.bufferByteSizes[i]
+        f.write(str(startTime) + " " + str(byteSize) + "\n")
+        i += 1
   def readAudioFormatCache(self):
     lines = None
     with open(BUFFER_CACHE_AUDIOFORMAT_FILE, 'r') as f:
@@ -375,6 +407,7 @@ class QTCmdPlayerMP3(QObject):
     self.allBuffersLoaded = True
     printBufferLog("finished: " + self.formatLastBufferPos())
 
+    self.writeBufferInfoCache()
     self.writeAudioFormatCache()
 
 if __name__ == "__main__":
