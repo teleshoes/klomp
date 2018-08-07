@@ -298,6 +298,12 @@ class QTCmdPlayerMP3(QObject):
     bufferSize = len(audioBufferByteArr)
 
     sleepUntil(1, 1000, lambda: self.audioOutput.bytesFree() >= bufferSize)
+
+    if self.audioOutput.bytesFree() < bufferSize:
+      printErr("WAITING OVER A SECOND FOR AUDIO DEVICE, RE-INTIIALIZING")
+      self.refreshAudioDevice()
+      sleepUntil(1, 1000, lambda: self.audioOutput.bytesFree() >= bufferSize)
+
     self.audioDevice.write(audioBufferByteArr)
     self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
   def formatLastBufferPos(self):
