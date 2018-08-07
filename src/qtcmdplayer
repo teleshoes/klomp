@@ -165,7 +165,7 @@ class QTCmdPlayerMP3(QObject):
     self.posIntervalMillis = 850
     self.lastPositionUpdateMillis = nowMillis()
     self.lastBufferPositionUpdateMillis = nowMillis()
-    self.lastBufferRead = None
+    self.audioFormat = None
     self.lastBufferReadStartTime = None
 
     self.audioDecoder = QAudioDecoder()
@@ -224,21 +224,23 @@ class QTCmdPlayerMP3(QObject):
       self.stopPlaying()
       self.attemptSeek()
   def refreshAudioDevice(self):
-    if self.lastBufferRead != None:
+    if self.audioFormat != None:
       self.audioOutput = None
       self.audioDevice = None
       self.initAudioDeviceSignal.emit()
       sleepUntil(1, 1000, lambda: self.audioDevice != None)
   def initAudioDevice(self):
-    if self.lastBufferRead != None:
-      self.audioOutput = QAudioOutput(self.lastBufferRead.format(), self)
+    if self.audioFormat != None:
+      self.audioOutput = QAudioOutput(self.audioFormat, self)
       self.audioDevice = self.audioOutput.start()
   def onBufferReady(self):
     buf = self.audioDecoder.read()
     startTime = buf.startTime()
     byteArr = self.bufferToByteArray(buf)
 
-    self.lastBufferRead = buf
+    if self.audioFormat == None:
+      self.audioFormat = buf.format()
+
     self.lastBufferReadStartTime = startTime
 
     self.appendBuffer(byteArr, startTime)
