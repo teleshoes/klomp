@@ -23,6 +23,7 @@ import time
 BUFFER_LOG_FILE = "/tmp/qtcmdplayer-buffer.log"
 CACHE_DIR = os.path.expanduser("~/.cache/qtcmdplayer")
 BUFFER_CACHE_BYTES_FILE = CACHE_DIR + "/buffer-bytes.cache"
+BUFFER_CACHE_AUDIOFORMAT_FILE = CACHE_DIR + "/buffer-audioformat.cache"
 
 name = sys.argv[0]
 usage = ("Usage:\n"
@@ -182,11 +183,56 @@ class QTCmdPlayerMP3(QObject):
     if not os.path.isdir(CACHE_DIR):
       os.makedirs(CACHE_DIR)
     rmFile(BUFFER_CACHE_BYTES_FILE)
+    rmFile(BUFFER_CACHE_AUDIOFORMAT_FILE)
     self.bufferCacheWriteFH = open(BUFFER_CACHE_BYTES_FILE, 'w')
     self.bufferCacheReadFH = open(BUFFER_CACHE_BYTES_FILE, 'r')
 
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
+  def readAudioFormatCache(self):
+    lines = None
+    with open(BUFFER_CACHE_AUDIOFORMAT_FILE, 'r') as f:
+      lines = f.readlines()
+
+    self.audioFormat = QAudioFormat()
+    for line in lines:
+      intMatch = re.match("^(\\w+)\\s*=\\s*(\\d+)$", line)
+      strMatch = re.match("^(\\w+)\\s*=\\s*(.+)$", line)
+      if intMatch:
+        key = intMatch.group(1)
+        val = int(intMatch.group(2))
+        if key == "sampleRate":
+          self.audioFormat.setSampleRate(val)
+        elif key == "sampleSize":
+          self.audioFormat.setSampleSize(val)
+        elif key == "sampleType":
+          self.audioFormat.setSampleType(val)
+        elif key == "channelCount":
+          self.audioFormat.setChannelCount(val)
+        elif key == "byteOrder":
+          self.audioFormat.setByteOrder(val)
+        else:
+          printErr("unknown audio format key: " + str(key))
+          sys.exit(1)
+      elif strMatch:
+        key = strMatch.group(1)
+        val = strMatch.group(2)
+        if key == "codec":
+          self.audioFormat.setCodec(val)
+        else:
+          printErr("unknown audio format key: " + str(key))
+          sys.exit(1)
+      else:
+        printErr("malformed audio format cache line: " + str(line))
+        sys.exit(1)
+  def writeAudioFormatCache(self):
+    with open(BUFFER_CACHE_AUDIOFORMAT_FILE, 'w') as f:
+      f.write("codec=" + str(self.audioFormat.codec()) + "\n")
+      f.write("sampleRate=" + str(self.audioFormat.sampleRate()) + "\n")
+      f.write("sampleSize=" + str(self.audioFormat.sampleSize()) + "\n")
+      f.write("sampleType=" + str(self.audioFormat.sampleType()) + "\n")
+      f.write("channelCount=" + str(self.audioFormat.channelCount()) + "\n")
+      f.write("byteOrder=" + str(self.audioFormat.byteOrder()) + "\n")
   def bufferCount(self):
     return len(self.bufferStartTimes)
   def readBufferByteArr(self, index):
@@ -328,6 +374,8 @@ class QTCmdPlayerMP3(QObject):
   def onFinished(self):
     self.allBuffersLoaded = True
     printBufferLog("finished: " + self.formatLastBufferPos())
+
+    self.writeAudioFormatCache()
 
 if __name__ == "__main__":
   sys.exit(main())
