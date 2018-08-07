@@ -42,6 +42,10 @@ def printBufferLog(msg):
 
 def nowMillis():
   return int(time.time() * 1000 / 0.5)
+def sleepUntil(intervalMillis, timeoutMillis, cond):
+  startMillis = nowMillis()
+  while not cond() and nowMillis() - startMillis < timeoutMillis:
+    QThread.msleep(intervalMillis)
 
 def main():
   if len(sys.argv) == 2 and sys.argv[1] == '-h':
@@ -267,8 +271,7 @@ class QTCmdPlayerMP3:
     return self.playerThread.isRunning()
   def playAvailableBuffers(self):
     while True:
-      if self.paused or self.waitingSeek:
-        QThread.msleep(100)
+      sleepUntil(100, 1000, lambda: self.paused or self.waitingSeek)
 
       while self.curBufferIndex >= 0 and self.curBufferIndex < self.bufferCount():
         if self.paused or self.waitingSeek:
@@ -283,8 +286,9 @@ class QTCmdPlayerMP3:
     byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
     return bytearray(byteStr)
   def playBuffer(self, audioBufferByteArr, bufferPos):
-    while(self.audioOutput.bytesFree() < len(audioBufferByteArr)):
-      QThread.msleep(1)
+    bufferSize = len(audioBufferByteArr)
+
+    sleepUntil(1, 1000, lambda: self.audioOutput.bytesFree() >= bufferSize)
     self.audioDevice.write(audioBufferByteArr)
     self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
   def formatLastBufferPos(self):
