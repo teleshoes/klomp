@@ -140,8 +140,10 @@ class PlayerThread(QThread):
     self.player.playAvailableBuffers()
 
 #doesnt work on flac at all
-class QTCmdPlayerMP3:
+class QTCmdPlayerMP3(QObject):
+  initAudioDeviceSignal = pyqtSignal()
   def __init__(self, songFile, seekPos):
+    QObject.__init__(self)
     self.songFile = songFile
     self.seekPosMicroSex = seekPos * 1000
 
@@ -170,6 +172,7 @@ class QTCmdPlayerMP3:
     self.audioDevice = None
 
     self.playerThread = PlayerThread(self)
+    self.initAudioDeviceSignal.connect(self.initAudioDevice)
 
   def start(self):
     if not os.path.isdir(CACHE_DIR):
@@ -207,7 +210,7 @@ class QTCmdPlayerMP3:
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
       if self.paused:
-        self.initializeAudioDevice()
+        self.refreshAudioDevice()
       self.paused = not self.paused
       printMsg("paused=" + str(self.paused))
       return
@@ -217,9 +220,15 @@ class QTCmdPlayerMP3:
       self.seekPosMicroSex = int(m.group(1)) * 1000
       self.stopPlaying()
       self.attemptSeek()
-  def initializeAudioDevice(self):
+  def refreshAudioDevice(self):
     if self.lastBufferRead != None:
-      self.audioOutput = QAudioOutput(self.lastBufferRead.format(), self.audioDecoder)
+      self.audioOutput = None
+      self.audioDevice = None
+      self.initAudioDeviceSignal.emit()
+      sleepUntil(1, 1000, lambda: self.audioDevice != None)
+  def initAudioDevice(self):
+    if self.lastBufferRead != None:
+      self.audioOutput = QAudioOutput(self.lastBufferRead.format(), self)
       self.audioDevice = self.audioOutput.start()
   def onBufferReady(self):
     buf = self.audioDecoder.read()
@@ -232,7 +241,7 @@ class QTCmdPlayerMP3:
     self.appendBuffer(byteArr, startTime)
 
     if self.audioOutput == None or self.audioDevice == None:
-      self.initializeAudioDevice()
+      self.refreshAudioDevice()
 
     if self.waitingSeek:
       self.attemptSeek()
