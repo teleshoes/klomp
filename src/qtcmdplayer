@@ -138,7 +138,7 @@ class QTCmdPlayerMP3:
     self.songFile = songFile
     self.seekPosMicroSex = seekPos * 1000
     self.bufferByteArrs = []
-    self.bufferStartTimesMicroSex = []
+    self.bufferStartTimes = []
 
     self.allBuffersLoaded = False
     self.paused = False
@@ -150,6 +150,7 @@ class QTCmdPlayerMP3:
     self.lastPositionUpdateMillis = nowMillis()
     self.lastBufferPositionUpdateMillis = nowMillis()
     self.lastBufferRead = None
+    self.lastBufferReadStartTime = None
 
     self.audioDecoder = QAudioDecoder()
     self.audioDecoder.bufferReady.connect(self.onBufferReady)
@@ -159,19 +160,20 @@ class QTCmdPlayerMP3:
     self.audioDevice = None
 
     self.playerThread = PlayerThread(self)
-  def bufferCount(self):
-    return len(self.bufferStartTimesMicroSex)
   def start(self):
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
+  def bufferCount(self):
+    return len(self.bufferStartTimes)
   def readBufferByteArr(self, index):
     return self.bufferByteArrs[index]
-  def appendBuffer(self, audioBuffer):
-    bufferPos = self.lastBufferRead.startTime()
-    byteArr = self.bufferToByteArray(audioBuffer)
+  def readBufferStartTime(self, index):
+    return self.bufferStartTimes[index]
+  def appendBuffer(self, byteArr, startTime):
     self.bufferByteArrs.append(byteArr)
-    self.bufferStartTimesMicroSex.append(bufferPos)
-    self.onBufferPositionChanged(bufferPos)
+    self.bufferStartTimes.append(startTime)
+
+    self.onBufferPositionChanged(startTime)
   def onCommand(self, cmd):
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
@@ -191,9 +193,14 @@ class QTCmdPlayerMP3:
       self.audioOutput = QAudioOutput(self.lastBufferRead.format(), self.audioDecoder)
       self.audioDevice = self.audioOutput.start()
   def onBufferReady(self):
-    self.lastBufferRead = self.audioDecoder.read()
+    buf = self.audioDecoder.read()
+    startTime = buf.startTime()
+    byteArr = self.bufferToByteArray(buf)
 
-    self.appendBuffer(self.lastBufferRead)
+    self.lastBufferRead = buf
+    self.lastBufferReadStartTime = startTime
+
+    self.appendBuffer(byteArr, startTime)
 
     if self.audioOutput == None or self.audioDevice == None:
       self.initializeAudioDevice()
@@ -203,11 +210,11 @@ class QTCmdPlayerMP3:
     else:
       self.ensurePlaying()
   def attemptSeek(self):
-    index = bisect.bisect_left(self.bufferStartTimesMicroSex, self.seekPosMicroSex)
+    index = bisect.bisect_left(self.bufferStartTimes, self.seekPosMicroSex)
     if index >= 0 and index < self.bufferCount():
       self.curBufferIndex = index
       self.waitingSeek = False
-      bufferPos = self.bufferStartTimesMicroSex[index]
+      bufferPos = self.readBufferStartTime(index)
       self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
 
     self.maybeQuit()
@@ -222,7 +229,7 @@ class QTCmdPlayerMP3:
       return True
     elif self.bufferCount() == 0:
       return True
-    elif self.seekPosMicroSex > self.bufferStartTimesMicroSex[-1]:
+    elif self.seekPosMicroSex > self.lastBufferReadStartTime:
       return True
     else:
       return False
@@ -241,7 +248,7 @@ class QTCmdPlayerMP3:
       while self.curBufferIndex >= 0 and self.curBufferIndex < self.bufferCount():
         if self.paused or self.waitingSeek:
           break
-        bufferPos = self.bufferStartTimesMicroSex[self.curBufferIndex]
+        bufferPos = self.readBufferStartTime(self.curBufferIndex)
         byteArray = self.readBufferByteArr(self.curBufferIndex)
         self.playBuffer(byteArray, bufferPos)
         self.curBufferIndex += 1
@@ -256,10 +263,10 @@ class QTCmdPlayerMP3:
     self.audioDevice.write(audioBufferByteArr)
     self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
   def formatLastBufferPos(self):
-    if self.lastBufferRead == None:
+    if self.lastBufferReadStartTime == None:
       return ""
     else:
-      return '%.2fs' % (self.lastBufferRead.startTime() / 1000000.0)
+      return '%.2fs' % (self.lastBufferReadStartTime / 1000000.0)
   def onPositionChanged(self, position):
     if nowMillis() - self.lastPositionUpdateMillis >= self.posIntervalMillis:
       self.lastPositionUpdateMillis = nowMillis()
