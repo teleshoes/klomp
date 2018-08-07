@@ -137,7 +137,7 @@ class QTCmdPlayerMP3:
   def __init__(self, songFile, seekPos):
     self.songFile = songFile
     self.seekPosMicroSex = seekPos * 1000
-    self.buffers = []
+    self.bufferByteArrs = []
     self.bufferStartTimesMicroSex = []
 
     self.allBuffersLoaded = False
@@ -159,9 +159,19 @@ class QTCmdPlayerMP3:
     self.audioDevice = None
 
     self.playerThread = PlayerThread(self)
+  def bufferCount(self):
+    return len(self.bufferStartTimesMicroSex)
   def start(self):
     self.audioDecoder.setSourceFilename(self.songFile)
     self.audioDecoder.start()
+  def readBufferByteArr(self, index):
+    return self.bufferByteArrs[index]
+  def appendBuffer(self, audioBuffer):
+    bufferPos = self.lastBufferRead.startTime()
+    byteArr = self.bufferToByteArray(audioBuffer)
+    self.bufferByteArrs.append(byteArr)
+    self.bufferStartTimesMicroSex.append(bufferPos)
+    self.onBufferPositionChanged(bufferPos)
   def onCommand(self, cmd):
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
@@ -182,14 +192,11 @@ class QTCmdPlayerMP3:
       self.audioDevice = self.audioOutput.start()
   def onBufferReady(self):
     self.lastBufferRead = self.audioDecoder.read()
+
+    self.appendBuffer(self.lastBufferRead)
+
     if self.audioOutput == None or self.audioDevice == None:
       self.initializeAudioDevice()
-
-    bufferPos = self.lastBufferRead.startTime()
-    self.onBufferPositionChanged(bufferPos)
-
-    self.buffers.append(self.lastBufferRead)
-    self.bufferStartTimesMicroSex.append(bufferPos)
 
     if self.waitingSeek:
       self.attemptSeek()
@@ -197,10 +204,11 @@ class QTCmdPlayerMP3:
       self.ensurePlaying()
   def attemptSeek(self):
     index = bisect.bisect_left(self.bufferStartTimesMicroSex, self.seekPosMicroSex)
-    if index >= 0 and index < len(self.buffers):
+    if index >= 0 and index < self.bufferCount():
       self.curBufferIndex = index
       self.waitingSeek = False
-      self.onPositionChanged(int(self.buffers[index].startTime() / 1000.0 + 0.5))
+      bufferPos = self.bufferStartTimesMicroSex[index]
+      self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
 
     self.maybeQuit()
   def maybeQuit(self):
@@ -210,9 +218,9 @@ class QTCmdPlayerMP3:
   def isSongOver(self):
     if not self.allBuffersLoaded:
       return False
-    elif self.curBufferIndex >= len(self.buffers):
+    elif self.curBufferIndex >= self.bufferCount():
       return True
-    elif len(self.bufferStartTimesMicroSex) == 0:
+    elif self.bufferCount() == 0:
       return True
     elif self.seekPosMicroSex > self.bufferStartTimesMicroSex[-1]:
       return True
@@ -230,22 +238,23 @@ class QTCmdPlayerMP3:
       if self.paused or self.waitingSeek:
         QThread.msleep(100)
 
-      while self.curBufferIndex >= 0 and self.curBufferIndex < len(self.buffers):
+      while self.curBufferIndex >= 0 and self.curBufferIndex < self.bufferCount():
         if self.paused or self.waitingSeek:
           break
-        self.playBuffer(self.buffers[self.curBufferIndex])
+        bufferPos = self.bufferStartTimesMicroSex[self.curBufferIndex]
+        byteArray = self.readBufferByteArr(self.curBufferIndex)
+        self.playBuffer(byteArray, bufferPos)
         self.curBufferIndex += 1
 
       self.maybeQuit()
-  def bufferToByteArray(self,audioBuffer):
+  def bufferToByteArray(self, audioBuffer):
     byteStr = audioBuffer.data().asstring(audioBuffer.byteCount())
     return bytearray(byteStr)
-  def playBuffer(self, audioBuffer):
-    byteArray = self.bufferToByteArray(audioBuffer)
-    while(self.audioOutput.bytesFree() < audioBuffer.byteCount()):
+  def playBuffer(self, audioBufferByteArr, bufferPos):
+    while(self.audioOutput.bytesFree() < len(audioBufferByteArr)):
       QThread.msleep(1)
-    self.audioDevice.write(byteArray)
-    self.onPositionChanged(int(audioBuffer.startTime() / 1000.0 + 0.5))
+    self.audioDevice.write(audioBufferByteArr)
+    self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
   def formatLastBufferPos(self):
     if self.lastBufferRead == None:
       return ""
