@@ -384,19 +384,15 @@ class QTCmdPlayerMP3(QObject):
     self.playerThread.quit()
   def isPlaying(self):
     return self.playerThread.isRunning()
+  def isReadyToPlay(self):
+    return not self.paused and not self.waitingSeek and self.isBufferAvailable()
+  def isBufferAvailable(self):
+    return self.curBufferIndex >= 0 and self.curBufferIndex < self.bufferCount()
   def playAvailableBuffers(self):
     while True:
-      sleepUntil(100, 1000, lambda: (
-        not self.paused
-        and not self.waitingSeek
-        and self.curBufferIndex >= 0
-        and self.curBufferIndex < self.bufferCount()
-        )
-      )
+      sleepUntil(100, 1000, self.isReadyToPlay)
 
-      while self.curBufferIndex >= 0 and self.curBufferIndex < self.bufferCount():
-        if self.paused or self.waitingSeek:
-          break
+      while self.isReadyToPlay():
         bufferPos = self.readBufferStartTime(self.curBufferIndex)
         byteArray = self.readBufferByteArr(self.curBufferIndex)
         self.playBuffer(byteArray, bufferPos)
