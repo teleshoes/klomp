@@ -153,14 +153,14 @@ sub main(@){
   my $first = 1;
   for my $index(@indices){
     my $klompInfo = selectKlompInfo $index, $curInfo, $histInfo, $listInfo;
-    if(not defined $klompInfo){
-      print STDERR "No song info found\n";
-      $klompInfo = "";
-    }
-    my $info = parseInfo $klompInfo, $index, $playlist, \@cols, $csv, $seconds, $format;
     print "\n" unless $first;
     $first = 0;
-    print $info;
+    if(defined $klompInfo){
+      my $info = parseInfo $klompInfo, $index, $playlist, \@cols, $csv, $seconds, $format;
+      print $info;
+    }else{
+      print "No song info found (#$index)";
+    }
   }
   print "\n" if $newline;
 }
