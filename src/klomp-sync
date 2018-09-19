@@ -35,7 +35,7 @@ my $usage = "Usage:
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in the klomplib on HOST
-  $name --local KLOMP_LIB_FILE [--flacs] [--nopresync] [LIB_REGEX]
+  $name --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--nopresync] [LIB_REGEX]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
@@ -48,7 +48,7 @@ my $usage = "Usage:
      the destination rather than copying and deleting.
      It's fairly fast and can save huge amounts of time, so its on by default.
   --local
-     Specify a local klomplib and copy locally.
+     Specify a local klomp lib and config, and copy locally.
 
   HOST
     SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
@@ -68,10 +68,11 @@ sub main(@){
     exit 0;
   }
 
-  my ($host, $localKlompLib);
-  if(@_ >= 2 and $_[0] eq "--local"){
+  my ($host, $localKlompLib, $localKlompConfig);
+  if(@_ >= 3 and $_[0] eq "--local"){
     shift;
     $localKlompLib = shift;
+    $localKlompConfig = shift;
   }else{
     $host = shift;
   }
