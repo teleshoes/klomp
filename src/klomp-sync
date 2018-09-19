@@ -10,7 +10,7 @@ use Safe;
 sub runOrDie(@);
 sub libMatches($$);
 sub remoteSync($$$$);
-sub sync($$$$$);
+sub sync($$$$$$);
 sub syncDir($$$$@);
 
 my $klompDb = Klomp::Files::klompFile("db");
@@ -97,7 +97,7 @@ sub main(@){
   if(defined $host){
     remoteSync($host, $includeFlacs, $presync, $libRegex);
   }elsif(defined $localKlompLib){
-    sync(undef, $localKlompLib, $includeFlacs, $presync, $libRegex);
+    sync(undef, $localKlompLib, $localKlompConfig, $includeFlacs, $presync, $libRegex);
   }
 }
 
@@ -122,6 +122,11 @@ sub remoteSync($$$$){
   chomp $lib;
   die "Could not find lib file with klomp-files\n" if $lib =~ /^\s*$/;
 
+  print "Getting remote config path\n";
+  my $config = `ssh $host klomp-files config`;
+  chomp $config;
+  die "Could not find config file with klomp-files\n" if $config =~ /^\s*$/;
+
   print "Getting remote db path\n";
   my $db = `ssh $host klomp-files db`;
   chomp $db;
@@ -135,10 +140,15 @@ sub remoteSync($$$$){
   my $now = time();
 
   my $remoteKlompLib = "/tmp/klomp-sync-$now-lib";
+  my $remoteKlompConfig = "/tmp/klomp-sync-$now-config";
 
-  print "Copying remote klomplib here to read\n";
+  print "Copying remote klomp lib here to read\n";
   system 'scp', "$host:$lib", $remoteKlompLib;
   die "Error copying $host:$lib\n" if not -e $remoteKlompLib;
+
+  print "Copying remote klomp config here to read\n";
+  system 'scp', "$host:$config", $remoteKlompConfig;
+  die "Error copying $host:$config\n" if not -e $remoteKlompConfig;
 
   print "Overwriting remote klompdb with local klompdb\n";
   system 'rsync', "-c", "-v", "-P", $klompDb, "$host:$db";
@@ -148,11 +158,11 @@ sub remoteSync($$$$){
     system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
   }
 
-  sync($host, $remoteKlompLib, $includeFlacs, $presync, $libRegex);
+  sync($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libRegex);
 }
 
-sub sync($$$$$){
-  my ($host, $remoteKlompLib, $includeFlacs, $presync, $libRegex) = @_;
+sub sync($$$$$$){
+  my ($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libRegex) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $remoteKlompLib;
@@ -192,7 +202,7 @@ sub sync($$$$$){
   }
 
   my $props = Klomp::Config::getProperties;
-  my $remoteProps = Klomp::Config::getProperties $remoteKlompLib;
+  my $remoteProps = Klomp::Config::getProperties $remoteKlompConfig;
 
   if(defined $host){
     runOrDie "ssh", "$host", "bash -c 'klomp-update --utils-only'";
