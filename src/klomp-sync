@@ -17,7 +17,6 @@ my $klompDb = Klomp::Files::klompFile("db");
 my $klompDateCache = Klomp::Files::klompFile("datecache");
 
 my $klompLib = Klomp::Files::klompFile("lib");
-my $tmpKlompLib = "/tmp/klomp-sync_" . time();
 
 my %okExts = map {$_ => 1} qw(
   flac
@@ -132,9 +131,13 @@ sub remoteSync($$$$){
   chomp $dateCache;
   die "Could not find dateCache file with klomp-files\n" if $dateCache =~ /^\s*$/;
 
+  my $now = time();
+
+  my $remoteKlompLib = "/tmp/klomp-sync-$now-lib";
+
   print "Copying remote klomplib here to read\n";
-  system 'scp', "$host:$lib", $tmpKlompLib;
-  die "Error copying $host:$lib\n" if not -e $tmpKlompLib;
+  system 'scp', "$host:$lib", $remoteKlompLib;
+  die "Error copying $host:$lib\n" if not -e $remoteKlompLib;
 
   print "Overwriting remote klompdb with local klompdb\n";
   system 'rsync', "-c", "-v", "-P", $klompDb, "$host:$db";
@@ -144,14 +147,14 @@ sub remoteSync($$$$){
     system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
   }
 
-  sync($host, $tmpKlompLib, $includeFlacs, $presync, $libRegex);
+  sync($host, $remoteKlompLib, $includeFlacs, $presync, $libRegex);
 }
 
 sub sync($$$$$){
-  my ($host, $klompLib, $includeFlacs, $presync, $libRegex) = @_;
+  my ($host, $remoteKlompLib, $includeFlacs, $presync, $libRegex) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
-  my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $klompLib;
+  my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $remoteKlompLib;
 
   for my $lib(sort keys %libs){
     print "\n\nSYNCING $lib\n";
@@ -164,10 +167,10 @@ sub sync($$$$$){
       next;
     }
     my $path = Klomp::Lib::getLibraryPath $lib;
-    my $remotePath = Klomp::Lib::getLibraryPath $lib, $klompLib;
+    my $remotePath = Klomp::Lib::getLibraryPath $lib, $remoteKlompLib;
 
     my $flacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib;
-    my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $klompLib;
+    my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $remoteKlompLib;
 
     my %exts = %okExts;
     if($includeFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){
@@ -188,7 +191,7 @@ sub sync($$$$$){
   }
 
   my $props = Klomp::Config::getProperties;
-  my $remoteProps = Klomp::Config::getProperties $klompLib;
+  my $remoteProps = Klomp::Config::getProperties $remoteKlompLib;
 
   if(defined $host){
     runOrDie "ssh", "$host", "bash -c 'klomp-update --utils-only'";
