@@ -12,6 +12,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
+import argparse
 import bisect
 import io
 import os
@@ -28,9 +29,14 @@ BUFFER_CACHE_AUDIOFORMAT_FILE = CACHE_DIR + "/buffer-audioformat.cache"
 BUFFER_CACHE_LAST_SONG_INFO_FILE = CACHE_DIR + "/buffer-lastsonginfo.cache"
 
 name = sys.argv[0]
-usage = ("Usage:\n"
-  + "  " + name + " FILE [POSITION_MILLIS] [COMMAND_FIFO]\n"
-)
+parser = argparse.ArgumentParser(description=''
+           + 'Play music/sound files from the command line using PyQt5 media tools.'
+           )
+parser.add_argument('FILE', type=str, help='sound file to play')
+parser.add_argument('POSITION_MILLIS', type=int, nargs='?', default=0,
+  help='optional starting position in millis')
+parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
+  help='optional path to existing FIFO for listening to commands')
 
 def printMsg(msg):
   sys.stdout.write(msg + "\n")
@@ -59,34 +65,19 @@ def rmFile(f):
     os.remove(f)
 
 def main():
-  if len(sys.argv) == 2 and sys.argv[1] == '-h':
-    print(usage)
-    return 0
-  elif len(sys.argv) == 2:
-    fileName = sys.argv[1]
-    pos = 0
-    fifoPath = None
-  elif len(sys.argv) == 3 and re.match('^\d+$', sys.argv[2]):
-    fileName = sys.argv[1]
-    pos = int(sys.argv[2])
-    fifoPath = None
-  elif len(sys.argv) == 4 and re.match('^\d+$', sys.argv[2]):
-    fileName = sys.argv[1]
-    pos = int(sys.argv[2])
-    fifoPath = sys.argv[3]
-  else:
-    printErr(usage)
-    return 1
+  args = parser.parse_args()
+  if args.POSITION_MILLIS < 0:
+    die("ERROR: position must be non-negative")
 
   app = QApplication([])
 
-  if os.path.splitext(fileName)[1].lower() == ".mp3":
-    player = QTCmdPlayerMP3(fileName, pos)
+  if os.path.splitext(args.FILE)[1].lower() == ".mp3":
+    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS)
   else:
-    player = QTCmdPlayer(fileName, pos)
+    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS)
 
-  if fifoPath != None:
-    fifoReader = FIFOReader(fifoPath)
+  if args.COMMAND_FIFO != None:
+    fifoReader = FIFOReader(args.COMMAND_FIFO)
     fifoReader.fifoCommandSignal.connect(player.onCommand)
     fifoReader.start()
 
