@@ -39,6 +39,10 @@ def printMsg(msg):
 def printErr(msg):
   sys.stderr.write(msg + "\n")
 
+def die(msg):
+  printErr(msg)
+  sys.exit(1)
+
 def printBufferLog(msg):
   with open(BUFFER_LOG_FILE, 'w') as log:
     log.write(msg)
@@ -233,8 +237,7 @@ class QTCmdPlayerMP3(QObject):
         self.nextByteOffset += byteSize
         self.lastBufferReadStartTime = startTime
       else:
-        printErr("malformed buffer-info cache line: " + str(line))
-        sys.exit(1)
+        die("malformed buffer-info cache line: " + str(line))
     self.allBuffersLoaded = True
   def writeBufferInfoCache(self):
     with open(BUFFER_CACHE_INFO_FILE, 'w') as f:
@@ -267,19 +270,16 @@ class QTCmdPlayerMP3(QObject):
         elif key == "byteOrder":
           self.audioFormat.setByteOrder(val)
         else:
-          printErr("unknown audio format key: " + str(key))
-          sys.exit(1)
+          die("unknown audio format key: " + str(key))
       elif strMatch:
         key = strMatch.group(1)
         val = strMatch.group(2)
         if key == "codec":
           self.audioFormat.setCodec(val)
         else:
-          printErr("unknown audio format key: " + str(key))
-          sys.exit(1)
+          die("unknown audio format key: " + str(key))
       else:
-        printErr("malformed audio format cache line: " + str(line))
-        sys.exit(1)
+        die("malformed audio format cache line: " + str(line))
   def writeAudioFormatCache(self):
     with open(BUFFER_CACHE_AUDIOFORMAT_FILE, 'w') as f:
       f.write("codec=" + str(self.audioFormat.codec()) + "\n")
