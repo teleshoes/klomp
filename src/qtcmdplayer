@@ -41,6 +41,11 @@ parser.add_argument('POSITION_MILLIS', type=int, nargs='?', default=0,
 parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
   help='optional path to existing FIFO for listening to commands')
 
+parser.add_argument('--volume', type=int, default=100, required=False,
+  dest='VOLUME',
+  help='set volume 0 - 100'
+)
+
 parser.add_argument('--mp3', required=False,
   dest='PLAYER_TYPE', action='store_const', const=PlayerType.QAUDIOOUTPUT,
   help='force MP3 mode regardless of file extension'
@@ -93,9 +98,9 @@ def main():
       playerType = PlayerType.QAUDIOOUTPUT
 
   if playerType == PlayerType.QMEDIAPLAYER:
-    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS)
+    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS, args.VOLUME)
   elif playerType == PlayerType.QAUDIOOUTPUT:
-    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS)
+    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS, args.VOLUME)
   else:
     die("unknown player type")
 
@@ -121,10 +126,11 @@ class FIFOReader(QThread):
 
 #doesnt allow seeking on MP3s
 class QTCmdPlayer(QMediaPlayer):
-  def __init__(self, songFile, initPos):
+  def __init__(self, songFile, initPos, volume):
     QMediaPlayer.__init__(self)
     self.songFile = songFile
     self.initPos = initPos
+    self.setVolume(volume)
 
     self.started = False
     self.paused = False
@@ -167,10 +173,11 @@ class PlayerThread(QThread):
 #doesnt work on flac at all
 class QTCmdPlayerMP3(QObject):
   initAudioDeviceSignal = pyqtSignal()
-  def __init__(self, songFile, seekPos):
+  def __init__(self, songFile, seekPos, volume):
     QObject.__init__(self)
     self.songFile = songFile
     self.seekPosMicroSex = seekPos * 1000
+    self.volume = volume
 
     self.bufferStartTimes = []
     self.bufferByteOffsets = []
@@ -348,6 +355,7 @@ class QTCmdPlayerMP3(QObject):
     if self.audioFormat != None:
       self.audioOutput = QAudioOutput(self.audioFormat, self)
       self.audioDevice = self.audioOutput.start()
+      self.audioOutput.setVolume(self.volume / 100.0)
   def onBufferReady(self):
     buf = self.audioDecoder.read()
     startTime = buf.startTime()
