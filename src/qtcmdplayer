@@ -41,17 +41,16 @@ parser.add_argument('POSITION_MILLIS', type=int, nargs='?', default=0,
 parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
   help='optional path to existing FIFO for listening to commands')
 
-parser.add_argument('--volume', type=int, default=100, required=False,
-  dest='VOLUME',
+parser.add_argument('--volume', type=int, default=100, required=False, dest='VOLUME',
   help='set volume 0 - 100'
        + '(values greater than 100 are allowed only for MP3s, or with --mp3)')
 
-parser.add_argument('--mp3', required=False,
-  dest='PLAYER_TYPE', action='store_const', const=PlayerType.QAUDIOOUTPUT,
+parser.add_argument('--mp3', required=False, dest='PLAYER_TYPE',
+  action='store_const', const=PlayerType.QAUDIOOUTPUT,
   help='force MP3 mode regardless of file extension'
        + ' (use QAudioDecoder+QAudioOutput instead of QMediaPlayer)')
-parser.add_argument('--nomp3', required=False,
-  dest='PLAYER_TYPE', action='store_const', const=PlayerType.QMEDIAPLAYER,
+parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
+  action='store_const', const=PlayerType.QMEDIAPLAYER,
   help='force non-MP3 mode regardless of file extension'
        + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
 
