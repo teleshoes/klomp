@@ -488,7 +488,6 @@ class QTCmdPlayerMP3(QObject):
     val = val * scale
     if val >= 256**place:
       val = 256**place - 1
-    print str(oldVal) + " => " + str(val)
     newByteArr = bytearray()
     for i in range(0, place):
       byte = int(val) % 256
