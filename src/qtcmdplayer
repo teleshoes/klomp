@@ -503,7 +503,6 @@ class QTCmdPlayerMP3(QObject):
     if nowMillis() - self.lastPositionUpdateMillis >= self.posIntervalMillis:
       self.lastPositionUpdateMillis = nowMillis()
       printMsg("pos: " + str(position))
-      sys.stdout.flush()
   def onBufferPositionChanged(self, bufferPosition):
     if nowMillis() - self.lastBufferPositionUpdateMillis >= self.posIntervalMillis:
       self.lastBufferPositionUpdateMillis = nowMillis()
