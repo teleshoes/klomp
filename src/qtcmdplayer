@@ -44,7 +44,7 @@ parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
 parser.add_argument('--volume', type=int, default=100, required=False,
   dest='VOLUME',
   help='set volume 0 - 100'
-)
+       + '(values greater than 100 are allowed only for MP3s, or with --mp3)')
 
 parser.add_argument('--mp3', required=False,
   dest='PLAYER_TYPE', action='store_const', const=PlayerType.QAUDIOOUTPUT,
@@ -434,8 +434,54 @@ class QTCmdPlayerMP3(QObject):
       self.refreshAudioDevice()
       sleepUntil(1, 1000, lambda: self.audioOutput.bytesFree() >= bufferSize)
 
+    if self.volume > 100:
+      audioBufferByteArr = self.scaleVolumeByteArr(audioBufferByteArr, self.volume)
+
     self.audioDevice.write(audioBufferByteArr)
     self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
+  def scaleVolumeByteArr(self, byteArr, volume):
+    samples = self.getSamplesFromByteArr(byteArr)
+
+    if volume < 100:
+      die("can only scale volume upwards for some reason")
+
+    volScale = 1 + (volume - 100)/100.0 * 3 #100%-200% => 1-4
+
+    newByteArr = bytearray()
+    for sample in samples:
+      sample = self.multiplyByteArr(sample, volScale)
+      for byte in sample:
+        newByteArr.append(byte)
+
+    return newByteArr
+  def getSamplesFromByteArr(self, byteArr):
+    samples = []
+    curSample = bytearray()
+    for byte in byteArr:
+      if len(curSample) >= int(self.audioFormat.sampleSize()/8):
+        samples.append(curSample)
+        curSample = bytearray()
+      curSample.append(byte)
+    if len(curSample) > 0:
+      samples.append(curSample)
+    return samples
+  def multiplyByteArr(self, byteArr, scale):
+    val = 0
+    place = 0
+    for byte in byteArr:
+      val += byte * (256**place)
+      place += 1
+    oldVal = val
+    val = val * scale
+    if val >= 256**place:
+      val = 256**place - 1
+    print str(oldVal) + " => " + str(val)
+    newByteArr = bytearray()
+    for i in range(0, place):
+      byte = int(val) % 256
+      val = val / 256
+      newByteArr.append(byte)
+    return newByteArr
   def formatLastBufferPos(self):
     if self.lastBufferReadStartTime == None:
       return ""
