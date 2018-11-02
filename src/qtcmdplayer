@@ -12,6 +12,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
+from enum import Enum
 import argparse
 import bisect
 import io
@@ -27,6 +28,8 @@ BUFFER_CACHE_BYTES_FILE = CACHE_DIR + "/buffer-bytes.cache"
 BUFFER_CACHE_INFO_FILE = CACHE_DIR + "/buffer-info.cache"
 BUFFER_CACHE_AUDIOFORMAT_FILE = CACHE_DIR + "/buffer-audioformat.cache"
 BUFFER_CACHE_LAST_SONG_INFO_FILE = CACHE_DIR + "/buffer-lastsonginfo.cache"
+
+class PlayerType(Enum): QMEDIAPLAYER=1; QAUDIOOUTPUT=2
 
 name = sys.argv[0]
 parser = argparse.ArgumentParser(description=''
@@ -71,10 +74,21 @@ def main():
 
   app = QApplication([])
 
-  if os.path.splitext(args.FILE)[1].lower() == ".mp3":
+  isExtMP3 = os.path.splitext(args.FILE)[1].lower() == ".mp3"
+
+  playerType = None
+  if playerType == None:
+    if not isExtMP3:
+      playerType = PlayerType.QMEDIAPLAYER
+    else:
+      playerType = PlayerType.QAUDIOOUTPUT
+
+  if playerType == PlayerType.QMEDIAPLAYER:
+    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS)
+  elif playerType == PlayerType.QAUDIOOUTPUT:
     player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS)
   else:
-    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS)
+    die("unknown player type")
 
   if args.COMMAND_FIFO != None:
     fifoReader = FIFOReader(args.COMMAND_FIFO)
