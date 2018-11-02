@@ -41,6 +41,15 @@ parser.add_argument('POSITION_MILLIS', type=int, nargs='?', default=0,
 parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
   help='optional path to existing FIFO for listening to commands')
 
+parser.add_argument('--mp3', required=False,
+  dest='PLAYER_TYPE', action='store_const', const=PlayerType.QAUDIOOUTPUT,
+  help='force MP3 mode regardless of file extension'
+       + ' (use QAudioDecoder+QAudioOutput instead of QMediaPlayer)')
+parser.add_argument('--nomp3', required=False,
+  dest='PLAYER_TYPE', action='store_const', const=PlayerType.QMEDIAPLAYER,
+  help='force non-MP3 mode regardless of file extension'
+       + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
+
 def printMsg(msg):
   sys.stdout.write(msg + "\n")
   sys.stdout.flush()
@@ -76,7 +85,7 @@ def main():
 
   isExtMP3 = os.path.splitext(args.FILE)[1].lower() == ".mp3"
 
-  playerType = None
+  playerType = args.PLAYER_TYPE
   if playerType == None:
     if not isExtMP3:
       playerType = PlayerType.QMEDIAPLAYER
