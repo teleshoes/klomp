@@ -41,6 +41,9 @@ parser.add_argument('POSITION_MILLIS', type=int, nargs='?', default=0,
 parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
   help='optional path to existing FIFO for listening to commands')
 
+parser.add_argument('--loop', required=False, default=False, action='store_const', const=True,  dest='LOOP',
+  help='when playback is finished, play again immediately forever')
+
 parser.add_argument('--volume', type=int, default=100, required=False, dest='VOLUME',
   help='set volume 0 - 100'
        + '(values greater than 100 are allowed only for MP3s, or with --mp3)')
@@ -97,9 +100,9 @@ def main():
       playerType = PlayerType.QAUDIOOUTPUT
 
   if playerType == PlayerType.QMEDIAPLAYER:
-    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS, args.VOLUME)
+    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS, args.VOLUME, args.LOOP)
   elif playerType == PlayerType.QAUDIOOUTPUT:
-    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS, args.VOLUME)
+    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS, args.VOLUME, args.LOOP)
   else:
     die("unknown player type")
 
@@ -125,11 +128,12 @@ class FIFOReader(QThread):
 
 #doesnt allow seeking on MP3s
 class QTCmdPlayer(QMediaPlayer):
-  def __init__(self, songFile, initPos, volume):
+  def __init__(self, songFile, initPos, volume, isLoop):
     QMediaPlayer.__init__(self)
     self.songFile = songFile
     self.initPos = initPos
     self.setVolume(volume)
+    self.isLoop = isLoop
 
     self.started = False
     self.paused = False
@@ -158,7 +162,10 @@ class QTCmdPlayer(QMediaPlayer):
         self.setPosition(self.initPos)
     elif(status == QMediaPlayer.EndOfMedia):
       printMsg("END")
-      sys.exit(0)
+      if self.isLoop:
+        self.play()
+      else:
+        sys.exit(0)
   def onPositionChanged(self, pos):
     printMsg("pos: " + str(pos))
 
@@ -172,11 +179,13 @@ class PlayerThread(QThread):
 #doesnt work on flac at all
 class QTCmdPlayerMP3(QObject):
   initAudioDeviceSignal = pyqtSignal()
-  def __init__(self, songFile, seekPos, volume):
+  def __init__(self, songFile, seekPos, volume, isLoop):
     QObject.__init__(self)
     self.songFile = songFile
+    self.initSeekPos = seekPos
     self.seekPosMicroSex = seekPos * 1000
     self.volume = volume
+    self.isLoop = isLoop
 
     self.bufferStartTimes = []
     self.bufferByteOffsets = []
@@ -386,7 +395,12 @@ class QTCmdPlayerMP3(QObject):
   def maybeQuit(self):
     if self.isSongOver():
       printMsg("END")
-      sys.exit(0)
+      if self.isLoop:
+        self.seekPosMicroSex = self.initSeekPos * 1000
+        self.attemptSeek()
+        self.start()
+      else:
+        sys.exit(0)
   def isSongOver(self):
     if not self.allBuffersLoaded:
       return False
