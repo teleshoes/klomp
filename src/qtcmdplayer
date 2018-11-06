@@ -57,9 +57,8 @@ parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
        + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
 
 def printMsg(msg):
-  charsWritten = sys.stdout.write(msg + "\n")
-  if charsWritten > 0: #work around for crash when stdout is closed
-    sys.stdout.flush()
+  sys.stdout.write(msg + "\n")
+  sys.stdout.flush()
 
 def printErr(msg):
   sys.stderr.write(msg + "\n")
