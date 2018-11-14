@@ -170,9 +170,17 @@ class QTCmdPlayer(QMediaPlayer):
       else:
         self.play()
       return
-    m = re.match('^seek\s*(\d+)$', cmd)
+    m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
     if m:
-      self.setPosition(int(m.group(1)))
+      sign = m.group(1)
+      seekPosMillis = int(m.group(2))
+      if sign == "":
+        newPosMillis = seekPosMillis
+      elif sign == "+":
+        newPosMillis = self.position + seekPosMillis
+      elif sign == "-":
+        newPosMillis = self.position - seekPosMillis
+      self.setPosition(newPosMillis)
   def onMediaStatusChanged(self, status):
     if(status == QMediaPlayer.LoadedMedia or status == QMediaPlayer.BufferedMedia):
       if not self.started:
@@ -374,10 +382,18 @@ class QTCmdPlayerMP3(QObject):
       self.paused = not self.paused
       printMsg("paused=" + str(self.paused))
       return
-    m = re.match('^seek\s*(\d+)$', cmd)
+    m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
     if m:
+      sign = m.group(1)
+      seekPosMillis = int(m.group(2))
+      if sign == "":
+        newPosMillis = seekPosMillis
+      elif sign == "+":
+        newPosMillis = self.position + seekPosMillis
+      elif sign == "-":
+        newPosMillis = self.position - seekPosMillis
       self.waitingSeek = True
-      self.seekPosMicroSex = int(m.group(1)) * 1000
+      self.seekPosMicroSex = newPosMillis * 1000
       self.stopPlaying()
       self.attemptSeek()
   def refreshAudioDevice(self):
