@@ -178,6 +178,7 @@ class QTCmdPlayer(QMediaPlayer):
       else:
         self.play()
       return
+
     m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
     if m:
       sign = m.group(1)
@@ -390,6 +391,7 @@ class QTCmdPlayerMP3(QObject):
       self.paused = not self.paused
       printMsg("paused=" + str(self.paused))
       return
+
     m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
     if m:
       sign = m.group(1)
