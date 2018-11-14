@@ -138,6 +138,7 @@ class QTCmdPlayer(QMediaPlayer):
     self.paused = False
     self.mediaStatusChanged.connect(self.onMediaStatusChanged)
     self.positionChanged.connect(self.onPositionChanged)
+    self.error.connect(self.onError)
   def start(self):
     self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
   def onCommand(self, cmd):
@@ -167,6 +168,12 @@ class QTCmdPlayer(QMediaPlayer):
         sys.exit(0)
   def onPositionChanged(self, pos):
     printMsg("pos: " + str(pos))
+  def onError(self, msg):
+    if self.errorString() != None:
+      msg = self.errorString()
+    else:
+      msg = ""
+    die("QMediaPlayer error: " + msg)
 
 class PlayerThread(QThread):
   def __init__(self, player):
@@ -206,6 +213,7 @@ class QTCmdPlayerMP3(QObject):
     self.audioDecoder = QAudioDecoder()
     self.audioDecoder.bufferReady.connect(self.onBufferReady)
     self.audioDecoder.finished.connect(self.onFinished)
+    self.audioDecoder.error.connect(self.onError)
 
     self.audioOutput = None
     self.audioDevice = None
@@ -514,6 +522,12 @@ class QTCmdPlayerMP3(QObject):
     self.writeAudioFormatCache()
 
     FileCache(self.songFile, BUFFER_CACHE_LAST_SONG_INFO_FILE).writeInfoCache()
+  def onError(self):
+    if self.audioDecoder != None and self.audioDecoder.errorString() != None:
+      msg = self.audioDecoder.errorString()
+    else:
+      msg = ""
+    die("QAudioDecoder error: " + msg)
 
 class FileCache:
   def __init__(self, srcFile, infoCacheFile):
