@@ -130,6 +130,8 @@ class KeyCmdReader(QThread):
           die("user quit\n")
         elif key == 'CTRL_Z':
           die("terminating, cannot background process (sorry)\n")
+        elif key == 'Enter' or key == ' ':
+          self.keyCommandSignal.emit('pause')
 
 class FIFOReader(QThread):
   fifoCommandSignal = pyqtSignal(str)
