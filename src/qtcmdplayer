@@ -193,6 +193,7 @@ class QTCmdPlayerMP3(QObject):
     self.volume = volume
     self.isLoop = isLoop
 
+    self.position = 0
     self.bufferStartTimes = []
     self.bufferByteOffsets = []
     self.bufferByteSizes = []
@@ -396,7 +397,8 @@ class QTCmdPlayerMP3(QObject):
       self.curBufferIndex = index
       self.waitingSeek = False
       bufferPos = self.readBufferStartTime(index)
-      self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
+      self.position = int(bufferPos / 1000.0 + 0.5)
+      self.onPositionChanged(self.position)
 
     self.maybeQuit()
   def maybeQuit(self):
@@ -458,7 +460,8 @@ class QTCmdPlayerMP3(QObject):
       audioBufferByteArr = self.scaleVolumeByteArr(audioBufferByteArr, self.volume)
 
     self.audioDevice.write(audioBufferByteArr)
-    self.onPositionChanged(int(bufferPos / 1000.0 + 0.5))
+    self.position = int(bufferPos / 1000.0 + 0.5)
+    self.onPositionChanged(self.position)
   def scaleVolumeByteArr(self, byteArr, volume):
     samples = self.getSamplesFromByteArr(byteArr)
 
