@@ -61,7 +61,7 @@ sub main(@){
       $songAbsPath;
   }else{
     my $curPosMillis = int($$cur{pos} * 1000.0 + 0.5);
-    $pid = open FH, '-|', 'qtcmdplayer', $songAbsPath, $curPosMillis, $FIFO
+    $pid = open FH, '-|', 'qtcmdplayer', "--daemon", $songAbsPath, $curPosMillis, $FIFO
       or die "could not run qtcmdplayer\n$!\n";
   }
 
