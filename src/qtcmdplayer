@@ -59,6 +59,21 @@ parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
   help='force non-MP3 mode regardless of file extension'
        + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
 
+term = {"raw": False, "defaultTtyAttr": None}
+
+def termSetRaw(isRaw):
+  if isRaw != term["raw"]:
+    import sys, tty, termios, os
+    if term["defaultTtyAttr"] == None:
+      term["defaultTtyAttr"] = termios.tcgetattr(sys.stdin.fileno())
+
+    if isRaw:
+      term["raw"] = True
+      tty.setraw(sys.stdin.fileno())
+    else:
+      term["raw"] = False
+      termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, term["defaultTtyAttr"])
+
 def printMsg(msg):
   sys.stdout.write(msg + "\n")
   sys.stdout.flush()
@@ -67,10 +82,12 @@ def printErr(msg):
   sys.stderr.write(msg + "\n")
 
 def die(msg):
+  termSetRaw(False)
   printErr(msg)
   sys.exit(1)
 
 def quit():
+  termSetRaw(False)
   sys.exit(0)
 
 def printBufferLog(msg):
@@ -112,6 +129,7 @@ def main():
     die("unknown player type")
 
   if not args.DAEMON:
+    termSetRaw(True)
     keyCmdReader = KeyCmdReader()
     keyCmdReader.keyCommandSignal.connect(player.onCommand)
     keyCmdReader.start()
@@ -693,20 +711,8 @@ class ReadKey:
       if i >= len(arr) or arr[i] != prefixArr[i]:
         return False
     return True
-  def startRead(self):
-    import sys, tty, termios, os
-    self.ttyAttr = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(self.fileno)
-  def stopRead(self):
-    import sys, tty, termios, os
-    termios.tcsetattr(self.fileno, termios.TCSADRAIN, self.ttyAttr)
   def readBytes(self):
-    self.startRead()
-    try:
-      keyBytes = bytearray(os.read(self.fileno, 32))
-    finally:
-      self.stopRead()
-    return keyBytes
+    return bytearray(os.read(self.fileno, 64))
 
 if __name__ == "__main__":
   sys.exit(main())
