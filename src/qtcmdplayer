@@ -140,9 +140,9 @@ class KeyCmdReader(QThread):
           self.keyCommandSignal.emit('seek -10000')
         elif key == 'Right':
           self.keyCommandSignal.emit('seek +10000')
-        elif key == 'Up':
-          self.keyCommandSignal.emit('seek -60000')
         elif key == 'Down':
+          self.keyCommandSignal.emit('seek -60000')
+        elif key == 'Up':
           self.keyCommandSignal.emit('seek +60000')
 
 class FIFOReader(QThread):
