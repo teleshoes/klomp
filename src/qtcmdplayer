@@ -70,6 +70,9 @@ def die(msg):
   printErr(msg)
   sys.exit(1)
 
+def quit():
+  sys.exit(0)
+
 def printBufferLog(msg):
   with open(BUFFER_LOG_FILE, 'w') as log:
     log.write(msg)
@@ -205,7 +208,7 @@ class QTCmdPlayer(QMediaPlayer):
       if self.isLoop:
         self.play()
       else:
-        sys.exit(0)
+        quit()
   def onPositionChanged(self, pos):
     printMsg("pos: " + str(pos))
   def onError(self, msg):
@@ -458,7 +461,7 @@ class QTCmdPlayerMP3(QObject):
         self.attemptSeek()
         self.start()
       else:
-        sys.exit(0)
+        quit()
   def isSongOver(self):
     if not self.allBuffersLoaded:
       return False
