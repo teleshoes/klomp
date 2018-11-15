@@ -59,7 +59,7 @@ parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
   help='force non-MP3 mode regardless of file extension'
        + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
 
-term = {"raw": False, "defaultTtyAttr": None}
+term = {"raw": False, "newline": "\n", "defaultTtyAttr": None}
 
 def termSetRaw(isRaw):
   if isRaw != term["raw"]:
@@ -69,17 +69,19 @@ def termSetRaw(isRaw):
 
     if isRaw:
       term["raw"] = True
+      term["newline"] = "\r\n"
       tty.setraw(sys.stdin.fileno())
     else:
       term["raw"] = False
+      term["newline"] = "\n"
       termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, term["defaultTtyAttr"])
 
 def printMsg(msg):
-  sys.stdout.write(msg + "\n")
+  sys.stdout.write(msg + term["newline"])
   sys.stdout.flush()
 
 def printErr(msg):
-  sys.stderr.write(msg + "\n")
+  sys.stderr.write(msg + term["newline"])
 
 def die(msg):
   termSetRaw(False)
