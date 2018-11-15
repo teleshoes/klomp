@@ -59,29 +59,29 @@ parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
   help='force non-MP3 mode regardless of file extension'
        + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
 
-term = {"raw": False, "newline": "\n", "defaultTtyAttr": None}
+TERM = {"raw": False, "newline": "\n", "defaultTtyAttr": None}
 
 def termSetRaw(isRaw):
-  if isRaw != term["raw"]:
+  if isRaw != TERM["raw"]:
     import sys, tty, termios, os
-    if term["defaultTtyAttr"] == None:
-      term["defaultTtyAttr"] = termios.tcgetattr(sys.stdin.fileno())
+    if TERM["defaultTtyAttr"] == None:
+      TERM["defaultTtyAttr"] = termios.tcgetattr(sys.stdin.fileno())
 
     if isRaw:
-      term["raw"] = True
-      term["newline"] = "\r\n"
+      TERM["raw"] = True
+      TERM["newline"] = "\r\n"
       tty.setraw(sys.stdin.fileno())
     else:
-      term["raw"] = False
-      term["newline"] = "\n"
-      termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, term["defaultTtyAttr"])
+      TERM["raw"] = False
+      TERM["newline"] = "\n"
+      termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM["defaultTtyAttr"])
 
 def printMsg(msg):
-  sys.stdout.write(msg + term["newline"])
+  sys.stdout.write(msg + TERM["newline"])
   sys.stdout.flush()
 
 def printErr(msg):
-  sys.stderr.write(msg + term["newline"])
+  sys.stderr.write(msg + TERM["newline"])
 
 def die(msg):
   termSetRaw(False)
