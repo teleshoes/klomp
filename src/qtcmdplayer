@@ -156,7 +156,8 @@ class KeyCmdReader(QThread):
         if key == 'CTRL_C':
           die("user quit\n")
         elif key == 'CTRL_Z':
-          die("terminating, cannot background process (sorry)\n")
+          printMsg("user suspended")
+          os.kill(os.getpid(), signal.SIGTSTP)
         elif key == 'Enter' or key == ' ':
           self.keyCommandSignal.emit('pause')
         elif key == 'Left':
