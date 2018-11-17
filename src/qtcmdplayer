@@ -154,10 +154,9 @@ class KeyCmdReader(QThread):
     while True:
       for key in self.readKey.readKeys():
         if key == 'CTRL_C' or key == 'q' or key == 'Q':
-          die("user quit\n")
+          self.keyCommandSignal.emit('quit')
         elif key == 'CTRL_Z':
-          printMsg("user suspended")
-          os.kill(os.getpid(), signal.SIGTSTP)
+          self.keyCommandSignal.emit('background')
         elif key == 'Enter' or key == ' ':
           self.keyCommandSignal.emit('pause')
         elif key == 'Left':
@@ -199,6 +198,15 @@ class QTCmdPlayer(QMediaPlayer):
   def start(self):
     self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
   def onCommand(self, cmd):
+    m = re.match('^\s*(quit)\s*$', cmd)
+    if m:
+      die("user quit")
+
+    m = re.match('^\s*(background)\s*$', cmd)
+    if m:
+      printMsg("user suspended")
+      os.kill(os.getpid(), signal.SIGTSTP)
+
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
       self.paused = not self.paused
@@ -441,6 +449,15 @@ class QTCmdPlayerMP3(QObject):
 
     self.onBufferPositionChanged(startTime)
   def onCommand(self, cmd):
+    m = re.match('^\s*(quit)\s*$', cmd)
+    if m:
+      die("user quit")
+
+    m = re.match('^\s*(background)\s*$', cmd)
+    if m:
+      printMsg("user suspended")
+      os.kill(os.getpid(), signal.SIGTSTP)
+
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
       if self.paused:
