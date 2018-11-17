@@ -228,7 +228,8 @@ class QTCmdPlayer(QMediaPlayer):
     self.positionChanged.connect(self.onPositionChanged)
     self.error.connect(self.onError)
   def start(self):
-    self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
+    songAbsPath = os.path.abspath(self.songFile)
+    self.setMedia(QMediaContent(QUrl.fromLocalFile(songAbsPath)))
   def onCommand(self, cmdStr):
     cmd = Command(cmdStr)
     if cmd.getType() == Command.QUIT:
@@ -366,7 +367,8 @@ class QTCmdPlayerMP3(QObject):
     self.bufferCacheWriteFH = open(BUFFER_CACHE_BYTES_FILE, 'w')
     self.bufferCacheReadFH = open(BUFFER_CACHE_BYTES_FILE, 'r')
 
-    self.audioDecoder.setSourceFilename(self.songFile)
+    songAbsPath = os.path.abspath(self.songFile)
+    self.audioDecoder.setSourceFilename(songAbsPath)
     self.audioDecoder.start()
   def startFromCache(self):
     self.readBufferInfoCache()
