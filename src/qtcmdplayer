@@ -59,7 +59,7 @@ parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
   help='force non-MP3 mode regardless of file extension'
        + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
 
-TERM = {"raw": False, "newline": "\n", "defaultTtyAttr": None}
+TERM = {"raw": False, "newline": "\n", "defaultTtyAttr": None, "statusLine": False}
 
 def termSetRaw(isRaw):
   if isRaw != TERM["raw"]:
@@ -77,13 +77,19 @@ def termSetRaw(isRaw):
       termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM["defaultTtyAttr"])
 
 def printMsg(msg):
+  TERM["statusLine"] = False
   sys.stdout.write(msg + TERM["newline"])
   sys.stdout.flush()
 
 def printErr(msg):
+  TERM["statusLine"] = False
   sys.stderr.write(msg + TERM["newline"])
 
 def printStatusMsg(msg):
+  if not TERM["statusLine"] and TERM["raw"]:
+    #print a blank line to use for status
+    msg = TERM["newline"] + msg
+    TERM["statusLine"] = True
   if TERM["raw"]:
     #move cursor up 1 line
     msg = u"\u001b[1A" + msg
@@ -141,7 +147,6 @@ def main():
     keyCmdReader = KeyCmdReader()
     keyCmdReader.keyCommandSignal.connect(player.onCommand)
     keyCmdReader.start()
-    printMsg("")
 
   if args.COMMAND_FIFO != None:
     fifoReader = FIFOReader(args.COMMAND_FIFO)
