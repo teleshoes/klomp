@@ -191,6 +191,7 @@ class QTCmdPlayer(QMediaPlayer):
 
     self.started = False
     self.paused = False
+    self.ended = False
     self.mediaStatusChanged.connect(self.onMediaStatusChanged)
     self.positionChanged.connect(self.onPositionChanged)
     self.error.connect(self.onError)
@@ -225,8 +226,10 @@ class QTCmdPlayer(QMediaPlayer):
         self.started = True
         self.setPosition(self.initPos)
     elif(status == QMediaPlayer.EndOfMedia):
+      self.ended = True
       printMsg("END")
       if self.isLoop:
+        self.ended = False
         self.play()
       else:
         quit()
@@ -265,6 +268,7 @@ class QTCmdPlayerMP3(QObject):
 
     self.allBuffersLoaded = False
     self.paused = False
+    self.ended = False
 
     self.waitingSeek = True
     self.curBufferIndex = None
@@ -476,8 +480,10 @@ class QTCmdPlayerMP3(QObject):
     self.maybeQuit()
   def maybeQuit(self):
     if self.isSongOver():
+      self.ended = True
       printMsg("END")
       if self.isLoop:
+        self.ended = False
         self.seekPosMicroSex = self.initSeekPos * 1000
         self.attemptSeek()
         self.start()
