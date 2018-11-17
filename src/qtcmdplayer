@@ -86,13 +86,14 @@ def printErr(msg):
   sys.stderr.write(msg + TERM["newline"])
 
 def printStatusMsg(msg):
-  if not TERM["statusLine"] and TERM["raw"]:
-    #print a blank line to use for status
-    msg = TERM["newline"] + msg
-    TERM["statusLine"] = True
   if TERM["raw"]:
     #move cursor up 1 line
     msg = u"\u001b[1A" + msg
+
+    if not TERM["statusLine"]:
+      #print a blank line to use for status
+      msg = TERM["newline"] + msg
+      TERM["statusLine"] = True
   sys.stderr.write(msg + TERM["newline"])
 
 def die(msg):
