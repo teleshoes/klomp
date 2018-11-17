@@ -153,7 +153,7 @@ class KeyCmdReader(QThread):
   def run(self):
     while True:
       for key in self.readKey.readKeys():
-        if key == 'CTRL_C':
+        if key == 'CTRL_C' or key == 'q' or key == 'Q':
           die("user quit\n")
         elif key == 'CTRL_Z':
           printMsg("user suspended")
