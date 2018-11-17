@@ -17,8 +17,9 @@ import bisect
 import io
 import os
 import re
-import sys
 import signal
+import subprocess
+import sys
 import time
 
 BUFFER_LOG_FILE = "/tmp/qtcmdplayer-buffer.log"
@@ -87,6 +88,13 @@ def printErr(msg):
 
 def printStatusMsg(msg):
   if TERM["raw"]:
+    try:
+      rows, columns = subprocess.check_output(['stty', 'size']).decode().split()
+      consoleWidth = int(columns)
+      msg = trimToCharacterWidth(msg, consoleWidth)
+    except:
+      pass
+
     msg = ( ""
           + "\033[1A" #move cursor up 1 line
           + "\r"      #rewind cursor to start of line
@@ -855,6 +863,19 @@ def formatSongFileName(songFile):
     return m.group(1)
   else:
     return songFile
+
+def trimToCharacterWidth(string, targetCharacterWidth):
+  byteLen = len(string)
+
+  #pretend character bytes == character width, which is Very False
+  charsToChop = byteLen - targetCharacterWidth
+
+  string = string.decode("utf-8")
+  if charsToChop > 0:
+    string = string[:0 - charsToChop]
+  string = string.encode("utf-8")
+
+  return string
 
 if __name__ == "__main__":
   sys.exit(main())
