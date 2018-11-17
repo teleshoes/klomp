@@ -249,11 +249,11 @@ class PlayerThread(QThread):
 #doesnt work on flac at all
 class QTCmdPlayerMP3(QObject):
   initAudioDeviceSignal = pyqtSignal()
-  def __init__(self, songFile, seekPos, volume, isLoop):
+  def __init__(self, songFile, initPos, volume, isLoop):
     QObject.__init__(self)
     self.songFile = songFile
-    self.initSeekPos = seekPos
-    self.seekPosMicroSex = seekPos * 1000
+    self.initSeekPos = initPos
+    self.seekPosMicroSex = initPos * 1000
     self.volume = volume
     self.isLoop = isLoop
 
