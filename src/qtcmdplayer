@@ -214,9 +214,9 @@ class QTCmdPlayer(QMediaPlayer):
       if sign == None or sign == "":
         newPosMillis = seekPosMillis
       elif sign == "+":
-        newPosMillis = self.position + seekPosMillis
+        newPosMillis = self.position() + seekPosMillis
       elif sign == "-":
-        newPosMillis = self.position - seekPosMillis
+        newPosMillis = self.position() - seekPosMillis
       self.setPosition(newPosMillis)
   def onMediaStatusChanged(self, status):
     if(status == QMediaPlayer.LoadedMedia or status == QMediaPlayer.BufferedMedia):
