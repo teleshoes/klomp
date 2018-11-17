@@ -209,28 +209,32 @@ class QTCmdPlayer(QMediaPlayer):
 
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
-      self.paused = not self.paused
-      if self.isDaemon:
-        printMsg("paused=" + str(self.paused))
-      else:
-        self.printStatus()
-      if self.paused:
-        self.pause()
-      else:
-        self.play()
-      return
+      self.togglePause()
 
     m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
     if m:
-      sign = m.group(1)
+      seekSign = m.group(1)
       seekPosMillis = int(m.group(2))
-      if sign == None or sign == "":
-        newPosMillis = seekPosMillis
-      elif sign == "+":
-        newPosMillis = self.position() + seekPosMillis
-      elif sign == "-":
-        newPosMillis = self.position() - seekPosMillis
-      self.setPosition(newPosMillis)
+      self.setSeekPos(seekSign, seekPosMillis)
+  def togglePause(self):
+    self.paused = not self.paused
+    if self.isDaemon:
+      printMsg("paused=" + str(self.paused))
+    else:
+      self.printStatus()
+
+    if self.paused:
+      self.pause()
+    else:
+      self.play()
+  def setSeekPos(self, seekSign, seekPosMillis):
+    if seekSign == None or seekSign == "":
+      newPosMillis = seekPosMillis
+    elif seekSign == "+":
+      newPosMillis = self.position() + seekPosMillis
+    elif seekSign == "-":
+      newPosMillis = self.position() - seekPosMillis
+    self.setPosition(newPosMillis)
   def onMediaStatusChanged(self, status):
     if(status == QMediaPlayer.LoadedMedia or status == QMediaPlayer.BufferedMedia):
       if not self.started:
@@ -460,29 +464,32 @@ class QTCmdPlayerMP3(QObject):
 
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
-      if self.paused:
-        self.refreshAudioDevice()
-      self.paused = not self.paused
-      if self.isDaemon:
-        printMsg("paused=" + str(self.paused))
-      else:
-        self.printStatus()
-      return
+      self.togglePause()
 
     m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
     if m:
-      sign = m.group(1)
+      seekSign = m.group(1)
       seekPosMillis = int(m.group(2))
-      if sign == None or sign == "":
-        newPosMillis = seekPosMillis
-      elif sign == "+":
-        newPosMillis = self.position + seekPosMillis
-      elif sign == "-":
-        newPosMillis = self.position - seekPosMillis
-      self.waitingSeek = True
-      self.seekPosMicroSex = newPosMillis * 1000
-      self.stopPlaying()
-      self.attemptSeek()
+      self.setSeekPos(seekSign, seekPosMillis)
+  def togglePause(self):
+    self.paused = not self.paused
+    if not self.paused:
+      self.refreshAudioDevice()
+    if self.isDaemon:
+      printMsg("paused=" + str(self.paused))
+    else:
+      self.printStatus()
+  def setSeekPos(self, seekSign, seekPosMillis):
+    if seekSign == None or seekSign == "":
+      newPosMillis = seekPosMillis
+    elif seekSign == "+":
+      newPosMillis = self.position + seekPosMillis
+    elif seekSign == "-":
+      newPosMillis = self.position - seekPosMillis
+    self.waitingSeek = True
+    self.seekPosMicroSex = newPosMillis * 1000
+    self.stopPlaying()
+    self.attemptSeek()
   def refreshAudioDevice(self):
     if self.audioFormat != None:
       self.audioOutput = None
