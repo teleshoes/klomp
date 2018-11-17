@@ -42,7 +42,7 @@ parser.add_argument('COMMAND_FIFO', type=str, nargs='?',
   help='optional path to existing FIFO for listening to commands')
 
 parser.add_argument('--daemon', '-daemon', required=False, default=False, action='store_const', const=True,  dest='DAEMON',
-  help='disabled keyboard commands')
+  help='disable keyboard commands and print machine-readable property changes instead of status line')
 
 parser.add_argument('--loop', '-loop', required=False, default=False, action='store_const', const=True,  dest='LOOP',
   help='when playback is finished, play again immediately forever')
