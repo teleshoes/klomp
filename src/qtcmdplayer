@@ -153,20 +153,24 @@ class KeyCmdReader(QThread):
   def run(self):
     while True:
       for key in self.readKey.readKeys():
+        cmdStr = None
         if key == 'CTRL_C' or key == 'q' or key == 'Q':
-          self.keyCommandSignal.emit('quit')
+          cmdStr = "quit"
         elif key == 'CTRL_Z':
-          self.keyCommandSignal.emit('background')
+          cmdStr = "background"
         elif key == 'Enter' or key == ' ':
-          self.keyCommandSignal.emit('pause')
+          cmdStr = "pause"
         elif key == 'Left':
-          self.keyCommandSignal.emit('seek -10000')
+          cmdStr = "seek -10000"
         elif key == 'Right':
-          self.keyCommandSignal.emit('seek +10000')
+          cmdStr = "seek +10000"
         elif key == 'Down':
-          self.keyCommandSignal.emit('seek -60000')
+          cmdStr = "seek -60000"
         elif key == 'Up':
-          self.keyCommandSignal.emit('seek +60000')
+          cmdStr = "seek +60000"
+
+        if cmdStr != None:
+          self.keyCommandSignal.emit(cmdStr)
 
 class FIFOReader(QThread):
   fifoCommandSignal = pyqtSignal(str)
@@ -176,8 +180,35 @@ class FIFOReader(QThread):
   def run(self):
     while True:
       with open(self.fifoPath) as fifo:
-        for cmd in fifo.read().splitlines():
-          self.fifoCommandSignal.emit(cmd)
+        for cmdStr in fifo.read().splitlines():
+          self.fifoCommandSignal.emit(cmdStr)
+
+class Command():
+  QUIT = "quit"
+  BACKGROUND = "background"
+  PAUSE = "pause"
+  SEEK = "seek"
+  def __init__(self, cmdStr):
+    self.cmdType = None
+    self.seekSign = None
+    self.seekPosMillis = None
+    r = Regex()
+    if r.m("^\s*(quit)\s*$", cmdStr):
+      self.cmdType = Command.QUIT
+    elif r.m("^\s*(background)\s*$", cmdStr):
+      self.cmdType = Command.BACKGROUND
+    elif r.m("^\s*(play|pause)\s*$", cmdStr):
+      self.cmdType = Command.PAUSE
+    elif r.m("^\s*(seek)\s*(\+|-)?(\d+)\s*$", cmdStr):
+      self.cmdType = Command.SEEK
+      self.seekSign = r.g(2)
+      self.seekPosMillis = int(r.g(3))
+  def getType(self):
+    return self.cmdType
+  def getSeekSign(self):
+    return self.seekSign
+  def getSeekPosMillis(self):
+    return self.seekPosMillis
 
 #doesnt allow seeking on MP3s
 class QTCmdPlayer(QMediaPlayer):
@@ -197,25 +228,17 @@ class QTCmdPlayer(QMediaPlayer):
     self.error.connect(self.onError)
   def start(self):
     self.setMedia(QMediaContent(QUrl.fromLocalFile(self.songFile)))
-  def onCommand(self, cmd):
-    m = re.match('^\s*(quit)\s*$', cmd)
-    if m:
+  def onCommand(self, cmdStr):
+    cmd = Command(cmdStr)
+    if cmd.getType() == Command.QUIT:
       die("user quit")
-
-    m = re.match('^\s*(background)\s*$', cmd)
-    if m:
+    elif cmd.getType() == Command.BACKGROUND:
       printMsg("user suspended")
       os.kill(os.getpid(), signal.SIGTSTP)
-
-    m = re.match('^\s*(play|pause)\s*$', cmd)
-    if m:
+    elif cmd.getType() == Command.PAUSE:
       self.togglePause()
-
-    m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
-    if m:
-      seekSign = m.group(1)
-      seekPosMillis = int(m.group(2))
-      self.setSeekPos(seekSign, seekPosMillis)
+    elif cmd.getType() == Command.SEEK:
+      self.setSeekPos(cmd.getSeekSign(), cmd.getSeekPosMillis())
   def togglePause(self):
     self.paused = not self.paused
     if self.isDaemon:
@@ -452,25 +475,17 @@ class QTCmdPlayerMP3(QObject):
     self.bufferByteOffsets.append(byteOffset)
 
     self.onBufferPositionChanged(startTime)
-  def onCommand(self, cmd):
-    m = re.match('^\s*(quit)\s*$', cmd)
-    if m:
+  def onCommand(self, cmdStr):
+    cmd = Command(cmdStr)
+    if cmd.getType() == Command.QUIT:
       die("user quit")
-
-    m = re.match('^\s*(background)\s*$', cmd)
-    if m:
+    elif cmd.getType() == Command.BACKGROUND:
       printMsg("user suspended")
       os.kill(os.getpid(), signal.SIGTSTP)
-
-    m = re.match('^\s*(play|pause)\s*$', cmd)
-    if m:
+    elif cmd.getType() == Command.PAUSE:
       self.togglePause()
-
-    m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
-    if m:
-      seekSign = m.group(1)
-      seekPosMillis = int(m.group(2))
-      self.setSeekPos(seekSign, seekPosMillis)
+    elif cmd.getType() == Command.SEEK:
+      self.setSeekPos(cmd.getSeekSign(), cmd.getSeekPosMillis())
   def togglePause(self):
     self.paused = not self.paused
     if not self.paused:
@@ -794,6 +809,18 @@ class ReadKey:
     return True
   def readBytes(self):
     return bytearray(os.read(self.fileno, 64))
+
+class Regex():
+  def __init__(self):
+    self.lastMatch = None
+  def m(self, pattern, string, flags=0):
+    self.lastMatch = re.match(pattern, string, flags)
+    return self.lastMatch != None
+  def g(self, group):
+    if self.lastMatch != None:
+      return self.lastMatch.group(group)
+    else:
+      return None
 
 def formatTime(millis):
   h = int(millis / 60.0 / 60.0 / 1000.0)
