@@ -87,8 +87,12 @@ def printErr(msg):
 
 def printStatusMsg(msg):
   if TERM["raw"]:
-    #move cursor up 1 line
-    msg = u"\u001b[1A" + msg
+    msg = ( ""
+          + "\033[1A" #move cursor up 1 line
+          + "\r"      #rewind cursor to start of line
+          + "\033[K"  #clear current line
+          + msg
+          )
 
     if not TERM["statusLine"]:
       #print a blank line to use for status
