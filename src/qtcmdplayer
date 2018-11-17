@@ -124,9 +124,9 @@ def main():
       playerType = PlayerType.QAUDIOOUTPUT
 
   if playerType == PlayerType.QMEDIAPLAYER:
-    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS, args.VOLUME, args.LOOP)
+    player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS, args.DAEMON, args.VOLUME, args.LOOP)
   elif playerType == PlayerType.QAUDIOOUTPUT:
-    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS, args.VOLUME, args.LOOP)
+    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS, args.DAEMON, args.VOLUME, args.LOOP)
   else:
     die("unknown player type")
 
@@ -182,10 +182,11 @@ class FIFOReader(QThread):
 
 #doesnt allow seeking on MP3s
 class QTCmdPlayer(QMediaPlayer):
-  def __init__(self, songFile, initPos, volume, isLoop):
+  def __init__(self, songFile, initPos, isDaemon, volume, isLoop):
     QMediaPlayer.__init__(self)
     self.songFile = songFile
     self.initPos = initPos
+    self.isDaemon = isDaemon
     self.setVolume(volume)
     self.isLoop = isLoop
 
@@ -201,7 +202,10 @@ class QTCmdPlayer(QMediaPlayer):
     m = re.match('^\s*(play|pause)\s*$', cmd)
     if m:
       self.paused = not self.paused
-      printMsg("paused=" + str(self.paused))
+      if self.isDaemon:
+        printMsg("paused=" + str(self.paused))
+      else:
+        self.printStatus()
       if self.paused:
         self.pause()
       else:
@@ -227,14 +231,34 @@ class QTCmdPlayer(QMediaPlayer):
         self.setPosition(self.initPos)
     elif(status == QMediaPlayer.EndOfMedia):
       self.ended = True
-      printMsg("END")
+      if self.isDaemon:
+        printMsg("END")
+      else:
+        self.printStatus()
       if self.isLoop:
         self.ended = False
         self.play()
       else:
         quit()
   def onPositionChanged(self, pos):
-    printMsg("pos: " + str(pos))
+    if self.isDaemon:
+      printMsg("pos: " + str(pos))
+    else:
+      self.printStatus()
+  def printStatus(self):
+    if self.ended:
+      msg = "END"
+    else:
+      msg = ""
+      msg += u"\u001b[1A"
+      if self.paused:
+        msg += "(paused) "
+      msg += formatTime(self.position())
+      msg += " / "
+      msg += formatTime(self.duration())
+      msg += " - "
+      msg += formatSongFileName(self.songFile)
+    printMsg(msg)
   def onError(self, msg):
     if self.errorString() != None:
       msg = self.errorString()
@@ -252,11 +276,12 @@ class PlayerThread(QThread):
 #doesnt work on flac at all
 class QTCmdPlayerMP3(QObject):
   initAudioDeviceSignal = pyqtSignal()
-  def __init__(self, songFile, initPos, volume, isLoop):
+  def __init__(self, songFile, initPos, isDaemon, volume, isLoop):
     QObject.__init__(self)
     self.songFile = songFile
     self.initSeekPos = initPos
     self.seekPosMicroSex = initPos * 1000
+    self.isDaemon = isDaemon
     self.volume = volume
     self.isLoop = isLoop
 
@@ -421,7 +446,10 @@ class QTCmdPlayerMP3(QObject):
       if self.paused:
         self.refreshAudioDevice()
       self.paused = not self.paused
-      printMsg("paused=" + str(self.paused))
+      if self.isDaemon:
+        printMsg("paused=" + str(self.paused))
+      else:
+        self.printStatus()
       return
 
     m = re.match('^seek\s*(\+|-)?(\d+)$', cmd)
@@ -481,7 +509,10 @@ class QTCmdPlayerMP3(QObject):
   def maybeQuit(self):
     if self.isSongOver():
       self.ended = True
-      printMsg("END")
+      if self.isDaemon:
+        printMsg("END")
+      else:
+        self.printStatus()
       if self.isLoop:
         self.ended = False
         self.seekPosMicroSex = self.initSeekPos * 1000
@@ -591,7 +622,10 @@ class QTCmdPlayerMP3(QObject):
   def onPositionChanged(self, position):
     if nowMillis() - self.lastPositionUpdateMillis >= self.posIntervalMillis:
       self.lastPositionUpdateMillis = nowMillis()
-      printMsg("pos: " + str(position))
+      if self.isDaemon:
+        printMsg("pos: " + str(position))
+      else:
+        self.printStatus()
   def onBufferPositionChanged(self, bufferPosition):
     if nowMillis() - self.lastBufferPositionUpdateMillis >= self.posIntervalMillis:
       self.lastBufferPositionUpdateMillis = nowMillis()
@@ -604,6 +638,20 @@ class QTCmdPlayerMP3(QObject):
     self.writeAudioFormatCache()
 
     FileCache(self.songFile, BUFFER_CACHE_LAST_SONG_INFO_FILE).writeInfoCache()
+  def printStatus(self):
+    if self.ended:
+      msg = "END"
+    else:
+      msg = ""
+      msg += u"\u001b[1A"
+      if self.paused:
+        msg += "(paused) "
+      msg += formatTime(self.position)
+      msg += " / "
+      msg += formatTime(self.lastBufferReadStartTime / 1000.0)
+      msg += " - "
+      msg += formatSongFileName(self.songFile)
+    printMsg(msg)
   def onError(self):
     if self.audioDecoder != None and self.audioDecoder.errorString() != None:
       msg = self.audioDecoder.errorString()
@@ -722,6 +770,23 @@ class ReadKey:
     return True
   def readBytes(self):
     return bytearray(os.read(self.fileno, 64))
+
+def formatTime(millis):
+  h = int(millis / 60.0 / 60.0 / 1000.0)
+  m = int(millis / 60.0 / 1000.0) % 60
+  s = int(millis / 1000.0) % 60
+  f = millis % 1000
+  if h > 0:
+    return "%02d:%02d:%02d.%03d" % (h, m, s, f)
+  else:
+    return "%02d:%02d.%03d" % (m, s, f)
+
+def formatSongFileName(songFile):
+  m = re.match('^.*/([^/]+)$', songFile)
+  if m:
+    return m.group(1)
+  else:
+    return songFile
 
 if __name__ == "__main__":
   sys.exit(main())
