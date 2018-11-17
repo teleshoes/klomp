@@ -135,6 +135,7 @@ def main():
     keyCmdReader = KeyCmdReader()
     keyCmdReader.keyCommandSignal.connect(player.onCommand)
     keyCmdReader.start()
+    printMsg("")
 
   if args.COMMAND_FIFO != None:
     fifoReader = FIFOReader(args.COMMAND_FIFO)
