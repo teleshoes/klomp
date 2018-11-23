@@ -18,6 +18,7 @@ my $klompCmdExec = 'klomp-cmd';
 
 sub readKlompCur();
 sub updateKlompCur($$$$);
+sub checkStatus($);
 sub nowMillis();
 
 sub main(@){
@@ -26,6 +27,7 @@ sub main(@){
   my $cur = readKlompCur;
 
   my $updateCurCmd = Klomp::Config::getProperty "updateCurCmd";
+  my $checkStatusCmd = Klomp::Config::getProperty "checkStatusCmd";
 
   my $songAbsPath = Klomp::Lib::getSongAbsPath $$cur{lib}, $$cur{relpath};
   if(not defined $songAbsPath){
@@ -40,6 +42,8 @@ sub main(@){
     system "kill -9 $pid 2>/dev/null";
     system "rm $PID_FILE";
   }
+
+  checkStatus($checkStatusCmd);
 
   system "rm", "-f", $FIFO;
   system "mkfifo", $FIFO;
@@ -85,6 +89,10 @@ sub main(@){
   my $paused = 0;
 
   while(1){
+    if(defined $checkStatusCmd){
+      checkStatus($checkStatusCmd);
+    }
+
     if(not -e $PID_FILE){
       die "missing pidfile\n";
     }else{
@@ -206,6 +214,16 @@ sub updateKlompCur($$$$){
       system "$updateCurCmd >/dev/null 2>/dev/null &";
       $updateCurCmdNextRunMillis = $nowMillis + $updateCurCmdIntervalMillis;
     }
+  }
+}
+
+sub checkStatus($){
+  my ($checkStatusCmd) = @_;
+  my $status = `$checkStatusCmd 2>/dev/null`;
+  if($status =~ /quit/){
+    system "$klompCmdExec stop";
+    print "checkStatusCmd \"$checkStatusCmd\": $status\n";
+    exit 1;
   }
 }
 
