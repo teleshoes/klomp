@@ -21,6 +21,7 @@ my $props = {
   hardStopCmd    => 'run after stopCmd, but only when previously running',
   playlistCmd    => 'run when klomp-cmd changes playlists',
   updateCurCmd   => 'run by klomplayer every 20s while klompcur is updated',
+  checkStatusCmd => 'run by klomplayer; if "quit" is printed, runs klomp-cmd stop',
   renice         => 'renice klomplayer to this value',
   targetUser     => 're-run klomp-cmd as this user using sudo su -c',
   disallowPause  => 'klomp-cmd stops instead of pauses, killing klomplayer',
