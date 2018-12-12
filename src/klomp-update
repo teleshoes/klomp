@@ -56,6 +56,7 @@ my $usage = "Usage:
       (still runs git init if history git repo does not exist)
 ";
 
+sub tryrun(@);
 sub runOrDie(@);
 sub ensureDb();
 sub getLibs(@);
@@ -126,19 +127,24 @@ sub main(@){
     genSymlinkDir $$props{symlink} if defined $$props{symlink};
     genHistoryDir $$props{history} if defined $$props{history};
     genHistoryDateCache if defined $$props{history};
+
     if($useGit and defined $$props{history} and -d $$props{history}){
+      print "\n\nrunning git add/commit/push on $$props{history}\n";
       chdir $$props{history};
       runOrDie "git", "add", "-A";
-      system "git", "commit", "-a", "-m", "automatic commit";
-      system "git", "push";
+      tryrun "git", "commit", "-a", "-m", "automatic commit";
+      tryrun "git", "push";
     }
   }
 }
 
-sub runOrDie(@){
+sub tryrun(@){
   print "@_\n";
   system @_;
-  die "\n'@_' failed\n" if $? != 0;
+}
+sub runOrDie(@){
+  tryrun(@_);
+  die "ERROR: failed to run '@_'\n" if $? != 0;
 }
 
 sub ensureDb(){
