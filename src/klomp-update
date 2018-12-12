@@ -52,8 +52,7 @@ my $usage = "Usage:
     $optsFmt{utils_only}
       do not update any libs (only update symlink/history dirs if they exist)
     $optsFmt{no_git}
-      never run git add, git commit, or git push
-      (still runs git init if history git repo does not exist)
+      never run git init, git add, git commit, or git push
 ";
 
 sub tryrun(@);
@@ -131,6 +130,12 @@ sub main(@){
     if($useGit and defined $$props{history} and -d $$props{history}){
       print "\n\nrunning git add/commit/push on $$props{history}\n";
       chdir $$props{history};
+
+      if(not -d ".git"){
+        runOrDie "git", "init";
+        die "git dir doesnt exist after git init\n" if not -d ".git";
+      }
+
       runOrDie "git", "add", "-A";
       tryrun "git", "commit", "-a", "-m", "automatic commit";
       tryrun "git", "push";
@@ -231,15 +236,12 @@ sub genHistoryDir($){
   my $histDir = shift;
   my $libsDir = "$histDir/libs";
   my $dbDump = "$histDir/klomp-db";
-  my $gitDir = "$histDir/.git";
 
   print "\n\nupdating history dir $histDir\n";
   runOrDie "mkdir", "-p", $histDir if not -d $histDir;
   die "Dir doesnt exist and couldnt mkdir: $histDir\n" if not -d $histDir;
 
   chdir $histDir;
-  runOrDie "git", "init" if not -d $gitDir;
-  die "Git dir doesnt exist and couldnt git init\n" if not -d $gitDir;
 
   runOrDie "rm", "-rf", $libsDir;
   runOrDie "mkdir", $libsDir;
