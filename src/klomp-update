@@ -129,7 +129,9 @@ sub main(@){
 
     if($useGit and defined $$props{history} and -d $$props{history}){
       print "\n\nrunning git add/commit/push on $$props{history}\n";
-      chdir $$props{history};
+      chdir $$props{history}
+        or die "could not cd to $$props{history}\n";
+      $ENV{PWD} = $$props{history};
 
       if(not -d ".git"){
         runOrDie "git", "init";
