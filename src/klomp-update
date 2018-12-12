@@ -13,7 +13,7 @@ my %opts = (
   quick_db   => [qw(--quick-db)],
   db_only    => [qw(-d --db-only --no-utils)],
   utils_only => [qw(-u --utils-only --no-db)],
-  no_push    => [qw(-n --no-push)],
+  no_git     => [qw(-n --no-git)],
 );
 my %optsFmt = map { $_ => join(" | ", @{$opts{$_}}) } keys %opts;
 my %optsRegex = map { $_ => join("|", @{$opts{$_}}) } keys %opts;
@@ -37,7 +37,7 @@ my $usage = "Usage:
     update the history.
     -takes a dump of the sqlite database
     -mirrors all library dirs with empty files
-    -commits changes to a git repository
+    -commit+push changes to a git repository
 
   OPTS:
     $optsFmt{quick}
@@ -51,8 +51,9 @@ my $usage = "Usage:
       NOTE: --db-only is implied if any <LIB>s are passed in
     $optsFmt{utils_only}
       do not update any libs (only update symlink/history dirs if they exist)
-    $optsFmt{no_push}
-      never run git push
+    $optsFmt{no_git}
+      never run git add, git commit, or git push
+      (still runs git init if history git repo does not exist)
 ";
 
 sub runOrDie(@);
@@ -65,7 +66,7 @@ sub genHistoryDateCache();
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
   my $quickDB = 0;
-  my $gitPush = 1;
+  my $useGit = 1;
   my $updateDB = 1;
   my $updateUtils = 1;
   while(@_ > 0 and $_[0] =~ /^($allOptsRegex)$/){
@@ -79,8 +80,8 @@ sub main(@){
       $updateUtils = 0;
     }elsif($opt =~ /^($optsRegex{utils_only})$/){
       $updateDB = 0;
-    }elsif($opt =~ /^($optsRegex{no_push})$/){
-      $gitPush = 0;
+    }elsif($opt =~ /^($optsRegex{no_git})$/){
+      $useGit = 0;
     }
   }
 
@@ -125,8 +126,10 @@ sub main(@){
     genSymlinkDir $$props{symlink} if defined $$props{symlink};
     genHistoryDir $$props{history} if defined $$props{history};
     genHistoryDateCache if defined $$props{history};
-    if($gitPush and defined $$props{history} and -d $$props{history}){
+    if($useGit and defined $$props{history} and -d $$props{history}){
       chdir $$props{history};
+      runOrDie "git", "add", "-A";
+      system "git", "commit", "-a", "-m", "automatic commit";
       system "git", "push";
     }
   }
@@ -266,10 +269,6 @@ sub genHistoryDir($){
       close FH;
     }
   }
-
-  chdir $histDir;
-  runOrDie "git", "add", "-A";
-  system "git", "commit", "-a", "-m", "automatic commit";
 }
 
 sub genHistoryDateCache(){
