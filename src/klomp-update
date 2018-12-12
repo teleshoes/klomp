@@ -8,6 +8,17 @@ use Klomp::History;
 use Klomp::Lib;
 use File::Path qw(mkpath);
 
+my %opts = (
+  quick      => [qw(-q --quick)],
+  quick_db   => [qw(--quick-db)],
+  db_only    => [qw(-d --db-only --no-utils)],
+  utils_only => [qw(-u --utils-only --no-db)],
+  no_push    => [qw(-n --no-push)],
+);
+my %optsFmt = map { $_ => join(" | ", @{$opts{$_}}) } keys %opts;
+my %optsRegex = map { $_ => join("|", @{$opts{$_}}) } keys %opts;
+my $allOptsRegex = join "|", sort values %optsRegex;
+
 my $usage = "Usage:
   $0 [OPTS] [LIB LIB LIB ..]
 
@@ -29,14 +40,19 @@ my $usage = "Usage:
     -commits changes to a git repository
 
   OPTS:
-    -q|--quick
+    $optsFmt{quick}
+      same as: --quick-db and --db-only
+    $optsFmt{quick_db}
       pass --quick to klomp-db when adding songs
         {assume existing songs with the same path are unchanged}
-      dont update the symlink/history dirs
-    -n|--no-push
+      NOTE: --quick-db is implied if any <LIB>s are passed in
+    $optsFmt{db_only}
+      do not update symlink/history dirs (only update db)
+      NOTE: --db-only is implied if any <LIB>s are passed in
+    $optsFmt{utils_only}
+      do not update any libs (only update symlink/history dirs if they exist)
+    $optsFmt{no_push}
       never run git push
-    -u|--utils-only
-      instead of updating any libs, update symlink/history dirs if they exist
 ";
 
 sub runOrDie(@);
@@ -48,56 +64,71 @@ sub genHistoryDateCache();
 
 sub main(@){
   die $usage if @_ == 1 and $_[0] =~ /^(-h|--help)$/;
-  my $quick = 0;
-  my $noPush = 0;
-  my $utilsOnly = 0;
-  while(@_ > 0 and $_[0] =~ /^(-q|--quick|-n|--no-push|-u|--utils-only)$/){
+  my $quickDB = 0;
+  my $gitPush = 1;
+  my $updateDB = 1;
+  my $updateUtils = 1;
+  while(@_ > 0 and $_[0] =~ /^($allOptsRegex)$/){
     my $opt = shift;
-    $quick = 1 if $opt =~ /^(-q|--quick)$/;
-    $noPush = 1 if $opt =~ /^(-n|--no-push)$/;
-    $utilsOnly = 1 if $opt =~ /^(-u|--utils-only)$/;
-  }
-
-  if($utilsOnly){
-    die $usage if @_ > 0;
+    if($opt =~ /^($optsRegex{quick})$/){
+      $quickDB = 1;
+      $updateUtils = 0;
+    }elsif($opt =~ /^($optsRegex{quick_db})$/){
+      $quickDB = 1;
+    }elsif($opt =~ /^($optsRegex{db_only})$/){
+      $updateUtils = 0;
+    }elsif($opt =~ /^($optsRegex{utils_only})$/){
+      $updateDB = 0;
+    }elsif($opt =~ /^($optsRegex{no_push})$/){
+      $gitPush = 0;
+    }
   }
 
   my @libs;
-  if(not $utilsOnly){
-    $quick = 1 if @_ > 0;
+  if($updateDB){
+    if(@_ > 0){
+      $quickDB = 1;
+      $updateUtils = 0;
+    }
     @libs = getLibs(@_);
     ensureDb();
+  }else{
+    die "ERROR: LIB given when not updating db: $_[0]\n" if @_ > 0;
   }
 
-  for my $lib(@libs){
-    print "\nHandling library: $lib\n";
+  if($updateDB){
+    for my $lib(@libs){
+      print "\nHandling library: $lib\n";
 
-    runOrDie 'klomp-db', '-m', $lib;
-    if($quick){
-      runOrDie 'klomp-db', '-u', '--quick', $lib;
-    }else{
-      runOrDie 'klomp-db', '-u', $lib;
+      runOrDie 'klomp-db', '-m', $lib;
+      if($quickDB){
+        runOrDie 'klomp-db', '-u', '--quick', $lib;
+      }else{
+        runOrDie 'klomp-db', '-u', $lib;
+      }
+    }
+
+    for my $lib(@libs){
+      my $dir = Klomp::Lib::getLibraryPath $lib;
+      my $flacMirrorDir = Klomp::Lib::getFlacmirrorPath  $lib;
+      system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir ne "";
+
+      if(-e $flacMirrorDir and -e $dir){
+        print "\nflacmirror for: $lib\n";
+        runOrDie "flacmirror $dir $flacMirrorDir";
+      }
     }
   }
 
-  for my $lib(@libs){
-    my $dir = Klomp::Lib::getLibraryPath $lib;
-    my $flacMirrorDir = Klomp::Lib::getFlacmirrorPath  $lib;
-    system "mkdir", "-p", $flacMirrorDir if $flacMirrorDir ne "";
-
-    if(-e $flacMirrorDir and -e $dir){
-      print "\nflacmirror for: $lib\n";
-      runOrDie "flacmirror $dir $flacMirrorDir";
+  if($updateUtils){
+    my $props = Klomp::Config::getProperties;
+    genSymlinkDir $$props{symlink} if defined $$props{symlink};
+    genHistoryDir $$props{history} if defined $$props{history};
+    genHistoryDateCache if defined $$props{history};
+    if($gitPush and defined $$props{history} and -d $$props{history}){
+      chdir $$props{history};
+      system "git", "push";
     }
-  }
-
-  my $props = Klomp::Config::getProperties;
-  genSymlinkDir $$props{symlink} if defined $$props{symlink} and not $quick;
-  genHistoryDir $$props{history} if defined $$props{history} and not $quick;
-  genHistoryDateCache if defined $$props{history} and not $quick;
-  if(not $noPush and defined $$props{history}){
-    chdir $$props{history};
-    system "git", "push";
   }
 }
 
