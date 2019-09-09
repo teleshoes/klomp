@@ -111,12 +111,16 @@ sub main(@){
   my $indexRE = '[+\-]?\d+';
   while(@_ > 0){
     my $arg = shift;
-    if($arg =~ /^(-n|-c|-h|-s|--format=.*)$/){
-      $newline = 0 if $arg eq '-n';
-      $csv = 1 if $arg eq '-c';
-      $header = 1 if $arg eq '-h';
-      $seconds = 1 if $arg eq '-s';
-      $format = $1 if $arg =~ /^--format=(.*)$/;
+    if($arg =~ /^(-n)$/){
+      $newline = 0;
+    }elsif($arg =~ /^(-c)$/){
+      $csv = 1;
+    }elsif($arg =~ /^(-h)$/){
+      $header = 1;
+    }elsif($arg =~ /^(-s)$/){
+      $seconds = 1;
+    }elsif($arg =~ /^--format=(.*)$/){
+      $format = $1;
     }elsif($arg =~ /^($validColNames|$validColSyns)$/){
       my $col = defined $colSynonyms{$arg} ? $colSynonyms{$arg} : $arg;
       push @cols, $col;
