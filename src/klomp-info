@@ -81,7 +81,7 @@ my $usage = "Usage:
       if no INDEXes are given, '0' is used
 
   OPTS:
-    -n  do not output a trailing newline for the last INDEX
+    -n  do not output any newlines, neither between songs nor at the end
     -c  output as CSV
     -h  output a csv header showing the column names first
     -s  output times in fractional seconds instead of M:SS or H:MM:SS
@@ -156,19 +156,17 @@ sub main(@){
   my $playlist = grep(/playlist/, @cols) ? `klomp-cmd playlist` : "";
   chomp $playlist;
 
-  my $first = 1;
   for my $index(@indices){
     my $klompInfo = selectKlompInfo $index, $curInfo, $histInfo, $listInfo;
-    print "\n" unless $first;
-    $first = 0;
     if(defined $klompInfo){
       my $info = parseInfo $klompInfo, $index, $playlist, \@cols, $csv, $seconds, $format;
       print $info;
+      print "\n" if $newline;
     }else{
       print "No song info found (#$index)";
+      print "\n" if $newline;
     }
   }
-  print "\n" if $newline;
 }
 
 sub parseInfo($$$$$$$){
