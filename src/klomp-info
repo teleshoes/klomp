@@ -63,22 +63,21 @@ my $usage = "Usage:
       synonyms:$colSynFmt
 
   INDEX:
-      0     current song in klompcur
+      0     current song in klompcur, or next song if there is no current song
+      N     line number in playlist {1 is the next song to be played}
       +N    line number in playlist {+1 is the next song to be played}
       -N    line number in history {-1 is the song that finished most recently}
       X..Y  use all indices between X and Y  {X<=Y}
       [X,Y] use all indices between X and Y  {X<=Y}
+        e.g.:
+          the next song:                       1
+          the current song:                    0
+          the most recently played song:       -1
+          the current song and the next song:  0..1    or  [0,1]
+          the two most recently played songs:  -2..-1  or  [-2,-1]
 
-      song information is printed, one per line, for each indicated index.
-      COL \"pos\" is 0 for every song except index \"0\"
-
-      if any index is specified, each line is prefixed by \"INDEX:\"
-
-      if an index does not exist, the closest index to it is used.
-      if two indices are the same distance away, the lower of the two is used.
-      {e.g.:   if index 0 is specified and there is no current song,
-               the last played song is used, and if that doesnt exist,
-               the next song in the playlist is used}
+      song information is printed, one per line, for each indicated index
+      if no INDEXes are given, '0' is used
 
   OPTS:
     -n  do not output a trailing newline
