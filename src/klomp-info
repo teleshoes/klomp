@@ -81,7 +81,7 @@ my $usage = "Usage:
       if no INDEXes are given, '0' is used
 
   OPTS:
-    -n  do not output a trailing newline
+    -n  do not output a trailing newline for the last INDEX
     -c  output as CSV
     -h  output a csv header showing the column names first
     -s  output times in fractional seconds instead of M:SS or H:MM:SS
