@@ -81,6 +81,7 @@ my $usage = "Usage:
       if no INDEXes are given, '0' is used
 
   OPTS:
+    -i  ignore any INDEXes that do not exist instead of printing 'No song info found'
     -n  do not output any newlines, neither between songs nor at the end
     -c  output as CSV
     -h  output a csv header showing the column names first
@@ -103,6 +104,7 @@ sub parseIndexRange($$);
 
 sub main(@){
   my (@cols, @indices);
+  my $ignoreMissingIndexes = 0;
   my $newline = 1;
   my $csv = 0;
   my $header = 0;
@@ -111,7 +113,9 @@ sub main(@){
   my $indexRE = '[+\-]?\d+';
   while(@_ > 0){
     my $arg = shift;
-    if($arg =~ /^(-n)$/){
+    if($arg =~ /^(-i)$/){
+      $ignoreMissingIndexes = 1;
+    }elsif($arg =~ /^(-n)$/){
       $newline = 0;
     }elsif($arg =~ /^(-c)$/){
       $csv = 1;
@@ -163,8 +167,10 @@ sub main(@){
       print $info;
       print "\n" if $newline;
     }else{
-      print "No song info found (#$index)";
-      print "\n" if $newline;
+      if(not $ignoreMissingIndexes){
+        print "No song info found (#$index)";
+        print "\n" if $newline;
+      }
     }
   }
 }
