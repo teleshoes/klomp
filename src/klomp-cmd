@@ -418,11 +418,11 @@ sub removePause(){
   my $wasPaused = 0;
   if($lines[0] =~ s/^([0-9.]+) ([0-9.]+) paused/$1 $2/){
     $wasPaused = 1;
-  }
 
-  open FH, "> $$FILES{cur}";
-  print FH @lines;
-  close FH;
+    open FH, "> $$FILES{cur}";
+    print FH @lines;
+    close FH;
+  }
 
   return $wasPaused;
 }
