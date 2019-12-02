@@ -49,16 +49,14 @@ parser.add_argument('--loop', '-loop', required=False, default=False, action='st
 
 parser.add_argument('--volume', '-volume', type=int, default=100, required=False, dest='VOLUME',
   help='set volume 0 - 100'
-       + '(values greater than 100 are allowed only for MP3s, or with --mp3)')
+       + '(values greater are allowed with --player-alt, using QAudioDecoder instead of QMediaPlayer)')
 
-parser.add_argument('--mp3', required=False, dest='PLAYER_TYPE',
+parser.add_argument('--player-alt', required=False, dest='PLAYER_TYPE',
   action='store_const', const=PlayerType.QAUDIOOUTPUT,
-  help='force MP3 mode regardless of file extension'
-       + ' (use QAudioDecoder+QAudioOutput instead of QMediaPlayer)')
-parser.add_argument('--nomp3', required=False, dest='PLAYER_TYPE',
+  help='use QAudioDecoder+QAudioOutput (the alternate), instead of QMediaPlayer (the default)')
+parser.add_argument('--player-normal', required=False, dest='PLAYER_TYPE',
   action='store_const', const=PlayerType.QMEDIAPLAYER,
-  help='force non-MP3 mode regardless of file extension'
-       + ' (use QMediaPlayer instead of QAudioDecoder+QAudioOutput)')
+  help='use QMediaPlayer (the default), instead of QAudioDecoder+QAudioOutput (the alternate)')
 
 TERM = {"raw": False, "newline": "\n", "defaultTtyAttr": None, "statusLine": False}
 
@@ -139,19 +137,14 @@ def main():
 
   app = QApplication([])
 
-  isExtMP3 = os.path.splitext(args.FILE)[1].lower() == ".mp3"
-
-  playerType = args.PLAYER_TYPE
-  if playerType == None:
-    if not isExtMP3:
-      playerType = PlayerType.QMEDIAPLAYER
-    else:
-      playerType = PlayerType.QAUDIOOUTPUT
+  playerType = PlayerType.QMEDIAPLAYER
+  if args.PLAYER_TYPE != None:
+    playerType = args.PLAYER_TYPE
 
   if playerType == PlayerType.QMEDIAPLAYER:
     player = QTCmdPlayer(args.FILE, args.POSITION_MILLIS, args.DAEMON, args.VOLUME, args.LOOP)
   elif playerType == PlayerType.QAUDIOOUTPUT:
-    player = QTCmdPlayerMP3(args.FILE, args.POSITION_MILLIS, args.DAEMON, args.VOLUME, args.LOOP)
+    player = QTCmdPlayerAlt(args.FILE, args.POSITION_MILLIS, args.DAEMON, args.VOLUME, args.LOOP)
   else:
     die("unknown player type")
 
@@ -235,7 +228,8 @@ class Command():
   def getSeekPosMillis(self):
     return self.seekPosMillis
 
-#doesnt allow seeking on MP3s
+#Media player based on QMediaPlayer
+#  -QMediaPlayer bug USED to prevent seeking in MP3 files, but it seems to work now
 class QTCmdPlayer(QMediaPlayer):
   def __init__(self, songFile, initPos, isDaemon, volume, isLoop):
     QMediaPlayer.__init__(self)
@@ -333,8 +327,12 @@ class PlayerThread(QThread):
   def run(self):
     self.player.playAvailableBuffers()
 
-#doesnt work on flac at all
-class QTCmdPlayerMP3(QObject):
+#Media player based on QAudioDecoder+QAudioOutput
+#  -allows volume scaling > 100
+#  -doesnt work on flac at all
+#  -somewhat buggy, USED to be the only way to seek in MP3 files,
+#    but QMediaPlayer works properly these days
+class QTCmdPlayerAlt(QObject):
   initAudioDeviceSignal = pyqtSignal()
   def __init__(self, songFile, initPos, isDaemon, volume, isLoop):
     QObject.__init__(self)
