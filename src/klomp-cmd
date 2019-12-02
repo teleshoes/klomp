@@ -192,6 +192,7 @@ sub main(@){
   }elsif($cmd eq 'stop' and @_ == 0){
     stop;
     maybePropCmd("hardStopCmd") if $wasRunning;
+    removePause();
   }elsif($cmd eq 'restart' and @_ == 0){
     if($wasRunning){
       stop;
