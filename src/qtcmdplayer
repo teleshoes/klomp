@@ -243,6 +243,7 @@ class QTCmdPlayer(QMediaPlayer):
     self.paused = False
     self.ended = False
     self.mediaStatusChanged.connect(self.onMediaStatusChanged)
+    self.seekableChanged.connect(self.onSeekableChanged)
     self.positionChanged.connect(self.onPositionChanged)
     self.error.connect(self.onError)
   def start(self):
@@ -283,7 +284,6 @@ class QTCmdPlayer(QMediaPlayer):
       if not self.started:
         self.play()
         self.started = True
-        self.setPosition(self.initPos)
     elif(status == QMediaPlayer.EndOfMedia):
       self.ended = True
       if self.isDaemon:
@@ -300,6 +300,9 @@ class QTCmdPlayer(QMediaPlayer):
       printMsg("pos: " + str(pos))
     else:
       self.printStatus()
+  def onSeekableChanged(self, isSeekable):
+    if isSeekable:
+      self.setPosition(self.initPos)
   def printStatus(self):
     if self.ended:
       msg = "END"
