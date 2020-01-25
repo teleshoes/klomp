@@ -10,7 +10,7 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @calcColNames = qw(pos len percent index running paused playlist ended breaks);
+my @calcColNames = qw(pos len percent index running paused playlist ended runcmds);
 my @extraColNames = qw(file);
 my %colSynonyms = (
   "position" => "pos",
@@ -19,7 +19,7 @@ my %colSynonyms = (
   "length"   => "len",
   "pause"    => "paused",
   "pl"       => "playlist",
-  "br"       => "breaks",
+  "cmd"      => "runcmds",
 );
 my $colSynFmt = join '', map {
   sprintf "\n        %-10s => %s", $_, $colSynonyms{$_}
@@ -30,8 +30,6 @@ my @defaultColNames = (@attColNames, @calcColNames);
 my $validAttColNames = join "|", @attColNames;
 my $validColNames = join "|", @allColNames;
 my $validColSyns = join "|", sort(keys %colSynonyms);
-
-my $breakLine = "!klomp-cmd stop";
 
 my $usage = "Usage:
   $0 [OPTS] [COL COL COL ..] [INDEX INDEX INDEX ..]
@@ -54,7 +52,7 @@ my $usage = "Usage:
       index:    position in playlist (0 for current, 1 for next, -1 for previous)
       running:  'running' if pid in pidfile is mplayer/qtcmdplayer, otherwise ''
       paused:   'paused' if klomp cur file has paused, otherwise ''
-      breaks:   \"{BR}\" if playlist contains the line \"$breakLine\"
+      runcmds:  \"{CMD}\" if playlist contains any \"!SHELL_CMD\" lines
 
       non-empty values for playlist, ended, and percent
       are wrapped in |s unless CSV output is on
