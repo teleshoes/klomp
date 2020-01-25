@@ -128,7 +128,7 @@ my $usage = "Usage:
   $EXEC breaks [on|off|toggle]
     add/remove '!klomp-cmd stop's in klomplist
     {e.g.: for sleeping with a book and not losing more than a chapter}
-      on: remove all stops, and place a stop after each song except the last
+      on: remove all stops, and place a stop before each song in klomplist
       off: remove all stops
       toggle: if any stops are present, same as off, else same as on
 
