@@ -125,12 +125,17 @@ my $usage = "Usage:
   $EXEC shuffle
     shuffle klomplist randomly
 
-  $EXEC breaks [on|off|toggle]
-    add/remove '!klomp-cmd stop's in klomplist
-    {e.g.: for sleeping with a book and not losing more than a chapter}
-      on: remove all stops, and place a stop before each song in klomplist
-      off: remove all stops
-      toggle: if any stops are present, same as off, else same as on
+  $EXEC runcmd-on SHELL_CMD
+     insert '!SHELL_CMD' afer every song in klomp list
+     when `klomp-cmd next` is run, if the next entry is a '!' command,
+       that cmd is run and the cur song is set to none
+  $EXEC runcmd-off
+     remove all '!' command entries from klomplist
+  $EXEC runcmd-toggle SHELL_CMD
+     if any '!' command entries are present in klomplist:
+       $0 runcmd-off
+     otherwise:
+       $0 runcmd-on SHELL_CMD
 
   $EXEC fifo <FIFO input command>
     send mplayer or qtcmdplayer commands to the FIFO
@@ -174,9 +179,11 @@ sub backupPlaylistFiles($);
 sub restorePlaylistFiles($);
 sub moveFiles($$@);
 sub anyFilesExist(@);
+sub anyRunCmdsPresent();
+sub intersperseRunCmds($);
+sub removeRunCmds();
 sub getActivePlaylistName();
 sub setActivePlaylistName($);
-sub setBreaks($);
 sub maybePropCmd($);
 
 sub main(@){
@@ -257,10 +264,18 @@ sub main(@){
     jump($dir, $percent);
   }elsif($cmd eq 'shuffle' and @_ == 0){
     system "sort", "-R", $$FILES{list}, "-o", $$FILES{list};
-  }elsif($cmd eq 'breaks' and @_ == 1){
-    my $arg = shift;
-    die "invalid argument to breaks\n" if $arg !~ /^(on|off|toggle)$/;
-    setBreaks $arg;
+  }elsif($cmd eq 'runcmd-on' and @_ == 1){
+    my $runCmd = shift;
+    intersperseRunCmds($runCmd);
+  }elsif($cmd eq 'runcmd-off' and @_ == 0){
+    removeRunCmds();
+  }elsif($cmd eq 'runcmd-toggle' and @_ == 1){
+    my $runCmd = shift;
+    if(anyRunCmdsPresent()){
+      removeRunCmds();
+    }else{
+      intersperseRunCmds($runCmd);
+    }
   }elsif($cmd eq 'fifo' and @_ > 0){
     fifoCommand(@_);
   }else{
@@ -352,20 +367,34 @@ sub anyFilesExist(@){
   return 0;
 }
 
-sub setBreaks($){
-  my $arg = shift;
-  my $breakLine = "!klomp-cmd stop\n";
+sub anyRunCmdsPresent(){
   my @lines = `cat $$FILES{list} 2>/dev/null`;
-  my @nonBreakLines = grep {$_ ne $breakLine} @lines;
-  my @newLines;
-  if($arg eq 'on' or ($arg eq 'toggle' and @nonBreakLines == @lines)){
-    for my $line(@nonBreakLines){
-      push @newLines, $breakLine;
-      push @newLines, $line;
+  for my $line(@lines){
+    if($line =~ /^!/){
+      return 1;
     }
-  }else{
-    @newLines = @nonBreakLines;
   }
+  return 0;
+}
+
+sub intersperseRunCmds($){
+  my ($runCmd) = @_;
+  my @lines = `cat $$FILES{list} 2>/dev/null`;
+  my @newLines;
+  for my $line(@lines){
+    if($line !~ /^!/){
+      push @newLines, "!$runCmd\n";
+    }
+    push @newLines, $line;
+  }
+  open FH, "> $$FILES{list}" or die "Couldn't write $$FILES{list}\n";
+  print FH @newLines;
+  close FH;
+}
+
+sub removeRunCmds(){
+  my @lines = `cat $$FILES{list} 2>/dev/null`;
+  my @newLines = grep {$_ !~ /^!/} @lines;
   open FH, "> $$FILES{list}" or die "Couldn't write $$FILES{list}\n";
   print FH @newLines;
   close FH;
@@ -579,9 +608,10 @@ sub getCur(){
 
 sub setCur($){
   my $item = shift;
-  if($item =~ /^!klomp-cmd (.*)$/si){
-    print "running klomp-cmd: $1\n";
-    system "$0 $1";
+  if($item =~ /^!(.*)$/si){
+    my $runCmd = $1;
+    print "running ! shell command: $1\n";
+    system "sh", "-c", $runCmd;
     system "rm", $$FILES{cur};
     return 0;
   }else{
