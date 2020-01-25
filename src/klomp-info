@@ -296,6 +296,7 @@ sub readSongLines($$){
   open FH, "<", $listFile or die "could not read $listFile\n$!\n";
   my $line;
   while(@lines < $numLines and $line = <FH>){
+    next if $line =~ /^!/;
     $line =~ s/\/\/\/\\\\\\/\n/g;
     push @lines, $line;
   }
