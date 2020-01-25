@@ -94,6 +94,7 @@ my $usage = "Usage:
 
 sub parseInfo($$$$$$$);
 sub readKlompInfo($$);
+sub readSongLines($$);
 sub selectKlompInfo($$$$);
 sub formatHMS($);
 sub formatSep($$);
@@ -234,9 +235,9 @@ sub parseInfo($$$$$$$){
       push @info, $isRunning ? "running" :"";
     }elsif($col =~ /^(paused)$/){
       push @info, defined $info{paused} ? $info{paused} : "";
-    }elsif($col eq 'breaks'){
-      my $count = `grep "$breakLine" "$KLOMP_LIST" | wc -l`;
-      push @info, $count > 0 ? "{BR}" : "";
+    }elsif($col eq 'runcmds'){
+      my $count = `grep "^!" "$KLOMP_LIST" | wc -l`;
+      push @info, $count > 0 ? "{CMD}" : "";
     }elsif($col eq 'file'){
       push @info, Klomp::Lib::getSongAbsPath $info{lib}, $info{relpath};
     }elsif($col =~ /^($validAttColNames)$/){
@@ -276,23 +277,30 @@ sub readKlompInfo($$){
   my $listInfo = [];
 
   $curInfo = `cat $KLOMP_CUR` if -e $KLOMP_CUR;
-  if((not defined $curInfo or $min < 0) and -e $KLOMP_HIST){
+  if((not defined $curInfo or $min < 0) and -f $KLOMP_HIST){
     $min = 0-$min;
     $min = 1 if $min == 0;
-    for my $line(`head -$min $KLOMP_HIST`){
-      $line =~ s/\/\/\/\\\\\\/\n/g;
-      push @$histInfo, $line;
-    }
+    $histInfo = [readSongLines($min, $KLOMP_HIST)];
   }
   if((not defined $curInfo or $max > 0) and -e $KLOMP_LIST){
     $max = 1 if $max == 0;
-    for my $line(`head -$max $KLOMP_LIST`){
-      $line =~ s/\/\/\/\\\\\\/\n/g;
-      push @$listInfo, $line;
-    }
+    $listInfo = [readSongLines($max, $KLOMP_LIST)];
   }
 
   return ($curInfo, $histInfo, $listInfo);
+}
+
+sub readSongLines($$){
+  my ($numLines, $listFile) = @_;
+  my @lines;
+  open FH, "<", $listFile or die "could not read $listFile\n$!\n";
+  my $line;
+  while(@lines < $numLines and $line = <FH>){
+    $line =~ s/\/\/\/\\\\\\/\n/g;
+    push @lines, $line;
+  }
+  close FH;
+  return @lines;
 }
 
 sub selectKlompInfo($$$$){
