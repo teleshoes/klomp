@@ -9,38 +9,56 @@ use File::Basename 'basename';
 my $klomplayerExec = 'klomplayer';
 my $FILES = Klomp::Files::allKlompFiles();
 
+my $EXEC = basename $0;
+
 my $usage = "Usage:
-  $0 -h - show this message
-  $0 playlist - print active playlist name
-     the contents of $$FILES{plname} if present, otherwise 'main'
-  $0 playlist PLNAME - activate/deactivate playlist PLNAME
-     PLNAME cannot be 'main', and may contain only letters, numbers, or _s
+  $EXEC -h
+    show this message
 
-     A 'playlist' is three files, {CURRENT, LIST, AND HISTORY}
-     Playlists are stored in three dirs:
-       -active: $ENV{HOME}/
-       -main when non-active: $$FILES{pldir}main/
-       -PLNAME when non-active: $$FILES{pldir}PLNAME/
+  $EXEC playlist
+    print active playlist name
+    (the contents of $$FILES{plname} if present, otherwise 'main')
+  $EXEC playlist PLNAME
+    activate/deactivate playlist PLNAME
+    PLNAME cannot be 'main', and may contain only letters, numbers, or _s
 
-     The name of the active playlist is stored in $$FILES{plname}.
-     $$FILES{plname} is missing when main is active.
+    A 'playlist' is three files, {CURRENT, LIST, AND HISTORY}
+    Playlists are stored in three dirs:
+      -active: $ENV{HOME}/
+      -main when non-active: $$FILES{pldir}main/
+      -PLNAME when non-active: $$FILES{pldir}PLNAME/
 
-     This command deactivated the current active playlist,
-       and activates main if PLNAME was activated, or else activates PLNAME.
+    The name of the active playlist is stored in $$FILES{plname}.
+    $$FILES{plname} is missing when main is active.
 
-     Activating a playlist named PLNAME means writing it to $$FILES{plname},
-       and moving from $$FILES{pldir}PLNAME/ to $ENV{HOME}
-     Deactivating a playlist named PLNAME means removing $$FILES{plname},
-       and moving from $ENV{HOME}/ to $$FILES{pldir}PLNAME/
+    This command deactivated the current active playlist,
+      and activates main if PLNAME was activated, or else activates PLNAME.
 
-  $0 playlist-main - if a named playlist is set, unset it
-  $0 start - start
-  $0 stop - stop
-  $0 restart - if klomplayer is running, stops and then starts
-  $0 pause - play/pause
-  $0 prev - previous song
-  $0 next - skip song
-  $0 seek SEEK_ARG
+    Activating a playlist named PLNAME means writing it to $$FILES{plname},
+      and moving from $$FILES{pldir}PLNAME/ to $ENV{HOME}
+    Deactivating a playlist named PLNAME means removing $$FILES{plname},
+      and moving from $ENV{HOME}/ to $$FILES{pldir}PLNAME/
+  $EXEC playlist-main
+    if a named playlist is set, unset it
+
+  $EXEC start
+    start klomplayer
+  $EXEC stop
+    stop klomplayer
+  $EXEC restart
+    if klomplayer is running: stop and then start
+
+  $EXEC pause
+    if klomplayer is not running: start klomplayer
+    if klomplayer is running: send play/pause command to klomplayer
+  $EXEC prev
+    prepen current song on klomplist, and load last history entry as current song
+    start klomplayer
+  $EXEC next
+    append current song to history, and load next klomplist entry as current song
+    start klomplayer
+
+  $EXEC seek SEEK_ARG
     set current position forward, backward, or absolute
     e.g.:
        +10   seek fwd 10s
@@ -60,67 +78,72 @@ my $usage = "Usage:
                   + is forward
                   - is backward
                   = is absolute
-  $0 jump [PERCENT|+PERCENT|-PERCENT] - prev+seek, next+seek, or just seek
-     split the current song into brackets of size PERCENT%
+  $EXEC jump [PERCENT|+PERCENT|-PERCENT]
+    prev+seek, next+seek, or just seek
+    split the current song into brackets of size PERCENT%
 
-     for +PERCENT (or PERCENT):
-       go to the next bracket or the first bracket of the next song
-     for -PERCENT:
-       if the current position is in the second half of the current bracket:
-         go to the start of the current bracket
-       if the current position is in the first half of the current bracket:
-         go to the prev bracket or the last bracket of the previous song
+    for +PERCENT (or PERCENT):
+      go to the next bracket or the first bracket of the next song
+    for -PERCENT:
+      if the current position is in the second half of the current bracket:
+        go to the start of the current bracket
+      if the current position is in the first half of the current bracket:
+        go to the prev bracket or the last bracket of the previous song
 
-     e.g.:
-      (A) song5 at 10% => `jump +25%` =>           `seek =25%` => song5 at 25%
-      (B) song5 at 10% => `jump -25%` => `prev` && `seek =75%` => song4 at 75%
-      (C) song5 at 15% => `jump +25%` =>           `seek =25%` => song5 at 25%
-      (D) song5 at 15% => `jump -25%` =>           `seek  =0%` => song5 at 0%
-      (E) song5 at 74% => `jump +25%` =>           `seek =75%` => song5 at 75%
-      (F) song5 at 75% => `jump +25%` => `next` && `seek  =0%` => song6 at 0%
+    e.g.:
+     (A) song5 at 10% => `jump +25%` =>           `seek =25%` => song5 at 25%
+     (B) song5 at 10% => `jump -25%` => `prev` && `seek =75%` => song4 at 75%
+     (C) song5 at 15% => `jump +25%` =>           `seek =25%` => song5 at 25%
+     (D) song5 at 15% => `jump -25%` =>           `seek  =0%` => song5 at 0%
+     (E) song5 at 74% => `jump +25%` =>           `seek =75%` => song5 at 75%
+     (F) song5 at 75% => `jump +25%` => `next` && `seek  =0%` => song6 at 0%
 
-      (A) (+25%) song4|=====|=====|=====|=====|
-                 song5|=S===|E====|=====|=====|
-                 song6|=====|=====|=====|=====|
+     (A) (+25%) song4|=====|=====|=====|=====|
+                song5|=S===|E====|=====|=====|
+                song6|=====|=====|=====|=====|
 
-      (B) (-25%) song4|=====|=====|=====|E====|
-                 song5|=S===|=====|=====|=====|
-                 song6|=====|=====|=====|=====|
+     (B) (-25%) song4|=====|=====|=====|E====|
+                song5|=S===|=====|=====|=====|
+                song6|=====|=====|=====|=====|
 
-      (C) (+25%) song4|=====|=====|=====|=====|
-                 song5|==S==|E====|=====|=====|
-                 song6|=====|=====|=====|=====|
+     (C) (+25%) song4|=====|=====|=====|=====|
+                song5|==S==|E====|=====|=====|
+                song6|=====|=====|=====|=====|
 
-      (D) (-25%) song4|=====|=====|=====|=====|
-                 song5|E=S==|=====|=====|=====|
-                 song6|=====|=====|=====|=====|
+     (D) (-25%) song4|=====|=====|=====|=====|
+                song5|E=S==|=====|=====|=====|
+                song6|=====|=====|=====|=====|
 
-      (E) (+25%) song4|=====|=====|=====|=====|
-                 song5|=====|=====|====S|E====|
-                 song6|=====|=====|=====|=====|
+     (E) (+25%) song4|=====|=====|=====|=====|
+                song5|=====|=====|====S|E====|
+                song6|=====|=====|=====|=====|
 
-      (F) (+25%) song4|=====|=====|=====|=====|
-                 song5|=====|=====|=====|S====|
-                 song6|E====|=====|=====|=====|
+     (F) (+25%) song4|=====|=====|=====|=====|
+                song5|=====|=====|=====|S====|
+                song6|E====|=====|=====|=====|
 
-  $0 shuffle - shuffle klomplist randomly
-  $0 breaks [on|off|toggle] - add/remove '!klomp-cmd stop's in klomplist
-     {e.g.: for sleeping with a book and not losing more than a chapter}
-     on: remove all stops, and place a stop after each song except the last
-     off: remove all stops
-     toggle: if any stops are present, same as off, else same as on
-  $0 fifo <FIFO input command>
-     send mplayer or qtcmdplayer commands to the FIFO
-       mplayer comands:
-         see `mplayer -input cmdlist`
-         {e.g.: $0 fifo seek 10}
-       qtcmdplayer commands:
-         pause
-           toggle play/pause
-         play
-           toggle play/pause
-         seek <ABSOLUTE_POSITION_MILLIS>
-           seek to the indicated position in the song
+  $EXEC shuffle
+    shuffle klomplist randomly
+
+  $EXEC breaks [on|off|toggle]
+    add/remove '!klomp-cmd stop's in klomplist
+    {e.g.: for sleeping with a book and not losing more than a chapter}
+      on: remove all stops, and place a stop after each song except the last
+      off: remove all stops
+      toggle: if any stops are present, same as off, else same as on
+
+  $EXEC fifo <FIFO input command>
+    send mplayer or qtcmdplayer commands to the FIFO
+      mplayer comands:
+        see `mplayer -input cmdlist`
+        {e.g.: $EXEC fifo seek 10}
+      qtcmdplayer commands:
+        pause
+          toggle play/pause
+        play
+          toggle play/pause
+        seek <ABSOLUTE_POSITION_MILLIS>
+          seek to the indicated position in the song
 ";
 
 sub getPid();
