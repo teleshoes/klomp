@@ -175,7 +175,7 @@ sub execCommands($\@){
   my $dir = shift;
   my @commands = @{shift()};
   my $host = undef;
-  if($dir =~ /^((?:.+@).+):(.*)$/){
+  if($dir =~ /^((?:.+@)?.+):(.*)$/){
     $host = $1;
     $dir = $2;
   }
