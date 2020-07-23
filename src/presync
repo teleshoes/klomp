@@ -128,9 +128,10 @@ sub getPaths($){
   my $src = shift;
   my $findCmd;
   if($src =~ /^((?:.+@)?.+):(.*)$/){
-    $findCmd = "ssh '$1' '".
-      "if [ -d '$2' ]; then " .
-        "cd '$2'; " .
+    my ($host, $dir) = ($1, $2);
+    $findCmd = "ssh '$host' '".
+      "if [ -d '$dir' ]; then " .
+        "cd '$dir'; " .
         "find -type f; " .
       "else " .
         "exit 1; " .
