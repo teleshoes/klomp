@@ -13,7 +13,7 @@ sub main(@){
   }
 
   my %tagReaders = (
-    'python-mutagen'     => "mp3 {mid3v2}",
+    'python3-mutagen'    => "mp3 {mid3v2}",
     'lltag'              => "ogg, flac",
     'libaudio-wma-perl'  => "wma",
     'atomicparsley'      => "mp4, m4a, m4p, m4v, m4b",
