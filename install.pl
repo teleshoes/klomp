@@ -31,6 +31,7 @@ my @execs = qw(
   klomp-history-latest
   klomp-info
   klomp-lib
+  klomp-playlist
   klomp-size
   klomp-sync
   klomp-tag

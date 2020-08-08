@@ -6,6 +6,7 @@ use Klomp::Config;
 use Klomp::Files;
 use File::Basename 'basename';
 
+my $KLOMP_PLAYLIST_EXEC = 'klomp-playlist';
 my $klomplayerExec = 'klomplayer';
 my $FILES = Klomp::Files::allKlompFiles();
 
@@ -15,31 +16,8 @@ my $usage = "Usage:
   $EXEC -h
     show this message
 
-  $EXEC playlist
-    print active playlist name
-    (the contents of $$FILES{plname} if present, otherwise 'main')
-  $EXEC playlist PLNAME
-    activate/deactivate playlist PLNAME
-    PLNAME cannot be 'main', and may contain only letters, numbers, or _s
-
-    A 'playlist' is three files, {CURRENT, LIST, AND HISTORY}
-    Playlists are stored in three dirs:
-      -active: $ENV{HOME}/
-      -main when non-active: $$FILES{pldir}main/
-      -PLNAME when non-active: $$FILES{pldir}PLNAME/
-
-    The name of the active playlist is stored in $$FILES{plname}.
-    $$FILES{plname} is missing when main is active.
-
-    This command deactivated the current active playlist,
-      and activates main if PLNAME was activated, or else activates PLNAME.
-
-    Activating a playlist named PLNAME means writing it to $$FILES{plname},
-      and moving from $$FILES{pldir}PLNAME/ to $ENV{HOME}
-    Deactivating a playlist named PLNAME means removing $$FILES{plname},
-      and moving from $ENV{HOME}/ to $$FILES{pldir}PLNAME/
-  $EXEC playlist set-main
-    if a named playlist is set, unset it
+  $EXEC playlist [ARG ARG ...]
+    run $KLOMP_PLAYLIST_EXEC ARG ARG ...
 
   $EXEC start
     start klomplayer
@@ -172,18 +150,9 @@ sub setKlompCurPos($);
 sub getPosLen();
 sub addCurTimestamp($);
 sub removeCurTimestamp($);
-sub toggleActivePlaylist($);
-sub playlistPresent();
-sub getPlaylistFileBaseNames();
-sub backupPlaylistFiles($);
-sub restorePlaylistFiles($);
-sub moveFiles($$@);
-sub anyFilesExist(@);
 sub anyRunCmdsPresent();
 sub intersperseRunCmds($);
 sub removeRunCmds();
-sub getActivePlaylistName();
-sub setActivePlaylistName($);
 sub maybePropCmd($);
 
 sub main(@){
@@ -199,24 +168,8 @@ sub main(@){
   if($cmd eq '-h'){
     print $usage;
     exit 0;
-  }elsif($cmd eq 'playlist' and @_ == 0){
-    print getActivePlaylistName() . "\n";
-  }elsif($cmd eq 'playlist' and @_ == 1){
-    stop();
-    maybePropCmd("hardStopCmd") if $wasRunning;
-    my $name = shift;
-    if($name eq 'set-main'){
-      my $name = getActivePlaylistName;
-      if(defined $name and $name ne "main"){
-        system $0, 'playlist', $name;
-      }
-    }else{
-      if($name eq 'main' or $name !~ /^[a-zA-Z0-9_]+$/){
-        die "Invalid playlist name: '$name'\n"
-      }
-      toggleActivePlaylist $name;
-      maybePropCmd("playlistCmd");
-    }
+  }elsif($cmd eq 'playlist'){
+    exec $KLOMP_PLAYLIST_EXEC, @_;
   }elsif($cmd eq 'start' and @_ == 0){
     stop;
     start;
@@ -283,90 +236,6 @@ sub main(@){
   }else{
     die $usage;
   }
-}
-
-sub toggleActivePlaylist($){
-  my $name = shift;
-  my $oldName = getActivePlaylistName;
-  $name = 'main' if $oldName eq $name;
-
-  backupPlaylistFiles "$$FILES{pldir}$oldName";
-  restorePlaylistFiles "$$FILES{pldir}$name";
-  setActivePlaylistName $name;
-
-  system "rmdir $$FILES{pldir}* 2>/dev/null";
-}
-sub getActivePlaylistName(){
-  my $name = `cat $$FILES{plname} 2>/dev/null`;
-  chomp $name;
-  $name = 'main' if $name eq '';
-  return $name;
-}
-sub setActivePlaylistName($){
-  my $name = shift;
-  $name = 'main' if $name eq '';
-  system "rm", "-f", $$FILES{plname};
-  if($name ne "main"){
-    open FH, "> $$FILES{plname}"
-      or die "Couldn't write $$FILES{plname}\n";
-    print FH "$name\n";
-    close FH;
-  }
-}
-
-sub getPlaylistFileBaseNames(){
-  return map {basename $_} ($$FILES{cur}, $$FILES{list}, $$FILES{history});
-}
-
-sub backupPlaylistFiles($){
-  my $dir = shift;
-  die "error: $dir already exists!\n" if -e $dir;
-  system "mkdir", "-p", $dir;
-  die "error: could not create $dir!\n" if not -e $dir;
-
-  my $srcDir = $$FILES{baseDir};
-  my $destDir = $dir;
-
-  moveFiles $srcDir, $destDir, getPlaylistFileBaseNames();
-
-  my @playlistFiles = map {"$$FILES{baseDir}/$_"} getPlaylistFileBaseNames();
-  die "error: playlist still present!\n" if anyFilesExist @playlistFiles;
-}
-sub restorePlaylistFiles($){
-  my $dir = shift;
-
-  my @playlistFiles = map {"$$FILES{baseDir}/$_"} getPlaylistFileBaseNames();
-  die "error: playlist exists and would be overridden!\n" if anyFilesExist @playlistFiles;
-
-  my $srcDir = $dir;
-  my $destDir = $$FILES{baseDir};
-
-  moveFiles $srcDir, $destDir, getPlaylistFileBaseNames();
-  system "rmdir", $dir;
-
-  die "error: $dir still exists!\n" if -e $dir;
-}
-
-sub moveFiles($$@){
-  my ($srcDir, $destDir, @fileBaseNames) = @_;
-  for my $fileBaseName(@fileBaseNames){
-    my $srcFile = "$srcDir/$fileBaseName";
-    my $destFile = "$destDir/$fileBaseName";
-    if(not -e $srcFile){
-      next;
-    }elsif(-e $destFile){
-      die "ERROR: file would be overwritten: $destFile\n";
-    }else{
-      system "mv", $srcFile, $destFile;
-    }
-  }
-}
-
-sub anyFilesExist(@){
-  for my $file(@_){
-    return 1 if -e $file;
-  }
-  return 0;
 }
 
 sub anyRunCmdsPresent(){
