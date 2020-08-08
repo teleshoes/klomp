@@ -15,6 +15,8 @@ my $EXEC_FULL_PATH = $0;
 
 my @PL_FILES = ($$REL_FILES{cur}, $$REL_FILES{list}, $$REL_FILES{history});
 
+my @SPECIAL_PLNAMES = qw(main);
+
 my $usage = "Usage:
   Read/write klomp playlist name PLNAME from/to \"$$FILES{plname}\",
   and move PLAYLIST_FILES: \"@PL_FILES\"
@@ -38,7 +40,11 @@ my $usage = "Usage:
   $EXEC -l|--list
     -collect all playlist names into PLNAME_LIST
       -include active playlist name and deactivated playlist names
-    -print PLNAME_LIST, sorted asciibetically, one per line (if any)
+    -split PLNAME_LIST into two lists:
+      -collect entries that match \"@SPECIAL_PLNAMES\" into SPECIAL_PLNAME_LIST
+      -collect the rest into REGULAR_PLNAME_LIST
+    -print SPECIAL_PLNAME_LIST, sorted asciibetically, one per line (if any)
+    -print REGULAR_PLNAME_LIST, sorted asciibetically, one per line (if any)
 
   $EXEC -s|--set PLNAME
     -deactivate current playlist, and activate PLNAME. roughly the same as:
@@ -99,6 +105,7 @@ sub setActivePlaylistName($);
 
 sub getDeactivatedPlaylistNames();
 sub getAllPlaylistNames();
+sub sortPlaylistNamesSpecialFirst(@);
 
 sub moveFile($$);
 sub readFile($);
@@ -127,7 +134,7 @@ sub main(@){
     print "$plname\n";
   }elsif($_[0] =~ /^(-l|--list)$/){
     my @allPlaylistNames = getAllPlaylistNames();
-    @allPlaylistNames = sort @allPlaylistNames;
+    @allPlaylistNames = sortPlaylistNamesSpecialFirst(@allPlaylistNames);
     print "$_\n" foreach @allPlaylistNames;
   }elsif(@_ == 2 and $_[0] =~ /^(-s|--set)$/){
     my $plname = $_[1];
@@ -251,6 +258,16 @@ sub getAllPlaylistNames(){
   push @plnames, $activePlname if defined $activePlname;
   @plnames = (@plnames, @deactivatedPlaylistNames);
   return @plnames;
+}
+
+sub sortPlaylistNamesSpecialFirst(@){
+  my @plnames = @_;
+
+  my $specialPlnamesRegex = join "|", @SPECIAL_PLNAMES;
+  my @plnamesSpecial = grep {$_ =~ /^($specialPlnamesRegex)$/} @plnames;
+  my @plnamesRegular = grep {$_ !~ /^($specialPlnamesRegex)$/} @plnames;
+
+  return (sort(@plnamesSpecial), sort(@plnamesRegular));
 }
 
 sub moveFile($$){
