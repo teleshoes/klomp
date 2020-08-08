@@ -60,6 +60,15 @@ my $usage = "Usage:
       echo main > $$FILES{plname}
       rmdir $$FILES{pldir}main/
 
+  $EXEC -c|--cycle|-t|--toggle
+    -get the next playlist name NEXT_PLNAME
+      -list all playlist names, ordered the same as in `$EXEC --list`
+      -find active playlist name PLNAME on the list of playlist names
+      -if PLNAME is the only item on the list, use PLNAME for NEXT_PLNAME
+      -if PLNAME is the last item on the list, use the first item for NEXT_PLNAME
+      -otherwise, use the item after PLNAME for NEXT_PLNAME
+    -run: `$EXEC --set NEXT_PLNAME`
+
   $EXEC --activate|--restore|--insert PLNAME
     -run: `$KLOMP_CMD_EXEC stop`
     -FAIL if ANY playlist is active (must call --deactivate first, or use --set)
@@ -106,6 +115,7 @@ sub setActivePlaylistName($);
 sub getDeactivatedPlaylistNames();
 sub getAllPlaylistNames();
 sub sortPlaylistNamesSpecialFirst(@);
+sub getNextPlaylistName();
 
 sub moveFile($$);
 sub readFile($);
@@ -141,6 +151,13 @@ sub main(@){
     system $KLOMP_CMD_EXEC, "stop";
     deactivatePlaylist;
     activatePlaylist $plname;
+  }elsif(@_ == 1 and $_[0] =~ /^(-c|--cycle|-t|toggle)$/){
+    my $plname = getActivePlaylistName();
+    $plname = "<none>" if not defined $plname;
+    my $nextPlname = getNextPlaylistName();
+    $nextPlname = "<none>" if not defined $plname;
+    print "$plname => $nextPlname\n";
+    exec $EXEC_FULL_PATH, "--set", $nextPlname;
   }elsif(@_ == 2 and $_[0] =~ /^(--activate|--restore|--insert)$/){
     my $plname = $_[1];
     system $KLOMP_CMD_EXEC, "stop";
@@ -268,6 +285,26 @@ sub sortPlaylistNamesSpecialFirst(@){
   my @plnamesRegular = grep {$_ !~ /^($specialPlnamesRegex)$/} @plnames;
 
   return (sort(@plnamesSpecial), sort(@plnamesRegular));
+}
+
+sub getNextPlaylistName(){
+  my @allPlaylistNames = getAllPlaylistNames();
+  @allPlaylistNames = sortPlaylistNamesSpecialFirst(@allPlaylistNames);
+
+  die "ERROR: no playlist names found\n" if @allPlaylistNames == 0;
+
+  my $activePlname = getActivePlaylistName();
+
+  for(my $i=0; $i<@allPlaylistNames; $i++){
+    if(defined $activePlname and $activePlname eq $allPlaylistNames[$i]){
+      my $nextIdx = $i + 1;
+      if($nextIdx < @allPlaylistNames){
+        return $allPlaylistNames[$nextIdx];
+      }
+    }
+  }
+
+  return $allPlaylistNames[0];
 }
 
 sub moveFile($$){
