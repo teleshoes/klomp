@@ -38,7 +38,7 @@ my $usage = "Usage:
       and moving from $$FILES{pldir}PLNAME/ to $ENV{HOME}
     Deactivating a playlist named PLNAME means removing $$FILES{plname},
       and moving from $ENV{HOME}/ to $$FILES{pldir}PLNAME/
-  $EXEC playlist-main
+  $EXEC playlist set-main
     if a named playlist is set, unset it
 
   $EXEC start
@@ -205,15 +205,17 @@ sub main(@){
     stop();
     maybePropCmd("hardStopCmd") if $wasRunning;
     my $name = shift;
-    if($name eq 'main' or $name !~ /^[a-zA-Z0-9_]+$/){
-      die "Invalid playlist name: '$name'\n"
-    }
-    toggleActivePlaylist $name;
-    maybePropCmd("playlistCmd");
-  }elsif($cmd eq 'playlist-main'){
-    my $name = getActivePlaylistName;
-    if(defined $name and $name ne "main"){
-      system $0, 'playlist', $name;
+    if($name eq 'set-main'){
+      my $name = getActivePlaylistName;
+      if(defined $name and $name ne "main"){
+        system $0, 'playlist', $name;
+      }
+    }else{
+      if($name eq 'main' or $name !~ /^[a-zA-Z0-9_]+$/){
+        die "Invalid playlist name: '$name'\n"
+      }
+      toggleActivePlaylist $name;
+      maybePropCmd("playlistCmd");
     }
   }elsif($cmd eq 'start' and @_ == 0){
     stop;
