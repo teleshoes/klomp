@@ -4,6 +4,7 @@ use warnings;
 
 sub klompFile($);
 sub allKlompFiles();
+sub allBaseDirRelativeKlompFiles();
 
 my $BASE_DIR = "$ENV{HOME}/.klomp";
 my $TMP_DIR = "/tmp";
@@ -44,6 +45,9 @@ sub klompFile($){
 }
 sub allKlompFiles(){
   return $FILES;
+}
+sub allBaseDirRelativeKlompFiles(){
+  return $BASE_DIR_FILES;
 }
 
 1;
