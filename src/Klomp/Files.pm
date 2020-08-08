@@ -19,6 +19,7 @@ my $files = {
   plname       => "$ENV{HOME}/.klomp/playlist",
   playlistdir  => "$ENV{HOME}/.klomp/list-",
   pldir        => "$ENV{HOME}/.klomp/list-",
+  tmpDir       => "/tmp",
   bufferlog    => "/tmp/qtcmdplayer-buffer.log",
   fifo         => "/tmp/klomplayer_fifo",
   fifopidfile  => "/tmp/klomplayer_fifo_pid",
