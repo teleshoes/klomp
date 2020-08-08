@@ -35,6 +35,11 @@ my $usage = "Usage:
     -FAIL if $$FILES{plname} is empty or not present
     -print PLNAME
 
+  $EXEC -l|--list
+    -collect all playlist names into PLNAME_LIST
+      -include active playlist name and deactivated playlist names
+    -print PLNAME_LIST, sorted asciibetically, one per line (if any)
+
   $EXEC -s|--set PLNAME
     -deactivate current playlist, and activate PLNAME. roughly the same as:
       -run: `$EXEC --deactivate`
@@ -92,6 +97,9 @@ sub checkPlaylistName($);
 sub getActivePlaylistName();
 sub setActivePlaylistName($);
 
+sub getDeactivatedPlaylistNames();
+sub getAllPlaylistNames();
+
 sub moveFile($$);
 sub readFile($);
 sub writeFile($$);
@@ -117,6 +125,10 @@ sub main(@){
       die "ERROR: no active playlist\n";
     }
     print "$plname\n";
+  }elsif($_[0] =~ /^(-l|--list)$/){
+    my @allPlaylistNames = getAllPlaylistNames();
+    @allPlaylistNames = sort @allPlaylistNames;
+    print "$_\n" foreach @allPlaylistNames;
   }elsif(@_ == 2 and $_[0] =~ /^(-s|--set)$/){
     my $plname = $_[1];
     system $KLOMP_CMD_EXEC, "stop";
@@ -218,6 +230,27 @@ sub setActivePlaylistName($){
   if($plname ne getActivePlaylistName()){
     die "ERROR: playlist name mismatch after setting plname=$plname\n";
   }
+}
+
+sub getDeactivatedPlaylistNames(){
+  my @dirs = glob "$$FILES{pldir}*/";
+  my @plnames;
+  for my $dir(@dirs){
+    if($dir =~ /^$$FILES{pldir}(\w+)\/$/){
+      push @plnames, $1;
+    }
+  }
+  return @plnames;
+}
+
+sub getAllPlaylistNames(){
+  my $activePlname = getActivePlaylistName();
+  my @deactivatedPlaylistNames = getDeactivatedPlaylistNames();
+
+  my @plnames;
+  push @plnames, $activePlname if defined $activePlname;
+  @plnames = (@plnames, @deactivatedPlaylistNames);
+  return @plnames;
 }
 
 sub moveFile($$){
