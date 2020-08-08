@@ -5,35 +5,45 @@ use warnings;
 sub klompFile($);
 sub allKlompFiles();
 
-my $files = {
-  baseDir      => "$ENV{HOME}/.klomp",
-  db           => "$ENV{HOME}/.klomp/db",
-  cur          => "$ENV{HOME}/.klomp/cur",
-  list         => "$ENV{HOME}/.klomp/list",
-  history      => "$ENV{HOME}/.klomp/history",
-  hist         => "$ENV{HOME}/.klomp/history",
-  datecache    => "$ENV{HOME}/.klomp/datecache",
-  lib          => "$ENV{HOME}/.klomp/lib",
-  config       => "$ENV{HOME}/.klomp/config",
-  playlistname => "$ENV{HOME}/.klomp/playlist",
-  plname       => "$ENV{HOME}/.klomp/playlist",
-  playlistdir  => "$ENV{HOME}/.klomp/list-",
-  pldir        => "$ENV{HOME}/.klomp/list-",
-  tmpDir       => "/tmp",
-  bufferlog    => "/tmp/qtcmdplayer-buffer.log",
-  fifo         => "/tmp/klomplayer_fifo",
-  fifopidfile  => "/tmp/klomplayer_fifo_pid",
-  termpidfile  => "/tmp/klomp_term_pid",
-  pidfile      => "/tmp/klomplayer_pid",
+my $BASE_DIR = "$ENV{HOME}/.klomp";
+my $TMP_DIR = "/tmp";
+
+my $BASE_DIR_FILES = {
+  db           => "db",
+  cur          => "cur",
+  list         => "list",
+  hist         => "history",
+  history      => "history",
+  datecache    => "datecache",
+  lib          => "lib",
+  config       => "config",
+  playlistname => "playlist",
+  plname       => "playlist",
+  pldir        => "list-",
+  playlistdir  => "list-",
+};
+my $TMP_DIR_FILES = {
+  bufferlog    => "qtcmdplayer-buffer.log",
+  fifo         => "klomplayer_fifo",
+  fifopidfile  => "klomplayer_fifo_pid",
+  termpidfile  => "klomp_term_pid",
+  pidfile      => "klomplayer_pid",
+};
+
+my $FILES = {
+  baseDir => $BASE_DIR,
+  tmpDir  => $TMP_DIR,
+  (map {$_ => "$BASE_DIR/$$BASE_DIR_FILES{$_}"} sort keys %$BASE_DIR_FILES),
+  (map {$_ => "$TMP_DIR/$$TMP_DIR_FILES{$_}"} sort keys %$TMP_DIR_FILES),
 };
 
 sub klompFile($){
-  my $path = $$files{$_[0]};
+  my $path = $$FILES{$_[0]};
   die "Error getting klomp file $_[0]!\n" if not defined $path;
   return $path;
 }
 sub allKlompFiles(){
-  return $files;
+  return $FILES;
 }
 
 1;
