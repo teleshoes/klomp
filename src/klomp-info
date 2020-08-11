@@ -156,7 +156,7 @@ sub main(@){
 
   my ($curInfo, $histInfo, $listInfo) = readKlompInfo $min, $max;
 
-  my $playlist = grep(/playlist/, @cols) ? `klomp-cmd playlist` : "";
+  my $playlist = grep(/playlist/, @cols) ? `klomp-playlist --get` : "";
   chomp $playlist;
 
   for my $index(@indices){
