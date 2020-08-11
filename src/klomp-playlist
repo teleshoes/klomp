@@ -27,7 +27,7 @@ my $usage = "Usage:
     show this message
 
   $EXEC
-    same as: `$EXEC --get`
+    same as: `$EXEC --show`
 
   $EXEC PLNAME
     same as: `$EXEC --set PLNAME`
@@ -153,7 +153,7 @@ sub main(@){
     print $usage;
     exit 0;
   }elsif(@_ == 0){
-    exec $EXEC_FULL_PATH, "--get";
+    exec $EXEC_FULL_PATH, "--show";
   }elsif(@_ == 1 and $_[0] =~ /^\w+$/){
     exec $EXEC_FULL_PATH, "--set", $_[0];
   }elsif(@_ == 0 or (@_ == 1 and $_[0] =~ /^(-g|--get)$/)){
