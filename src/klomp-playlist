@@ -54,6 +54,17 @@ my $usage = "Usage:
       instrumental
       party
 
+  $EXEC --show
+    -collect playlists into SORTED_PLNAME_LIST, as in `$EXEC --list`
+    -get current playlist name PLNAME, if any, as in `$EXEC --get`
+    -if there is no PLNAME, or PLNAME is not in SORTED_PLNAME_LIST:
+      -print \"<NO ACTIVE PLAYLIST>\"
+    -otherwise:
+      -if the first item on SORTED_PLNAME_LIST is not PLNAME:
+        -move the first item to the end of SORTED_PLNAME_LIST
+        -repeat, until the first item on SORTED_PLNAME_LIST is PLNAME
+      -print SORTED_PLNAME_LIST, one per line, with ' (*)' after PLNAME
+
   $EXEC -s|--set PLNAME
     -deactivate current playlist, and activate PLNAME. roughly the same as:
       -run: `$EXEC --deactivate`
@@ -123,6 +134,7 @@ sub setActivePlaylistName($);
 sub getDeactivatedPlaylistNames();
 sub getAllPlaylistNames();
 sub sortPlaylistNamesSpecialFirst(@);
+sub prettyFormatPlaylistNames($@);
 sub getNextPlaylistName();
 
 sub moveFile($$);
@@ -154,6 +166,11 @@ sub main(@){
     my @allPlaylistNames = getAllPlaylistNames();
     @allPlaylistNames = sortPlaylistNamesSpecialFirst(@allPlaylistNames);
     print "$_\n" foreach @allPlaylistNames;
+  }elsif($_[0] =~ /^(--show)$/){
+    my @allPlaylistNames = getAllPlaylistNames();
+    @allPlaylistNames = sortPlaylistNamesSpecialFirst(@allPlaylistNames);
+    my $activePlname = getActivePlaylistName();
+    print prettyFormatPlaylistNames($activePlname, @allPlaylistNames);
   }elsif(@_ == 2 and $_[0] =~ /^(-s|--set)$/){
     my $plname = $_[1];
     system $KLOMP_CMD_EXEC, "stop";
@@ -293,6 +310,31 @@ sub sortPlaylistNamesSpecialFirst(@){
   my @plnamesRegular = grep {$_ !~ /^($specialPlnamesRegex)$/} @plnames;
 
   return (sort(@plnamesSpecial), sort(@plnamesRegular));
+}
+
+sub prettyFormatPlaylistNames($@){
+  my ($activePlname, @allPlaylistNames) = @_;
+
+  my %okPlaylistNames = map {$_ => 1} @allPlaylistNames;
+  if(not defined $activePlname or not $okPlaylistNames{$activePlname}){
+    return "<NO ACTIVE PLAYLIST>\n";
+  }
+
+  my $prefix = "";
+  my $suffix = "";
+  my $found = 0;
+  for my $plname(@allPlaylistNames){
+    if($plname eq $activePlname){
+      $prefix .= "$plname (*)\n";
+      $found =1;
+    }elsif($found){
+      $prefix .= "$plname\n";
+    }else{
+      $suffix .= "$plname\n";
+    }
+  }
+
+  return "$prefix$suffix";
 }
 
 sub getNextPlaylistName(){
