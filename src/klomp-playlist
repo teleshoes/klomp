@@ -43,8 +43,16 @@ my $usage = "Usage:
     -split PLNAME_LIST into two lists:
       -collect entries that match \"@SPECIAL_PLNAMES\" into SPECIAL_PLNAME_LIST
       -collect the rest into REGULAR_PLNAME_LIST
-    -print SPECIAL_PLNAME_LIST, sorted asciibetically, one per line (if any)
-    -print REGULAR_PLNAME_LIST, sorted asciibetically, one per line (if any)
+    -gather playlist names into SORTED_PLNAME_LIST
+      -first, append SPECIAL_PLNAME_LIST, sorted asciibetically
+      -then, append REGULAR_PLNAME_LIST, sorted asciibetically
+    -print SORTED_PLNAME_LIST, one per line (if any)
+
+    e.g.: $EXEC --list
+      " . join("\n      ", sort @SPECIAL_PLNAMES). "
+      books
+      instrumental
+      party
 
   $EXEC -s|--set PLNAME
     -deactivate current playlist, and activate PLNAME. roughly the same as:
