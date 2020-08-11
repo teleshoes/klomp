@@ -36,6 +36,17 @@ my $usage = "Usage:
     append current song to history, and load next klomplist entry as current song
     start klomplayer
 
+  $EXEC is-playing
+    if klomplayer is running AND is NOT paused:
+      print \"playing\"
+      exit with exit code 0
+    if klomplayer is running and IS paused:
+      print \"paused\"
+      exit with exit code 1
+    if klomplayer is not running:
+      print \"stopped\"
+      exit with exit code 1
+
   $EXEC seek SEEK_ARG
     set current position forward, backward, or absolute
     e.g.:
@@ -134,6 +145,7 @@ sub isRunning();
 sub isPauseAllowed();
 sub isFifoValid();
 sub fifoCommand(@);
+sub isPaused();
 sub removePause();
 sub pauseToStop();
 sub start(;$);
@@ -178,6 +190,18 @@ sub main(@){
     stop;
     maybePropCmd("hardStopCmd") if $wasRunning;
     removePause();
+  }elsif($cmd eq 'is-playing' and @_ == 0){
+    if($wasRunning){
+      if(isPaused()){
+        print "paused\n";
+        exit 1;
+      }else{
+        print "playing\n";
+      }
+    }else{
+      print "stopped\n";
+      exit 1;
+    }
   }elsif($cmd eq 'restart' and @_ == 0){
     if($wasRunning){
       stop;
@@ -329,6 +353,24 @@ sub fifoCommandSeek($){
     fifoCommand("seek $sexPos 2");
   }elsif(Klomp::Config::USE_QTCMDPLAYER()){
     fifoCommand("seek " . int($sexPos * 1000 + 0.5));
+  }
+}
+
+sub isPaused(){
+  my $curFirstLine = undef;
+  if(-e $$FILES{cur}){
+    open FH, "< $$FILES{cur}";
+    my @lines = <FH>;
+    close FH;
+    if(@lines > 0){
+      $curFirstLine = $lines[0];
+    }
+  }
+
+  if(defined $curFirstLine and $curFirstLine =~ /^([0-9.]+) ([0-9.]+) paused/){
+    return 1;
+  }else{
+    return 0;
   }
 }
 
