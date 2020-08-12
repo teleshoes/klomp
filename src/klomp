@@ -624,8 +624,8 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       return s
     else:
       ellipLen = len(ellip.decode('utf8'))
-      left = lim/2
-      right = length - lim/2 - lim%2 + ellipLen
+      left = int(lim/2)
+      right = length - int(lim/2) - int(lim%2) + ellipLen
       return s[:left] + ellip + s[right:]
   def formatNumbers(self, songs):
     for s in songs:
