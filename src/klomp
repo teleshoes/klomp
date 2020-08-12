@@ -204,7 +204,7 @@ def pad2(n):
 
 def fmtTime(t):
   try:
-    t = int(float(t))
+    t = int(float(t) + 0.5)
   except:
     return "??:??"
   s = t%60
