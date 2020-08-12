@@ -335,7 +335,7 @@ class TextEdit(LinePrinter):
     self.preText = u""
     self.postText = u""
   def handleKeys(self, keys):
-    text = ""
+    textBytes = []
     cmds = []
     for key in keys:
       c = curses
@@ -356,8 +356,12 @@ class TextEdit(LinePrinter):
       elif key == c.KEY_DC: #delete
         self.postText = self.postText[1:]
       elif key < 256:
-        text += chr(key)
-    self.preText += text.decode('utf8')
+        textBytes.append(key)
+    text = ""
+    for b in textBytes:
+      text += chr(b)
+    text = text.decode('utf-8')
+    self.preText += text
   def parseLines(self, txt):
     lines = []
     line = u""
