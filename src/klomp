@@ -18,6 +18,9 @@ locale.setlocale(locale.LC_ALL,"")
 
 uiLock = threading.RLock()
 
+PYTHON2 = sys.version_info < (3, 0)
+PYTHON3 = sys.version_info >= (3, 0)
+
 HORIZONTAL_ELLIPSIS = unichr(8230).encode('utf8')
 VERTICAL_ELLIPSIS = unichr(8942).encode('utf8')
 
