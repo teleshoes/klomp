@@ -21,8 +21,8 @@ uiLock = threading.RLock()
 PYTHON2 = sys.version_info < (3, 0)
 PYTHON3 = sys.version_info >= (3, 0)
 
-HORIZONTAL_ELLIPSIS = unichr(8230).encode('utf8')
-VERTICAL_ELLIPSIS = unichr(8942).encode('utf8')
+HORIZONTAL_ELLIPSIS = unichr(8230).encode('utf8') if PYTHON2 else chr(8230)
+VERTICAL_ELLIPSIS = unichr(8942).encode('utf8') if PYTHON2 else chr(8942)
 
 KLOMP_LIST = os.popen('klomp-files -n list').read()
 KLOMP_CUR = os.popen('klomp-files -n cur').read()
