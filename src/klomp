@@ -363,9 +363,12 @@ class TextEdit(LinePrinter):
         self.postText = self.postText[1:]
       elif key < 256:
         textBytes.append(key)
-    text = ""
-    for b in textBytes:
-      text += chr(b)
+    if PYTHON3:
+      text = bytes(textBytes)
+    else:
+      text = ""
+      for b in textBytes:
+        text += chr(b)
     text = text.decode('utf-8')
     self.preText += text
   def parseLines(self, txt):
@@ -427,7 +430,10 @@ class KlompListHandler():
       with open(KLOMP_LIST, 'rb') as f:
         return f.read()
     except IOError:
-      return ""
+      if PYTHON2:
+        return ""
+      else:
+        return bytes()
   def writeKlompList(self, byteStr):
     with open(KLOMP_LIST, 'wb') as f:
       f.write(byteStr)
@@ -443,7 +449,10 @@ class KlompListHandler():
     entries = ""
     for song in songs:
       entries += klompLibs.toString(song)
-    byteStr = entries
+    if PYTHON2:
+      byteStr = entries
+    else:
+      byteStr = entries.encode('utf-8')
 
     if mode == "append":
       self.append(byteStr)
@@ -580,14 +589,14 @@ class KlompLibs():
     self.attRe = re.compile("(" + attColsRe + ")=(.*)")
   def toString(self, song):
     return (
-        song['library'] + '@' + song['relpath'] +
-        self.sep + "artist=" + song['artist'] +
-        self.sep + "album=" + song['album'] +
-        self.sep + "number=" + song['number'] +
-        self.sep + "disc=" + song['disc'] +
-        self.sep + "title=" + song['title'] +
-        self.sep + "duration=" + song['duration'] +
-        self.sep + "query=" + song['query'] + "\n")
+        toStr(song['library']) + '@' + toStr(song['relpath']) +
+        self.sep + "artist=" + toStr(song['artist']) +
+        self.sep + "album=" + toStr(song['album']) +
+        self.sep + "number=" + toStr(song['number']) +
+        self.sep + "disc=" + toStr(song['disc']) +
+        self.sep + "title=" + toStr(song['title']) +
+        self.sep + "duration=" + toStr(song['duration']) +
+        self.sep + "query=" + toStr(song['query']) + "\n")
   def fromString(self, s):
     song = {}
     m = regexMatchRE(self.songRe, s)
@@ -639,7 +648,10 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
     if length <= lim:
       return s
     else:
-      ellipLen = len(ellip.decode('utf8'))
+      if PYTHON2:
+        ellipLen = len(ellip.decode('utf8'))
+      else:
+        ellipLen = len(ellip)
       left = int(lim/2)
       right = length - int(lim/2) - int(lim%2) + ellipLen
       return s[:left] + ellip + s[right:]
@@ -923,6 +935,8 @@ class KlompQuery():
       ).communicate()
     if err:
       raise IOError(err)
+    if PYTHON3:
+      out = out.decode('utf-8', 'backslashreplace')
     return self.parseCsv(out, self.cols)
   def getError(self):
     return self.error
