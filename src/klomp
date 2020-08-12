@@ -997,7 +997,7 @@ class KlompUI():
       self.queryDisplay.update()
   def updateSongs(self):
     text = self.textEdit.getText()
-    if text != "":
+    if len(text) > 0:
       self.initialMessage = False
     if self.initialMessage:
       self.updateInitialMessage()
