@@ -412,32 +412,35 @@ class TextEdit(LinePrinter):
     curses.setsyx(self.y + len(lines) - 1, xLen)
 
 class KlompListHandler():
-  def readEntries(self):
+  def readKlompList(self):
     try:
-      with open(KLOMP_LIST, 'r') as f:
-        return f.readlines()
+      with open(KLOMP_LIST, 'rb') as f:
+        return f.read()
     except IOError:
-      return []
-  def writeEntries(self, entries, mode):
-    with open(KLOMP_LIST, mode) as f:
-      f.writelines(entries)
+      return ""
+  def writeKlompList(self, byteStr):
+    with open(KLOMP_LIST, 'wb') as f:
+      f.write(byteStr)
 
-  def append(self, entries):
-    self.writeEntries(entries, 'a')
-  def prepend(self, entries):
-    self.writeEntries(entries + self.readEntries(), 'w')
-  def overwrite(self, entries):
-    self.writeEntries(entries, 'w')
+  def append(self, byteStr):
+    self.writeKlompList(self.readKlompList() + byteStr)
+  def prepend(self, byteStr):
+    self.writeKlompList(byteStr + self.readKlompList())
+  def overwrite(self, byteStr):
+    self.writeKlompList(byteStr)
 
   def handleSongs(self, songs, mode):
-    entries = map(klompLibs.toString, songs)
+    entries = ""
+    for song in songs:
+      entries += klompLibs.toString(song)
+    byteStr = entries
 
     if mode == "append":
-      self.append(entries)
+      self.append(byteStr)
     elif mode == "prepend":
-      self.prepend(entries)
+      self.prepend(byteStr)
     elif mode == "overwrite":
-      self.overwrite(entries)
+      self.overwrite(byteStr)
 
 class SongSorter():
   def __init__(self):
