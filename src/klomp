@@ -208,8 +208,8 @@ def fmtTime(t):
   except:
     return "??:??"
   s = t%60
-  m = t/60%60
-  h = t/60/60
+  m = int(t/60)%60
+  h = int(t/60/60)
   if h > 0:
     return str(h) + ":" + pad2(m) + ":" + pad2(s)
   else:
