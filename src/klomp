@@ -18,6 +18,9 @@ locale.setlocale(locale.LC_ALL,"")
 
 uiLock = threading.RLock()
 
+HORIZONTAL_ELLIPSIS = unichr(8230).encode('utf8')
+VERTICAL_ELLIPSIS = unichr(8942).encode('utf8')
+
 KLOMP_LIST = os.popen('klomp-files -n list').read()
 KLOMP_CUR = os.popen('klomp-files -n cur').read()
 KLOMP_DATECACHE = os.popen('klomp-files -n datecache').read()
@@ -679,7 +682,7 @@ class QueryDisplay(LinePrinter, OffsetListDisplay):
       artistLimit += albumLimit - albumLen
       albumLimit = albumLen
 
-    ellip = unichr(8230).encode('utf8') #HORIZONTAL ELLIPSIS
+    ellip = HORIZONTAL_ELLIPSIS
     artist = self.trimMid(s['artist'], artistLimit, ellip)
     album = self.trimMid(s['album'], albumLimit, ellip)
     return prefix + artist + sep1 + album + sep2 + lib + suffix
@@ -826,7 +829,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
       elif key in klompcmds:
         daemonExec('klomp-cmd', klompcmds[key])
   def formatSong(self, song):
-    sep = unichr(8942).encode('utf8') #VERTICAL ELLIPSIS
+    sep = VERTICAL_ELLIPSIS
     bigSep = ' ' + sep + ' '
     dur = fmtTime(song['duration'])
     return (''
