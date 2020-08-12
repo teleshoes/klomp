@@ -102,7 +102,7 @@ def main(args):
     args = args[1:]
     songSorter = SongSorter()
     while len(args) > 0:
-      sortMatch = re.match("--sort=(.*)", args[0])
+      sortMatch = regexMatch("--sort=(.*)", args[0])
       if sortMatch:
         args = args[1:]
         songSorter.setSortString(sortMatch.group(1))
@@ -587,7 +587,7 @@ class KlompLibs():
         self.sep + "query=" + song['query'] + "\n")
   def fromString(self, s):
     song = {}
-    m = self.songRe.match(s)
+    m = regexMatchRE(self.songRe, s)
     if m:
       song['library'] = m.group(1)
       info = m.group(2).split(self.sep)
@@ -597,14 +597,14 @@ class KlompLibs():
       for att in self.attCols:
         song[att] = ''
       for att in info:
-        attM = self.attRe.match(att)
+        attM = regexMatchRE(self.attRe, att)
         if attM:
           song[attM.group(1)] = attM.group(2)
       return song
     else:
       return None
   def fromCurString(self, cur):
-    curM = re.match(r'(\d+\.\d+) (\d+\.\d+) (.*)', cur, re.DOTALL)
+    curM = regexMatch(r'(\d+\.\d+) (\d+\.\d+) (.*)', cur, re.DOTALL)
     if curM:
       pos = curM.group(1)
       length = curM.group(2)
@@ -898,7 +898,7 @@ class KlompQuery():
       return None
   def setQuery(self, query):
     self.query = query
-    m = self.filterRe.match(query)
+    m = regexMatchRE(self.filterRe, query)
     if m:
       self.filterType = m.group(1)
       self.filterArg = int(m.group(2))
@@ -927,7 +927,7 @@ class KlompQuery():
     artist = song['artist']
     albArtist = song['albumartist']
     if albArtist and albArtist != artist:
-      if self.variousRe.match(albArtist):
+      if regexMatchRE(self.variousRe, albArtist):
         albArtist = 'VA'
       artist += ' [' + albArtist + ']'
     song['artist'] = artist
@@ -1118,6 +1118,25 @@ class KlompUI():
     with uiLock:
       self.prompt.update()
       curses.doupdate()
+
+def regexMatchRE(regex, string, flags=0):
+  if PYTHON3:
+    string = toStr(string)
+  return regex.match(string, flags)
+
+def regexMatch(pattern, string, flags=0):
+  if PYTHON3:
+    string = toStr(string)
+  return re.match(pattern, string, flags)
+
+def toStr(string):
+  if type(string) == str:
+    return string
+  else:
+    try:
+      return string.decode("utf-8")
+    except:
+      return str(string)
 
 if __name__ == "__main__":
   main(sys.argv)
