@@ -513,7 +513,10 @@ class Prompt(LinePrinter):
     self.sortNameItr = cycle(SORT_NAME_CYCLE_ORDER)
     self.nextSortName()
   def nextSortName(self):
-    self.sortName = self.sortNameItr.next()
+    if PYTHON2:
+      self.sortName = self.sortNameItr.next()
+    else:
+      self.sortName = next(self.sortNameItr)
   def setSongs(self, songs):
     self.resetSortName()
     self.songs = songs
