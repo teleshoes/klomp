@@ -163,7 +163,8 @@ sub maybeRenice();
 sub shellQuiet(@);
 sub prevItem();
 sub nextItem();
-sub seekPos($);
+sub parseSeekArg($);
+sub seekPos($$);
 sub jump($$);
 sub setPosition($);
 sub setKlompCurPos($);
@@ -243,7 +244,9 @@ sub main(@){
       maybePropCmd("hardStopCmd") if $wasRunning;
     }
   }elsif($cmd eq 'seek' and @_ == 1){
-    seekPos($_[0]);
+    my $seekArg = $_[0];
+    my ($seekSign, $seekSex) = parseSeekArg $seekArg;
+    seekPos($seekSign, $seekSex);
   }elsif($cmd eq 'jump' and @_ == 1 and $_[0] =~ /^(\+|-)?(\d+)$/){
     my $dir = $1 ne "-";
     my $percent = $2;
@@ -584,37 +587,49 @@ sub nextItem(){
   return prevnext $$FILES{list}, $$FILES{hist};
 }
 
-sub seekPos($){
+sub parseSeekArg($){
   my ($seekArg) = @_;
-
-  my ($oldPos, $oldLen) = getPosLen();
+  my ($seekSign, $seekPos);
 
   my $signRE = "(?:\\+|-|=|T-)";
   my $numRE = "(?:\\d+|\\d*\\.\\d+)";
-
-  my ($seekSign, $seekSexPos);
-
   if($seekArg =~ /^($signRE?)($numRE)%$/i){
     my ($sign, $percentPos) = ($1, $2);
     $seekSign = $sign;
-    $seekSexPos = $percentPos / 100 * $oldLen;
+    $seekPos = "$percentPos%";
   }elsif($seekArg =~ /^($signRE?)($numRE)$/i){
     my ($sign, $sexPos) = ($1, $2);
     $seekSign = $sign;
-    $seekSexPos = $sexPos;
+    $seekPos = $sexPos;
   }elsif($seekArg =~ /^($signRE?)($numRE):($numRE)$/i){
     my ($sign, $minPos, $sexPos) = ($1, $2, $3);
     $seekSign = $sign;
-    $seekSexPos = $minPos*60.0 + $sexPos;
+    $seekPos = $minPos*60.0 + $sexPos;
   }elsif($seekArg =~ /^($signRE?)($numRE):($numRE):($numRE)$/i){
     my ($sign, $hrPos, $minPos, $sexPos) = ($1, $2, $3, $4);
     $seekSign = $sign;
-    $seekSexPos = $hrPos*60.0*60.0 + $minPos*60.0 + $sexPos;
+    $seekPos = $hrPos*60.0*60.0 + $minPos*60.0 + $sexPos;
   }else{
     die "invalid seek arg: $seekArg\n";
   }
+  $seekSign = undef if $seekSign eq "";
 
-  $seekSign = "=" if not defined $seekSign or $seekSign !~ /^$signRE$/i;
+  return ($seekSign, $seekPos);
+}
+
+sub seekPos($$){
+  my ($seekSign, $seekPos) = @_;
+
+  my ($oldPos, $oldLen) = getPosLen();
+
+  my $seekSexPos;
+  if($seekPos =~ /^(.+)%$/){
+    $seekSexPos = $1 * $oldLen;
+  }else{
+    $seekSexPos = $seekPos;
+  }
+
+  $seekSign = "=" if not defined $seekSign or $seekSign eq "";
   $seekSign = uc $seekSign;
 
   my $wasRunning = isRunning();
@@ -628,6 +643,8 @@ sub seekPos($){
     $newPos = $oldPos - $seekSexPos;
   }elsif($seekSign eq "T-"){
     $newPos = $oldLen - $seekSexPos;
+  }else{
+    die "ERROR: unknown seek sign $seekSign\n";
   }
 
   $newPos = 0 if $newPos < 0;
