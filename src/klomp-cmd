@@ -60,8 +60,8 @@ my $usage = "Usage:
        =65.2 seek to absolute position 00:01:05.200
        T-3.5 seek to absolute position of duration minus 3.5s
 
-    SEEK_ARG  = [SEEK_POS] | [SIGN][SEEK_POS]
-                if SIGN is not given, default is =
+    SEEK_ARG  = [SEEK_POS] | [SEEK_SIGN][SEEK_POS]
+                if SEEK_SIGN is not given, default is =
     SEEK_POS  = [S|S.SS|HH:MM:SS|MM:SS|PERCENT%]
                 fractional seconds,
                   or fractional hr:min:sec,
