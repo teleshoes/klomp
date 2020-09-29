@@ -10,6 +10,8 @@ my $KLOMP_PLAYLIST_EXEC = 'klomp-playlist';
 my $klomplayerExec = 'klomplayer';
 my $FILES = Klomp::Files::allKlompFiles();
 
+my $DEFAULT_SEEK_BACK_ARG = 15;
+
 my $EXEC = basename $0;
 
 my $usage = "Usage:
@@ -75,6 +77,14 @@ my $usage = "Usage:
                   =  is absolute position, forwards from start of song
                   T- is absolute position, backwards from end of song
                      (lowercase t- is also permitted)
+  $EXEC seek-back [SEEK_POS]
+    seek backwards, possibly to previous song
+    SEEK_POS defaults to '15'
+
+    if current position is on or after SEEK_POS, same as:
+      `$EXEC seek -\$SEEK_POS`
+    if current position is before SEEK_POS, same as:
+      `$EXEC prev && $EXEC seek T-\$SEEK_POS`
   $EXEC jump [PERCENT|+PERCENT|-PERCENT]
     prev+seek, next+seek, or just seek
     split the current song into brackets of size PERCENT%
@@ -247,6 +257,13 @@ sub main(@){
     my $seekArg = $_[0];
     my ($seekSign, $seekSex) = parseSeekArg $seekArg;
     seekPos($seekSign, $seekSex);
+  }elsif($cmd eq 'seek-back' and (@_ == 0 or @_ == 1)){
+    my $seekArg = @_ > 0 ? $_[0] : $DEFAULT_SEEK_BACK_ARG;
+    my ($seekSign, $seekSex) = parseSeekArg $seekArg;
+    if(defined $seekSign){
+      die "ERROR: seek-back arg cannot specify sign\n";
+    }
+    seekBack($seekSex);
   }elsif($cmd eq 'jump' and @_ == 1 and $_[0] =~ /^(\+|-)?(\d+)$/){
     my $dir = $1 ne "-";
     my $percent = $2;
@@ -648,6 +665,24 @@ sub seekPos($$){
   $newPos = 0 if $newPos < 0;
 
   setPosition $newPos;
+}
+
+sub seekBack($){
+  my ($seekPos) = @_;
+  my ($oldPos, $oldLen) = getPosLen();
+  if($seekPos <= $oldPos){
+    setPosition $oldPos - $seekPos;
+  }else{
+    my $wasRunning = isRunning();
+    stop;
+    if(prevItem()){
+      ($oldPos, $oldLen) = getPosLen();
+      setPosition $oldLen - $seekPos;
+      start if $wasRunning;
+    }else{
+      maybePropCmd("hardStopCmd") if $wasRunning;
+    }
+  }
 }
 
 sub setPosition($){
