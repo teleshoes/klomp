@@ -632,8 +632,6 @@ sub seekPos($$){
   $seekSign = "=" if not defined $seekSign or $seekSign eq "";
   $seekSign = uc $seekSign;
 
-  my $wasRunning = isRunning();
-
   my $newPos;
   if($seekSign eq "="){
     $newPos = $seekSexPos;
