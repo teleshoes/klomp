@@ -50,10 +50,13 @@ my $usage = "Usage:
   $EXEC seek SEEK_ARG
     set current position forward, backward, or absolute
     e.g.:
-       +10   seek fwd 10s
-       -1.5  seek backward 1.5s
-       10    seek to absolute position 0:10
+       +10   seek fwd 10.0s
        +30%  seek forward 30% of length (same as '+3:00' if song is 10min long)
+       -1.5  seek backward 1.5s
+       -5:35 seek backward 335.0s
+       1:05  seek to absolute position 00:01:05.000
+       65    seek to absolute position 00:01:05.000
+       =65.2 seek to absolute position 00:01:05.200
 
     SEEK_ARG  = [SEEK_POS] | [SIGN][SEEK_POS]
                 if SIGN is not given, default is =
