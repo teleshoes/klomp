@@ -48,7 +48,8 @@ my $usage = "Usage:
       exit with exit code 1
 
   $EXEC seek SEEK_ARG
-    set current position forward, backward, or absolute
+    set current position forward (+), backward (-), absolute (=),
+      or absolute-from-end-of-song (T-)
     e.g.:
        +10   seek fwd 10.0s
        +30%  seek forward 30% of length (same as '+3:00' if song is 10min long)
@@ -57,6 +58,7 @@ my $usage = "Usage:
        1:05  seek to absolute position 00:01:05.000
        65    seek to absolute position 00:01:05.000
        =65.2 seek to absolute position 00:01:05.200
+       T-3.5 seek to absolute position of duration minus 3.5s
 
     SEEK_ARG  = [SEEK_POS] | [SIGN][SEEK_POS]
                 if SIGN is not given, default is =
@@ -65,11 +67,12 @@ my $usage = "Usage:
                   or fractional hr:min:sec,
                   or fractional min:sec,
                   or integer percent of length
-    SEEK_SIGN = + | - | =
+    SEEK_SIGN = + | - | = | T-
                 direction to seek
-                  + is forward
-                  - is backward
-                  = is absolute
+                  +  is forward
+                  -  is backward
+                  =  is absolute position, forwards from start of song
+                  T- is absolute position, backwards from end of song
   $EXEC jump [PERCENT|+PERCENT|-PERCENT]
     prev+seek, next+seek, or just seek
     split the current song into brackets of size PERCENT%
@@ -584,7 +587,7 @@ sub seekPos($){
 
   my ($oldPos, $oldLen) = getPosLen();
 
-  my $signRE = "(?:\\+|-|=)";
+  my $signRE = "(?:\\+|-|=|T-)";
   my $numRE = "(?:\\d+|\\d*\\.\\d+)";
 
   my ($seekSign, $seekSexPos);
@@ -620,6 +623,8 @@ sub seekPos($){
     $newPos = $oldPos + $seekSexPos;
   }elsif($seekSign eq "-"){
     $newPos = $oldPos - $seekSexPos;
+  }elsif($seekSign eq "T-"){
+    $newPos = $oldLen - $seekSexPos;
   }
 
   $newPos = 0 if $newPos < 0;
