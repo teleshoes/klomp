@@ -59,6 +59,7 @@ my $usage = "Usage:
        65    seek to absolute position 00:01:05.000
        =65.2 seek to absolute position 00:01:05.200
        T-3.5 seek to absolute position of duration minus 3.5s
+       t-90  seek to absolute position of duration minus 90s
 
     SEEK_ARG  = [SEEK_POS] | [SEEK_SIGN][SEEK_POS]
                 if SEEK_SIGN is not given, default is =
@@ -73,6 +74,7 @@ my $usage = "Usage:
                   -  is backward
                   =  is absolute position, forwards from start of song
                   T- is absolute position, backwards from end of song
+                     (lowercase t- is also permitted)
   $EXEC jump [PERCENT|+PERCENT|-PERCENT]
     prev+seek, next+seek, or just seek
     split the current song into brackets of size PERCENT%
