@@ -33,10 +33,10 @@ my $usage = "Usage:
     if klomplayer is running: send play/pause command to klomplayer
   $EXEC prev
     prepen current song on klomplist, and load last history entry as current song
-    start klomplayer
+    start klomplayer if prev-item existed and was not a shell command
   $EXEC next
     append current song to history, and load next klomplist entry as current song
-    start klomplayer
+    start klomplayer if next-item existed and was not a shell command
 
   $EXEC is-playing
     if klomplayer is running AND is NOT paused:
