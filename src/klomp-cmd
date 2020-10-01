@@ -673,6 +673,7 @@ sub seekBack($){
   if($seekPos <= $oldPos){
     setPosition $oldPos - $seekPos;
   }else{
+    pauseToStop();
     my $wasRunning = isRunning();
     stop;
     if(prevItem()){
