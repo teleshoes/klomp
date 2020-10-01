@@ -38,6 +38,13 @@ my $usage = "Usage:
     append current song to history, and load next klomplist entry as current song
     start klomplayer if next-item existed and was not a shell command
 
+  $EXEC prev-force
+    same as `$EXEC prev`, except always start klomplayer,
+      even if prev-item did not exist or was a shell command
+  $EXEC next-force
+    same as `$EXEC next`, except always start klomplayer,
+      even if next-item did not exist or was a shell command
+
   $EXEC is-playing
     if klomplayer is running AND is NOT paused:
       print \"playing\"
@@ -253,6 +260,16 @@ sub main(@){
     }else{
       maybePropCmd("hardStopCmd") if $wasRunning;
     }
+  }elsif($cmd eq 'prev-force' and @_ == 0){
+    stop;
+    prevItem();
+    start;
+    maybePropCmd("hardStartCmd") if not $wasRunning;
+  }elsif($cmd eq 'next-force' and @_ == 0){
+    stop;
+    nextItem();
+    start;
+    maybePropCmd("hardStartCmd") if not $wasRunning;
   }elsif($cmd eq 'seek' and @_ == 1){
     my $seekArg = $_[0];
     my ($seekSign, $seekSex) = parseSeekArg $seekArg;
