@@ -31,22 +31,22 @@ chomp $name;
 my $usage = "Usage:
   $name -h|--help
     print this message
-  $name HOST [--flacs] [--nopresync] [LIB_REGEX]
+  $name HOST [--flacs] [--presync] [LIB_REGEX]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in the klomplib on HOST
-  $name --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--nopresync] [LIB_REGEX]
+  $name --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--presync] [LIB_REGEX]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
   --flacs
      Always copy flac files.
      Normally, if the destination klomplib has a flacmirror, flacs are omitted.
-  --nopresync
-     Never run presync. Normally, presync runs before syncing.
-     If files have been moved or renamed locally, presync moves the files on
-     the destination rather than copying and deleting.
-     It's fairly fast and can save huge amounts of time, so its on by default.
+  --presync
+     Run `presync` runs before `rsync`.
+     If files have been moved or renamed locally, `presync` moves the files on
+       the destination rather than copying and deleting.
+     It's fairly fast,  and can save huge amounts of time.
   --local
      Specify a local klomp lib and config, and copy locally.
 
@@ -83,10 +83,10 @@ sub main(@){
     $includeFlacs = 1;
   }
 
-  my $presync = 1;
-  if(@_ > 0 and $_[0] eq '--nopresync'){
+  my $presync = 0;
+  if(@_ > 0 and $_[0] eq '--presync'){
     shift;
-    $presync = 0;
+    $presync = 1;
   }
 
   my $libRegex = '';
