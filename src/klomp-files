@@ -17,7 +17,19 @@ my $usage = "Usage:
 
   OPTS
     -n
-      do not output newline after any FILE
+      same as --sep=\"\" (do not output newlines)
+      e.g.: $0 -n lib | wc -c
+    -z
+      same as --sep=\"\\0\" (NUL-separated output)
+      e.g.: $0 -z lib config | xargs -0 wc -l
+    --sep=SEPARATOR
+      use SEPARATOR instead of \"\\n\" after each FILE
+        the following backslash-escapes are replaced with ASCII chars:
+          \\0  => 0x00 NUL
+          \\t  => 0x09 HT
+          \\n  => 0x0a LF
+          \\r  => 0x0d CR
+          \\\\ => 0x5C Backslash
 ";
 
 sub main(@){
@@ -29,6 +41,21 @@ sub main(@){
       push @filePaths, $$allKlompFiles{$arg};
     }elsif($arg =~ /^(-n)$/){
       $sep = "";
+    }elsif($arg =~ /^(-z)$/){
+      $sep = "\0";
+    }elsif($arg =~ /^--sep=(.*)$/){
+      $sep = $1;
+      $sep =~ s/#/#BOING#/g;
+
+      $sep =~ s/\\\\/%BACKSLASH%/g;
+      $sep =~ s/\\0/\0/g;
+      $sep =~ s/\\t/\t/g;
+      $sep =~ s/\\n/\n/g;
+      $sep =~ s/\\r/\r/g;
+      $sep =~ s/\\/%BACKSLASH%/g;
+
+      $sep =~ s/%BACKSLASH%/\\/g;
+      $sep =~ s/%BOING%/%/g;
     }else{
       die "$usage\nERROR: unknown arg $arg\n";
     }
