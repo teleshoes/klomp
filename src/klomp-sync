@@ -190,8 +190,8 @@ sub sync($$$$$$){
       print "ignoring flacs\n";
       delete $exts{flac};
     }
-    my @whitelist = map {"*.$_"} keys %exts;
-    syncDir $path, $remotePath, $host, $presync, @whitelist;
+    my @fileIncludePatterns = map {"*.$_"} keys %exts;
+    syncDir $path, $remotePath, $host, $presync, @fileIncludePatterns;
 
     print "\n\nflacmirror for: $lib\n";
     if($flacmirrorPath and $remoteFlacmirrorPath){
@@ -215,12 +215,12 @@ sub sync($$$$$$){
 }
 
 sub syncDir($$$$@){
-  my ($local, $remote, $host, $presync, @whitelist) = @_;
+  my ($local, $remote, $host, $presync, @fileIncludePatterns) = @_;
 
   my @args;
   #include subdirs
   push @args, "--include=*/";
-  for my $pattern(@whitelist){
+  for my $pattern(@fileIncludePatterns){
     push @args, "--include=$pattern";
     push @args, "--include=" . uc($pattern);
   }
