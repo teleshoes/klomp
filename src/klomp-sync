@@ -39,6 +39,16 @@ my $usage = "Usage:
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
+  HOST
+    SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
+
+  KLOMP_LIB_FILE
+    local file to use when syncing locally
+
+  LIB
+    Only sync libraries for indicated LIB args, if given (default is all)
+    LIB must match the full library name, case-insensitive
+
   OPTS
     --flacs
       always copy flac files, even if DEST_FLACMIRROR_DIR is set for the LIB
@@ -48,14 +58,6 @@ my $usage = "Usage:
       If files have been moved or renamed locally, `presync` moves the files on
         the destination rather than copying and deleting.
       It's fairly fast, and can save huge amounts of time.
-
-  HOST
-    SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
-  KLOMP_LIB_FILE
-    local file to use when syncing locally
-  LIB
-    Only sync libraries for indicated LIB args, if given (default is all)
-    LIB must match the full library name, case-insensitive
 ";
 
 sub main(@){
