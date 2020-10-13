@@ -4,32 +4,41 @@ use warnings;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
 
-my $files = Klomp::Files::allKlompFiles();
+my $allKlompFiles = Klomp::Files::allKlompFiles();
 
-my $okFiles = join "|", sort keys %$files;
+my $okFiles = join "|", sort keys %$allKlompFiles;
 
 my $usage = "Usage:
-  $0 [-n] $okFiles
-    Print the absolute path to the file.
+  $0 [OPTS] FILE [FILE FILE..]
+    Print the path to each klomp-file FILE, followed by a newline
 
-  -n    do not output a trailing newline
+  FILE
+    $okFiles
+
+  OPTS
+    -n
+      do not output newline after any FILE
 ";
 
 sub main(@){
-  my $newline = 1;
-  if(@_ > 0 and $_[0] eq '-n'){
-    $newline = 0;
-    shift;
+  my @filePaths;
+
+  my $sep="\n";
+  for my $arg(@_){
+    if(defined $$allKlompFiles{$arg}){
+      push @filePaths, $$allKlompFiles{$arg};
+    }elsif($arg =~ /^(-n)$/){
+      $sep = "";
+    }else{
+      die "$usage\nERROR: unknown arg $arg\n";
+    }
   }
 
-  my $arg = shift() || '';
-  if($arg =~ /^($okFiles)$/){
-    print "$$files{$arg}";
-  }else{
-    die $usage;
-  }
+  die $usage if @filePaths == 0;
 
-  print "\n" if $newline;
+  for my $filePath(@filePaths){
+    print "$filePath$sep";
+  }
 }
 
 &main(@ARGV);
