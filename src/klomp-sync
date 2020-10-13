@@ -17,12 +17,9 @@ my $klompDateCache = Klomp::Files::klompFile("datecache");
 
 my $klompLib = Klomp::Files::klompFile("lib");
 
-my %okExts = map {$_ => 1} qw(
-  flac
-  ogg
-  wav
-  mp3 m4a wma
-);
+my $FLAC_EXT = "flac";
+my $OGG_EXT = "ogg";
+my @OTHER_SYNC_EXTS = qw(wav mp3 m4a wma);
 
 my $FLAC_SYNC_MODE_MIRROR = "mirror";
 my $FLAC_SYNC_MODE_ALWAYS = "always";
@@ -192,19 +189,20 @@ sub sync($$$$$$){
       $includeFlacs = not $flacmirrorExists;
     }
 
-    my %exts = %okExts;
+    my @exts;
     if($includeFlacs){
       print "COPYING FLACS\n";
+      @exts = ($FLAC_EXT, $OGG_EXT, @OTHER_SYNC_EXTS);
     }else{
       print "ignoring flacs\n";
-      delete $exts{flac};
+      @exts = ($OGG_EXT, @OTHER_SYNC_EXTS);
     }
-    my @fileIncludePatterns = map {"*.$_"} keys %exts;
+    my @fileIncludePatterns = map {"*.$_"} @exts;
     syncDir $path, $remotePath, $host, $presync, @fileIncludePatterns;
 
     print "\n\nflacmirror for: $lib\n";
     if($flacmirrorExists){
-      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, $presync, "*.ogg";
+      syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, $presync, "*.$OGG_EXT";
     }else{
       print "skipping, flacmirror must to be set in both lib files";
     }
