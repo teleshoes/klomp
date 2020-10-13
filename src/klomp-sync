@@ -92,7 +92,7 @@ sub main(@){
     push @$libWhitelist, $lib;
   }
 
-  die $usage if @_ > 0;
+  die "$usage\nERROR: unknown arg $_[0]\n" if @_ > 0;
 
   if(defined $host){
     remoteSync($host, $includeFlacs, $presync, $libWhitelist);
