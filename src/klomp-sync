@@ -5,6 +5,7 @@ use lib "/opt/klomp/lib";
 use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
+use File::Basename qw(basename);
 
 sub runOrDie(@);
 sub remoteSync($$$$);
@@ -23,17 +24,16 @@ my %okExts = map {$_ => 1} qw(
   mp3 m4a wma
 );
 
-my $name = `basename $0`;
-chomp $name;
+my $EXEC = basename $0;
 
 my $usage = "Usage:
-  $name -h|--help
+  $EXEC -h|--help
     print this message
-  $name HOST [--flacs] [--presync] [LIB LIB LIB...]
+  $EXEC HOST [--flacs] [--presync] [LIB LIB LIB...]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in the klomplib on HOST
-  $name --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--presync] [LIB LIB LIB...]
+  $EXEC --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--presync] [LIB LIB LIB...]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
