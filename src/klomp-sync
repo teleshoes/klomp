@@ -150,16 +150,16 @@ sub remoteSync($$$$$){
 
   my $now = time();
 
-  my $remoteKlompLib = "/tmp/klomp-sync-$now-lib";
-  my $remoteKlompConfig = "/tmp/klomp-sync-$now-config";
+  my $tmpDestLib = "/tmp/klomp-sync-$now-lib";
+  my $tmpDestConfig = "/tmp/klomp-sync-$now-config";
 
   print "Copying remote klomp lib here to read\n";
-  system 'scp', "$host:$lib", $remoteKlompLib;
-  die "Error copying $host:$lib\n" if not -e $remoteKlompLib;
+  system 'scp', "$host:$lib", $tmpDestLib;
+  die "Error copying $host:$lib\n" if not -e $tmpDestLib;
 
   print "Copying remote klomp config here to read\n";
-  system 'scp', "$host:$config", $remoteKlompConfig;
-  die "Error copying $host:$config\n" if not -e $remoteKlompConfig;
+  system 'scp', "$host:$config", $tmpDestConfig;
+  die "Error copying $host:$config\n" if not -e $tmpDestConfig;
 
   print "Overwriting remote klompdb with local klompdb\n";
   system 'rsync', "-c", "-v", "-P", $klompDb, "$host:$db";
@@ -169,14 +169,14 @@ sub remoteSync($$$$$){
     system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
   }
 
-  sync($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
+  sync($host, $tmpDestLib, $tmpDestConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
 }
 
 sub sync($$$$$$$){
-  my ($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
+  my ($host, $tmpDestLib, $tmpDestConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
-  my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $remoteKlompLib;
+  my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $tmpDestLib;
 
   my %okLibLC = map {lc $_ => 1} @$libWhitelist;
   my $allowAllLibs = @$libWhitelist == 0 ? 1 : 0;
@@ -192,10 +192,10 @@ sub sync($$$$$$$){
       next;
     }
     my $path = Klomp::Lib::getLibraryPath $lib;
-    my $remotePath = Klomp::Lib::getLibraryPath $lib, $remoteKlompLib;
+    my $remotePath = Klomp::Lib::getLibraryPath $lib, $tmpDestLib;
 
     my $flacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib;
-    my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $remoteKlompLib;
+    my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $tmpDestLib;
 
     for my $override(@$libSubDirOverrides){
       my ($oldSubDir, $newSubDir) = @$override;
@@ -233,7 +233,7 @@ sub sync($$$$$$$){
   }
 
   my $props = Klomp::Config::getProperties;
-  my $remoteProps = Klomp::Config::getProperties $remoteKlompConfig;
+  my $remoteProps = Klomp::Config::getProperties $tmpDestConfig;
 
   if(defined $host){
     runOrDie "ssh", "$host", "bash -c 'klomp-update --utils-only'";
