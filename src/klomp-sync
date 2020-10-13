@@ -54,8 +54,11 @@ my $usage = "Usage:
     LIB must match the full library name, case-insensitive
 
   OPTS
-    --flacs
+    --flacs-always | --flacs
       always copy flac files, even if DEST_FLACMIRROR_DIR is set for the LIB
+    --flacs-mirror
+      copy flac files unless DEST_FLACMIRROR_DIR is set for the LIB
+      (this is the default)
 
     --presync
       Run `presync` runs before `rsync`.
@@ -79,8 +82,10 @@ sub main(@){
     }elsif($arg =~ /^(--local)$/ and @_ >= 2){
       $localKlompLib = shift;
       $localKlompConfig = shift;
-    }elsif($arg =~ /^(--flacs)$/){
+    }elsif($arg =~ /^(--flacs-always|--flacs)$/){
       $flacSyncMode = $FLAC_SYNC_MODE_ALWAYS;
+    }elsif($arg =~ /^(--flacs-mirror)$/){
+      $flacSyncMode = $FLAC_SYNC_MODE_MIRROR;
     }elsif($arg =~ /^(--presync)$/){
       $presync = 1;
     }elsif($arg =~ /^($allLibsRegex)$/i){
