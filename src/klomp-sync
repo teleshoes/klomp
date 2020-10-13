@@ -24,6 +24,9 @@ my %okExts = map {$_ => 1} qw(
   mp3 m4a wma
 );
 
+my $FLAC_SYNC_MODE_MIRROR = "mirror";
+my $FLAC_SYNC_MODE_ALWAYS = "always";
+
 my $EXEC = basename $0;
 
 my $usage = "Usage:
@@ -72,10 +75,10 @@ sub main(@){
     $host = shift;
   }
 
-  my $includeFlacs = 0;
+  my $flacSyncMode = $FLAC_SYNC_MODE_MIRROR;
   if(@_ > 0 and $_[0] eq '--flacs'){
     shift;
-    $includeFlacs = 1;
+    $flacSyncMode = $FLAC_SYNC_MODE_ALWAYS;
   }
 
   my $presync = 0;
@@ -95,9 +98,9 @@ sub main(@){
   die "$usage\nERROR: unknown arg $_[0]\n" if @_ > 0;
 
   if(defined $host){
-    remoteSync($host, $includeFlacs, $presync, $libWhitelist);
+    remoteSync($host, $flacSyncMode, $presync, $libWhitelist);
   }elsif(defined $localKlompLib){
-    sync(undef, $localKlompLib, $localKlompConfig, $includeFlacs, $presync, $libWhitelist);
+    sync(undef, $localKlompLib, $localKlompConfig, $flacSyncMode, $presync, $libWhitelist);
   }
 }
 
@@ -108,7 +111,7 @@ sub runOrDie(@){
 }
 
 sub remoteSync($$$$){
-  my ($host, $includeFlacs, $presync, $libWhitelist) = @_;
+  my ($host, $flacSyncMode, $presync, $libWhitelist) = @_;
 
   print "Getting remote lib path\n";
   my $lib = `ssh $host klomp-files lib`;
@@ -151,11 +154,11 @@ sub remoteSync($$$$){
     system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
   }
 
-  sync($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libWhitelist);
+  sync($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libWhitelist);
 }
 
 sub sync($$$$$$){
-  my ($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libWhitelist) = @_;
+  my ($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libWhitelist) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $remoteKlompLib;
@@ -179,8 +182,18 @@ sub sync($$$$$$){
     my $flacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib;
     my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $remoteKlompLib;
 
+    my $flacmirrorExists = defined $flacmirrorPath && $flacmirrorPath ne ""
+      && defined $remoteFlacmirrorPath && $remoteFlacmirrorPath ne "";
+
+    my $includeFlacs;
+    if($flacSyncMode eq $FLAC_SYNC_MODE_ALWAYS){
+      $includeFlacs = 1;
+    }elsif($flacSyncMode eq $FLAC_SYNC_MODE_MIRROR){
+      $includeFlacs = not $flacmirrorExists;
+    }
+
     my %exts = %okExts;
-    if($includeFlacs or not $flacmirrorPath or not $remoteFlacmirrorPath){
+    if($includeFlacs){
       print "COPYING FLACS\n";
     }else{
       print "ignoring flacs\n";
@@ -190,7 +203,7 @@ sub sync($$$$$$){
     syncDir $path, $remotePath, $host, $presync, @fileIncludePatterns;
 
     print "\n\nflacmirror for: $lib\n";
-    if($flacmirrorPath and $remoteFlacmirrorPath){
+    if($flacmirrorExists){
       syncDir $flacmirrorPath, $remoteFlacmirrorPath, $host, $presync, "*.ogg";
     }else{
       print "skipping, flacmirror must to be set in both lib files";
