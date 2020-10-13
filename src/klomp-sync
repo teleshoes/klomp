@@ -17,6 +17,8 @@ my $klompDateCache = Klomp::Files::klompFile("datecache");
 
 my $klompLib = Klomp::Files::klompFile("lib");
 
+my $allLibsRegex = join "|", Klomp::Lib::getAllLibNames;
+
 my $FLAC_EXT = "flac";
 my $OGG_EXT = "ogg";
 my @OTHER_SYNC_EXTS = qw(wav mp3 m4a wma);
@@ -29,24 +31,23 @@ my $EXEC = basename $0;
 my $usage = "Usage:
   $EXEC -h|--help
     print this message
-  $EXEC HOST [--flacs] [--presync] [LIB LIB LIB...]
+  $EXEC [OPTS] HOST [LIB LIB LIB...]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in the klomplib on HOST
-  $EXEC --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--presync] [LIB LIB LIB...]
+  $EXEC [OPTS] --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [LIB LIB LIB...]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
-  --flacs
-     Always copy flac files.
-     Normally, if the destination klomplib has a flacmirror, flacs are omitted.
-  --presync
-     Run `presync` runs before `rsync`.
-     If files have been moved or renamed locally, `presync` moves the files on
-       the destination rather than copying and deleting.
-     It's fairly fast,  and can save huge amounts of time.
-  --local
-     Specify a local klomp lib and config, and copy locally.
+  OPTS
+    --flacs
+      always copy flac files, even if DEST_FLACMIRROR_DIR is set for the LIB
+
+    --presync
+      Run `presync` runs before `rsync`.
+      If files have been moved or renamed locally, `presync` moves the files on
+        the destination rather than copying and deleting.
+      It's fairly fast, and can save huge amounts of time.
 
   HOST
     SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
@@ -58,46 +59,41 @@ my $usage = "Usage:
 ";
 
 sub main(@){
-  if(@_ == 0 or $_[0] =~ /^(-h|--help)$/){
-    print $usage;
-    exit 0;
-  }
-
-  my ($host, $localKlompLib, $localKlompConfig);
-  if(@_ >= 3 and $_[0] eq "--local"){
-    shift;
-    $localKlompLib = shift;
-    $localKlompConfig = shift;
-  }else{
-    $host = shift;
-  }
-
+  my $host = undef;
+  my $localKlompLib = undef;
+  my $localKlompConfig = undef;
   my $flacSyncMode = $FLAC_SYNC_MODE_MIRROR;
-  if(@_ > 0 and $_[0] eq '--flacs'){
-    shift;
-    $flacSyncMode = $FLAC_SYNC_MODE_ALWAYS;
-  }
-
   my $presync = 0;
-  if(@_ > 0 and $_[0] eq '--presync'){
-    shift;
-    $presync = 1;
-  }
-
-  my $allLibsRegex = join "|", Klomp::Lib::getAllLibNames;
-
   my $libWhitelist = [];
-  while(@_ > 0 and $_[0] =~ /^($allLibsRegex)$/i){
-    my $lib = shift;
-    push @$libWhitelist, $lib;
+  while(@_ > 0){
+    my $arg = shift;
+    if($arg =~ /^(-h|--help)$/){
+      print $usage;
+      exit 0;
+    }elsif($arg =~ /^(--local)$/ and @_ >= 2){
+      $localKlompLib = shift;
+      $localKlompConfig = shift;
+    }elsif($arg =~ /^(--flacs)$/){
+      $flacSyncMode = $FLAC_SYNC_MODE_ALWAYS;
+    }elsif($arg =~ /^(--presync)$/){
+      $presync = 1;
+    }elsif($arg =~ /^($allLibsRegex)$/i){
+      push @$libWhitelist, $arg;
+    }elsif(not defined $host){
+      $host = $arg;
+    }else{
+      die "$usage\n\nERROR: unknown arg $arg\n";
+    }
   }
 
-  die "$usage\nERROR: unknown arg $_[0]\n" if @_ > 0;
-
-  if(defined $host){
+  if(defined $host and not defined $localKlompLib){
     remoteSync($host, $flacSyncMode, $presync, $libWhitelist);
-  }elsif(defined $localKlompLib){
+  }elsif(not defined $host and defined $localKlompLib){
     sync(undef, $localKlompLib, $localKlompConfig, $flacSyncMode, $presync, $libWhitelist);
+  }elsif(defined $host and defined $localKlompLib){
+    die "$usage\n\nERROR: cannot specify HOST ($host) and KLOMP_LIB_FILE ($localKlompLib)\n";
+  }else{
+    die "$usage\n\nERROR: must specify HOST or KLOMP_LIB_FILE\n";
   }
 }
 
