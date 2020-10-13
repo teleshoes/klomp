@@ -8,8 +8,8 @@ use Klomp::Lib;
 use File::Basename qw(basename);
 
 sub runOrDie(@);
-sub remoteSync($$$$);
-sub sync($$$$$$);
+sub remoteSync($$$$$);
+sub sync($$$$$$$);
 sub syncDir($$$$@);
 
 my $klompDb = Klomp::Files::klompFile("db");
@@ -54,6 +54,14 @@ my $usage = "Usage:
     LIB must match the full library name, case-insensitive
 
   OPTS
+    --override-lib-dir=OLD_LIB_SUB_DIR:NEW_LIB_SUB_DIR
+      when syncing dirs (remote or local), override lib file paths
+        OLD_LIB_SUB_DIR and NEW_LIB_SUB_DIR must end in '/'
+      can be specified multiple times
+      e.g.: --override-lib-dir=/home/user/Music/:/media/user/MUSIC/
+        will replace '/home/user/Music/' with '/media/user/Music'
+        for all DEST_LIB_DIR and DEST_FLACMIRROR_DIR read from DEST_KLOMP_LIB
+
     --flacs-always | --flacs
       always copy flac files, even if DEST_FLACMIRROR_DIR is set for the LIB
     --flacs-mirror
@@ -73,6 +81,7 @@ sub main(@){
   my $localKlompConfig = undef;
   my $flacSyncMode = $FLAC_SYNC_MODE_MIRROR;
   my $presync = 0;
+  my $libSubDirOverrides = [];
   my $libWhitelist = [];
   while(@_ > 0){
     my $arg = shift;
@@ -88,6 +97,8 @@ sub main(@){
       $flacSyncMode = $FLAC_SYNC_MODE_MIRROR;
     }elsif($arg =~ /^(--presync)$/){
       $presync = 1;
+    }elsif($arg =~ /^--override-lib-dir=(.+\/):(.+\/)$/i){
+      push @$libSubDirOverrides, [$1, $2];
     }elsif($arg =~ /^($allLibsRegex)$/i){
       push @$libWhitelist, $arg;
     }elsif(not defined $host){
@@ -98,9 +109,9 @@ sub main(@){
   }
 
   if(defined $host and not defined $localKlompLib){
-    remoteSync($host, $flacSyncMode, $presync, $libWhitelist);
+    remoteSync($host, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
   }elsif(not defined $host and defined $localKlompLib){
-    sync(undef, $localKlompLib, $localKlompConfig, $flacSyncMode, $presync, $libWhitelist);
+    sync(undef, $localKlompLib, $localKlompConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
   }elsif(defined $host and defined $localKlompLib){
     die "$usage\n\nERROR: cannot specify HOST ($host) and KLOMP_LIB_FILE ($localKlompLib)\n";
   }else{
@@ -114,8 +125,8 @@ sub runOrDie(@){
   die "'@_' failed with exit code $?\n" if $? != 0;
 }
 
-sub remoteSync($$$$){
-  my ($host, $flacSyncMode, $presync, $libWhitelist) = @_;
+sub remoteSync($$$$$){
+  my ($host, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
 
   print "Getting remote lib path\n";
   my $lib = `ssh $host klomp-files lib`;
@@ -158,11 +169,11 @@ sub remoteSync($$$$){
     system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
   }
 
-  sync($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libWhitelist);
+  sync($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
 }
 
-sub sync($$$$$$){
-  my ($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libWhitelist) = @_;
+sub sync($$$$$$$){
+  my ($host, $remoteKlompLib, $remoteKlompConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $remoteKlompLib;
@@ -185,6 +196,12 @@ sub sync($$$$$$){
 
     my $flacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib;
     my $remoteFlacmirrorPath = Klomp::Lib::getFlacmirrorPath $lib, $remoteKlompLib;
+
+    for my $override(@$libSubDirOverrides){
+      my ($oldSubDir, $newSubDir) = @$override;
+      $remotePath =~ s/\Q$oldSubDir\E/$newSubDir/g if defined $remotePath;
+      $remoteFlacmirrorPath =~ s/\Q$oldSubDir\E/$newSubDir/g if defined $remoteFlacmirrorPath;
+    }
 
     my $flacmirrorExists = defined $flacmirrorPath && $flacmirrorPath ne ""
       && defined $remoteFlacmirrorPath && $remoteFlacmirrorPath ne "";
