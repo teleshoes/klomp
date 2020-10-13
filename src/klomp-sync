@@ -128,25 +128,21 @@ sub runOrDie(@){
 sub remoteSync($$$$$){
   my ($host, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
 
-  print "Getting remote lib path\n";
-  my $lib = `ssh $host klomp-files lib`;
-  chomp $lib;
-  die "Could not find lib file with klomp-files\n" if $lib =~ /^\s*$/;
+  my @klompFilesCmd = qw(klomp-files lib config db datecache);
 
-  print "Getting remote config path\n";
-  my $config = `ssh $host klomp-files config`;
-  chomp $config;
-  die "Could not find config file with klomp-files\n" if $config =~ /^\s*$/;
+  my ($lib, $config, $db, $datecache);
+  print "Getting remote file paths: @klompFilesCmd\n";
+  my $klompFilesOutput = `ssh $host @klompFilesCmd`;
+  if($klompFilesOutput =~ /^(.*)\n(.*)\n(.*)\n(.*)\n$/){
+    ($lib, $config, $db, $datecache) = ($1, $2, $3, $4);
+  }else{
+    die "ERROR: malformed output from @klompFilesCmd\n$klompFilesOutput\n";
+  }
 
-  print "Getting remote db path\n";
-  my $db = `ssh $host klomp-files db`;
-  chomp $db;
-  die "Could not find db file with klomp-files\n" if $db =~ /^\s*$/;
-
-  print "Getting remote datecache path\n";
-  my $datecache = `ssh $host klomp-files datecache`;
-  chomp $datecache;
-  die "Could not find datecache file with klomp-files\n" if $datecache =~ /^\s*$/;
+  die "ERROR: missing remote lib path\n" if $lib =~ /^\s*$/;
+  die "ERROR: missing remote config path\n" if $config =~ /^\s*$/;
+  die "ERROR: missing remote db path\n" if $db =~ /^\s*$/;
+  die "ERROR: missing remote datecache path\n" if $datecache =~ /^\s*$/;
 
   my $now = time();
 
