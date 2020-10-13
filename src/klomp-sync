@@ -39,13 +39,17 @@ my $usage = "Usage:
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
-  HOST
-    SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
+  HOST = HOSTNAME | USER\@HOSTNAME
+    SSH host string, e.g.: ubuntu\@my-desktop
+    either HOST or --local=LOCAL_DEST_DIR is required
 
   KLOMP_LIB_FILE
-    local file to use when syncing locally
+    local klomp lib file to use with --local
 
-  LIB
+  KLOMP_CONFIG_FILE
+    local klomp config file to use with --local
+
+  LIB = $allLibsRegex
     Only sync libraries for indicated LIB args, if given (default is all)
     LIB must match the full library name, case-insensitive
 
