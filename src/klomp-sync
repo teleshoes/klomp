@@ -5,10 +5,8 @@ use lib "/opt/klomp/lib";
 use Klomp::Config;
 use Klomp::Files;
 use Klomp::Lib;
-use Safe;
 
 sub runOrDie(@);
-sub libMatches($$);
 sub remoteSync($$$$);
 sub sync($$$$$$);
 sub syncDir($$$$@);
@@ -31,11 +29,11 @@ chomp $name;
 my $usage = "Usage:
   $name -h|--help
     print this message
-  $name HOST [--flacs] [--presync] [LIB_REGEX]
+  $name HOST [--flacs] [--presync] [LIB LIB LIB...]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $klompLib
       to the remote dirs in the klomplib on HOST
-  $name --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--presync] [LIB_REGEX]
+  $name --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [--flacs] [--presync] [LIB LIB LIB...]
     Sync from the local dirs in $klompLib
       to the local dirs in KLOMP_LIB_FILE.
 
@@ -54,12 +52,9 @@ my $usage = "Usage:
     SSH host string {[user\@]hostname} e.g.: ubuntu\@my-desktop
   KLOMP_LIB_FILE
     local file to use when syncing locally
-  LIB_REGEX
-    Only sync libraries that match the regex LIB_REGEX, ignoring case.
-    Default is the empty string, which matches all library names.
-    e.g.: '^audio.*books|'
-      matches 'audio-booksChildren' and does NOT match 'ReferenceAudioBooks'
-    Note that, for no reason whatsoever, the regex is sandboxed with a Safe.
+  LIB
+    Only sync libraries for indicated LIB args, if given (default is all)
+    LIB must match the full library name, case-insensitive
 ";
 
 sub main(@){
@@ -89,15 +84,20 @@ sub main(@){
     $presync = 1;
   }
 
-  my $libRegex = '';
-  $libRegex = shift if @_ == 1;
+  my $allLibsRegex = join "|", Klomp::Lib::getAllLibNames;
+
+  my $libWhitelist = [];
+  while(@_ > 0 and $_[0] =~ /^($allLibsRegex)$/i){
+    my $lib = shift;
+    push @$libWhitelist, $lib;
+  }
 
   die $usage if @_ > 0;
 
   if(defined $host){
-    remoteSync($host, $includeFlacs, $presync, $libRegex);
+    remoteSync($host, $includeFlacs, $presync, $libWhitelist);
   }elsif(defined $localKlompLib){
-    sync(undef, $localKlompLib, $localKlompConfig, $includeFlacs, $presync, $libRegex);
+    sync(undef, $localKlompLib, $localKlompConfig, $includeFlacs, $presync, $libWhitelist);
   }
 }
 
@@ -107,15 +107,8 @@ sub runOrDie(@){
   die "'@_' failed with exit code $?\n" if $? != 0;
 }
 
-sub libMatches($$){
-  my ($lib, $regex) = @_;
-  my $compartment = new Safe;
-  my $ok = $compartment->reval("\"$lib\" =~ /$regex/i ? 'match' : 'nomatch'");
-  return $ok eq 'match';
-}
-
 sub remoteSync($$$$){
-  my ($host, $includeFlacs, $presync, $libRegex) = @_;
+  my ($host, $includeFlacs, $presync, $libWhitelist) = @_;
 
   print "Getting remote lib path\n";
   my $lib = `ssh $host klomp-files lib`;
@@ -158,14 +151,17 @@ sub remoteSync($$$$){
     system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
   }
 
-  sync($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libRegex);
+  sync($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libWhitelist);
 }
 
 sub sync($$$$$$){
-  my ($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libRegex) = @_;
+  my ($host, $remoteKlompLib, $remoteKlompConfig, $includeFlacs, $presync, $libWhitelist) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $remoteKlompLib;
+
+  my %okLibLC = map {lc $_ => 1} @$libWhitelist;
+  my $allowAllLibs = @$libWhitelist == 0 ? 1 : 0;
 
   for my $lib(sort keys %libs){
     print "\n\nSYNCING $lib\n";
@@ -173,8 +169,8 @@ sub sync($$$$$$){
       print "skipping $lib: not in remote klomplib\n";
       next;
     }
-    if(not libMatches $lib, $libRegex){
-      print "skipping $lib: does not match regex filter '$libRegex'\n";
+    if(not $allowAllLibs and not defined $okLibLC{lc $lib}){
+      print "skipping $lib: does not match lib whitelist: @$libWhitelist\n";
       next;
     }
     my $path = Klomp::Lib::getLibraryPath $lib;
