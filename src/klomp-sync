@@ -143,10 +143,10 @@ sub remoteSync($$$$$){
   chomp $db;
   die "Could not find db file with klomp-files\n" if $db =~ /^\s*$/;
 
-  print "Getting remote dateCache path\n";
-  my $dateCache = `ssh $host klomp-files datecache`;
-  chomp $dateCache;
-  die "Could not find dateCache file with klomp-files\n" if $dateCache =~ /^\s*$/;
+  print "Getting remote datecache path\n";
+  my $datecache = `ssh $host klomp-files datecache`;
+  chomp $datecache;
+  die "Could not find datecache file with klomp-files\n" if $datecache =~ /^\s*$/;
 
   my $now = time();
 
@@ -166,7 +166,7 @@ sub remoteSync($$$$$){
 
   if(-f $KLOMP_DATE_CACHE){
     print "Overwriting remote datecache with local datecache\n";
-    system 'rsync', "-c", "-v", "-P", $KLOMP_DATE_CACHE, "$host:$dateCache";
+    system 'rsync', "-c", "-v", "-P", $KLOMP_DATE_CACHE, "$host:$datecache";
   }
 
   sync($host, $tmpDestLib, $tmpDestConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
