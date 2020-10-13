@@ -12,12 +12,12 @@ sub remoteSync($$$$$);
 sub sync($$$$$$$);
 sub syncDir($$$$@);
 
-my $klompDb = Klomp::Files::klompFile("db");
-my $klompDateCache = Klomp::Files::klompFile("datecache");
+my $KLOMP_DB = Klomp::Files::klompFile("db");
+my $KLOMP_DATE_CACHE = Klomp::Files::klompFile("datecache");
 
-my $klompLib = Klomp::Files::klompFile("lib");
+my $KLOMP_LIB = Klomp::Files::klompFile("lib");
 
-my $allLibsRegex = join "|", Klomp::Lib::getAllLibNames;
+my $ALL_LIBS_REGEX = join "|", Klomp::Lib::getAllLibNames;
 
 my $FLAC_EXT = "flac";
 my $OGG_EXT = "ogg";
@@ -33,10 +33,10 @@ my $usage = "Usage:
     print this message
   $EXEC [OPTS] HOST [LIB LIB LIB...]
     Overwrite remote klompdb with local klompdb.
-    Sync from the local dirs in $klompLib
+    Sync from the local dirs in $KLOMP_LIB
       to the remote dirs in the klomplib on HOST
   $EXEC [OPTS] --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [LIB LIB LIB...]
-    Sync from the local dirs in $klompLib
+    Sync from the local dirs in $KLOMP_LIB
       to the local dirs in KLOMP_LIB_FILE.
 
   HOST = HOSTNAME | USER\@HOSTNAME
@@ -49,7 +49,7 @@ my $usage = "Usage:
   KLOMP_CONFIG_FILE
     local klomp config file to use with --local
 
-  LIB = $allLibsRegex
+  LIB = $ALL_LIBS_REGEX
     Only sync libraries for indicated LIB args, if given (default is all)
     LIB must match the full library name, case-insensitive
 
@@ -99,7 +99,7 @@ sub main(@){
       $presync = 1;
     }elsif($arg =~ /^--override-lib-dir=(.+\/):(.+\/)$/i){
       push @$libSubDirOverrides, [$1, $2];
-    }elsif($arg =~ /^($allLibsRegex)$/i){
+    }elsif($arg =~ /^($ALL_LIBS_REGEX)$/i){
       push @$libWhitelist, $arg;
     }elsif(not defined $host){
       $host = $arg;
@@ -162,11 +162,11 @@ sub remoteSync($$$$$){
   die "Error copying $host:$config\n" if not -e $tmpDestConfig;
 
   print "Overwriting remote klompdb with local klompdb\n";
-  system 'rsync', "-c", "-v", "-P", $klompDb, "$host:$db";
+  system 'rsync', "-c", "-v", "-P", $KLOMP_DB, "$host:$db";
 
-  if(-f $klompDateCache){
+  if(-f $KLOMP_DATE_CACHE){
     print "Overwriting remote datecache with local datecache\n";
-    system 'rsync', "-c", "-v", "-P", $klompDateCache, "$host:$dateCache";
+    system 'rsync', "-c", "-v", "-P", $KLOMP_DATE_CACHE, "$host:$dateCache";
   }
 
   sync($host, $tmpDestLib, $tmpDestConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
