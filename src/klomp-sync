@@ -9,7 +9,8 @@ use File::Basename qw(basename);
 
 sub runOrDie(@);
 sub remoteSync($$$$$);
-sub sync($$$$$$$);
+sub localSync($$$$$);
+sub sync($$$$$$);
 sub syncDir($$$$@);
 
 my $KLOMP_DB = Klomp::Files::klompFile("db");
@@ -31,29 +32,23 @@ my $EXEC = basename $0;
 my $usage = "Usage:
   $EXEC -h|--help
     print this message
-  $EXEC [OPTS] HOST [LIB LIB LIB...]
+  $EXEC [OPTS] [HOST] [LIB LIB LIB...]
     Overwrite remote klompdb with local klompdb.
     Sync from the local dirs in $KLOMP_LIB
       to the remote dirs in the klomplib on HOST
-  $EXEC [OPTS] --local KLOMP_LIB_FILE KLOMP_CONFIG_FILE [LIB LIB LIB...]
-    Sync from the local dirs in $KLOMP_LIB
-      to the local dirs in KLOMP_LIB_FILE.
 
   HOST = HOSTNAME | USER\@HOSTNAME
     SSH host string, e.g.: ubuntu\@my-desktop
     either HOST or --local=LOCAL_DEST_DIR is required
-
-  KLOMP_LIB_FILE
-    local klomp lib file to use with --local
-
-  KLOMP_CONFIG_FILE
-    local klomp config file to use with --local
 
   LIB = $ALL_LIBS_REGEX
     Only sync libraries for indicated LIB args, if given (default is all)
     LIB must match the full library name, case-insensitive
 
   OPTS
+    --local=LOCAL_DEST_DIR
+      use lib config datecache and db from a dir on a locally mounted filesystem
+
     --override-lib-dir=OLD_LIB_SUB_DIR:NEW_LIB_SUB_DIR
       when syncing dirs (remote or local), override lib file paths
         OLD_LIB_SUB_DIR and NEW_LIB_SUB_DIR must end in '/'
@@ -77,8 +72,7 @@ my $usage = "Usage:
 
 sub main(@){
   my $host = undef;
-  my $localKlompLib = undef;
-  my $localKlompConfig = undef;
+  my $localDestDir = undef;
   my $flacSyncMode = $FLAC_SYNC_MODE_MIRROR;
   my $presync = 0;
   my $libSubDirOverrides = [];
@@ -88,9 +82,8 @@ sub main(@){
     if($arg =~ /^(-h|--help)$/){
       print $usage;
       exit 0;
-    }elsif($arg =~ /^(--local)$/ and @_ >= 2){
-      $localKlompLib = shift;
-      $localKlompConfig = shift;
+    }elsif($arg =~ /^--local=(.+)$/){
+      $localDestDir = $1;
     }elsif($arg =~ /^(--flacs-always|--flacs)$/){
       $flacSyncMode = $FLAC_SYNC_MODE_ALWAYS;
     }elsif($arg =~ /^(--flacs-mirror)$/){
@@ -108,14 +101,14 @@ sub main(@){
     }
   }
 
-  if(defined $host and not defined $localKlompLib){
+  if(defined $host and not defined $localDestDir){
     remoteSync($host, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
-  }elsif(not defined $host and defined $localKlompLib){
-    sync(undef, $localKlompLib, $localKlompConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
-  }elsif(defined $host and defined $localKlompLib){
-    die "$usage\n\nERROR: cannot specify HOST ($host) and KLOMP_LIB_FILE ($localKlompLib)\n";
+  }elsif(not defined $host and defined $localDestDir){
+    localSync($localDestDir, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
+  }elsif(defined $host and defined $localDestDir){
+    die "$usage\n\nERROR: cannot specify HOST ($host) and LOCAL_DEST_DIR ($localDestDir)\n";
   }else{
-    die "$usage\n\nERROR: must specify HOST or KLOMP_LIB_FILE\n";
+    die "$usage\n\nERROR: must specify HOST or LOCAL_DEST_DIR\n";
   }
 }
 
@@ -144,32 +137,66 @@ sub remoteSync($$$$$){
   die "ERROR: missing remote db path\n" if $db =~ /^\s*$/;
   die "ERROR: missing remote datecache path\n" if $datecache =~ /^\s*$/;
 
-  my $now = time();
+  my $destKlompFiles = {
+    lib       => $lib,
+    config    => $config,
+    db        => $db,
+    datecache => $datecache,
+  };
 
+  sync($host, $destKlompFiles, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
+}
+
+sub localSync($$$$$){
+  my ($localDestDir, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
+  my $destKlompFiles = {
+    lib       => "$localDestDir/lib",
+    config    => "$localDestDir/config",
+    db        => "$localDestDir/db",
+    datecache => "$localDestDir/datecache",
+  };
+
+  sync(undef, $destKlompFiles, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
+}
+
+sub sync($$$$$$){
+  my ($host, $destKlompFiles, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
+
+  my $now = time();
   my $tmpDestLib = "/tmp/klomp-sync-$now-lib";
   my $tmpDestConfig = "/tmp/klomp-sync-$now-config";
 
-  print "Copying remote klomp lib here to read\n";
-  system 'scp', "$host:$lib", $tmpDestLib;
-  die "Error copying $host:$lib\n" if not -e $tmpDestLib;
+  if(defined $host){
+    print "Copying remote klomp lib here to read\n";
+    system "scp", "$host:$$destKlompFiles{lib}", $tmpDestLib;
+    die "Error copying $host:$$destKlompFiles{lib}\n" if not -e $tmpDestLib;
 
-  print "Copying remote klomp config here to read\n";
-  system 'scp', "$host:$config", $tmpDestConfig;
-  die "Error copying $host:$config\n" if not -e $tmpDestConfig;
+    print "Copying remote klomp config here to read\n";
+    system "scp", "$host:$$destKlompFiles{config}", $tmpDestConfig;
+    die "Error copying $host:$$destKlompFiles{config}\n" if not -e $tmpDestConfig;
 
-  print "Overwriting remote klompdb with local klompdb\n";
-  system 'rsync', "-c", "-v", "-P", $KLOMP_DB, "$host:$db";
+    print "Overwriting remote dest klompdb with local src klompdb\n";
+    system "rsync", "-c", "-v", "-P", $KLOMP_DB, "$host:$$destKlompFiles{db}";
 
-  if(-f $KLOMP_DATE_CACHE){
-    print "Overwriting remote datecache with local datecache\n";
-    system 'rsync', "-c", "-v", "-P", $KLOMP_DATE_CACHE, "$host:$datecache";
+    if(-f $KLOMP_DATE_CACHE){
+      print "Overwriting remote dest datecache with local src datecache\n";
+      system "rsync", "-c", "-v", "-P", $KLOMP_DATE_CACHE, "$host:$$destKlompFiles{datecache}";
+    }
+  }else{
+    system "cp", $$destKlompFiles{lib}, $tmpDestLib;
+    die "Error copying $$destKlompFiles{lib}\n" if not -e $tmpDestLib;
+
+    system "cp", $$destKlompFiles{config}, $tmpDestConfig;
+    die "Error copying $$destKlompFiles{config}\n" if not -e $tmpDestConfig;
+
+    print "Overwriting local dest klompdb with local src klompdb\n";
+    system "rsync", "-c", "-v", "-P", $KLOMP_DB, $$destKlompFiles{db};
+
+    if(-f $KLOMP_DATE_CACHE){
+      print "Overwriting local dest datecache with local src datecache\n";
+      system "rsync", "-c", "-v", "-P", $KLOMP_DATE_CACHE, $$destKlompFiles{datecache};
+    }
   }
-
-  sync($host, $tmpDestLib, $tmpDestConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist);
-}
-
-sub sync($$$$$$$){
-  my ($host, $tmpDestLib, $tmpDestConfig, $flacSyncMode, $presync, $libSubDirOverrides, $libWhitelist) = @_;
 
   my %libs = map {$_ => 1} Klomp::Lib::getAllLibNames;
   my %remoteLibs = map {$_ => 1} Klomp::Lib::getAllLibNames $tmpDestLib;
