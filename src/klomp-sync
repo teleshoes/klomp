@@ -222,11 +222,11 @@ sub sync($$$$$$){
     system "scp", "$host:$$destKlompFiles{config}", $tmpDestConfig;
     die "Error copying $host:$$destKlompFiles{config}\n" if not -e $tmpDestConfig;
 
-    print "Overwriting remote dest klompdb with local src klompdb\n";
+    print "\nOverwriting remote dest klompdb with local src klompdb\n";
     system "rsync", "-c", "-v", "-P", $KLOMP_DB, "$host:$$destKlompFiles{db}";
 
     if(-f $KLOMP_DATE_CACHE){
-      print "Overwriting remote dest datecache with local src datecache\n";
+      print "\nOverwriting remote dest datecache with local src datecache\n";
       system "rsync", "-c", "-v", "-P", $KLOMP_DATE_CACHE, "$host:$$destKlompFiles{datecache}";
     }
   }else{
@@ -236,11 +236,11 @@ sub sync($$$$$$){
     system "cp", $$destKlompFiles{config}, $tmpDestConfig;
     die "Error copying $$destKlompFiles{config}\n" if not -e $tmpDestConfig;
 
-    print "Overwriting local dest klompdb with local src klompdb\n";
+    print "\nOverwriting local dest klompdb with local src klompdb\n";
     system "rsync", "-c", "-v", "-P", $KLOMP_DB, $$destKlompFiles{db};
 
     if(-f $KLOMP_DATE_CACHE){
-      print "Overwriting local dest datecache with local src datecache\n";
+      print "\nOverwriting local dest datecache with local src datecache\n";
       system "rsync", "-c", "-v", "-P", $KLOMP_DATE_CACHE, $$destKlompFiles{datecache};
     }
   }
