@@ -32,10 +32,57 @@ my $EXEC = basename $0;
 my $usage = "Usage:
   $EXEC -h|--help
     print this message
-  $EXEC [OPTS] [HOST] [LIB LIB LIB...]
-    Overwrite remote klompdb with local klompdb.
-    Sync from the local dirs in $KLOMP_LIB
-      to the remote dirs in the klomplib on HOST
+
+  $EXEC [OPTS] [HOST] [LIB LIB LIB ...]
+    1) Read paths for src/dest klomp files:
+      -get paths for local klomp-files using `klomp-files`
+        SRC_KLOMP_DB        = `klomp-files db`
+        SRC_KLOMP_LIB       = `klomp-files lib`
+        SRC_KLOMP_CONFIG    = `klomp-files config`
+        SRC_KLOMP_DATECACHE = `klomp-files datecache`
+      -get paths for remote klomp-files using `ssh HOST klomp-files`
+        -if HOST is given:
+          DEST_KLOMP_DB        = `ssh HOST klomp-files db`
+          DEST_KLOMP_LIB       = `ssh HOST klomp-files lib`
+          DEST_KLOMP_CONFIG    = `ssh HOST klomp-files config`
+          DEST_KLOMP_DATECACHE = `ssh HOST klomp-files datecache`
+        -if LOCAL_DEST_DIR is given:
+          DEST_KLOMP_DB        = LOCAL_DEST_DIR/db
+          DEST_KLOMP_LIB       = LOCAL_DEST_DIR/lib
+          DEST_KLOMP_CONFIG    = LOCAL_DEST_DIR/config
+          DEST_KLOMP_DATECACHE = LOCAL_DEST_DIR/datecache
+
+    2) Fetch remote klomp lib+config to local tmp files for parsing:
+      -scp [HOST:]DEST_KLOMP_LIB => TMP_DEST_LIB
+      -scp [HOST]:DEST_KLOMP_CONFIG => TMP_DEST_CONFIG
+
+    3) Overwrite dest db + datecache:
+      -scp SRC_KLOMP_DB => [HOST:]DEST_KLOMP_DB
+      -scp SRC_KLOMP_DATECACHE => [HOST:]DEST_KLOMP_DATECACHE
+
+    4) Sync library files
+      -for every LIB in SRC_KLOMP_LIB:
+        -skip if LIB is not in TMP_DEST_LIB
+        -skip if LIB does not match LIB_REGEX (if given)
+        -read SRC_LIB_DIR and SRC_FLACMIRROR_DIR from SRC_KLOMP_LIB
+        -read DEST_LIB_DIR and DEST_FLACMIRROR_DIR from TMP_DEST_LIB
+        -presync SRC_LIB_DIR => [HOST:]DEST_LIB_DIR (if --presync is given)
+        -rsync SRC_LIB_DIR => [HOST:]DEST_LIB_DIR
+          -include only files with exts: @OTHER_SYNC_EXTS
+          -if DEST_FLACMIRROR_DIR is NOT set (or --flacs-always is given):
+            -also include files with ext: $FLAC_EXT
+        -if remote FLACMIRROR is set (regardless of --flacs-always):
+          -presync SRC_FLACMIRROR_DIR => [HOST:]DEST_FLACMIRROR_DIR (if --presync is given)
+          -rsync SRC_FLACMIRROR_DIR => [HOST:]DEST_FLACMIRROR_DIR
+            -include only files with ext: $OGG_EXT
+
+    5) Sync or generate utils
+      -if HOST is given:
+        -run `ssh HOST klomp-update --utils-only`
+      -if HOST is NOT given and symlink is set in SRC_KLOMP_CONFIG:
+        -read SRC_SYMLINK_DIR from SRC_KLOMP_CONFIG
+        -read DEST_SYMLINK_DIR from DEST_KLOMP_CONFIG
+        -rsync SRC_SYMLINK_DIR => DEST_SYMLINK_DIR
 
   HOST = HOSTNAME | USER\@HOSTNAME
     SSH host string, e.g.: ubuntu\@my-desktop
