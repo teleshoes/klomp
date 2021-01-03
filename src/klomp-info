@@ -53,6 +53,7 @@ my $usage = "Usage:
       running:  'running' if pid in pidfile is mplayer/qtcmdplayer, otherwise ''
       paused:   'paused' if klomp cur file has paused, otherwise ''
       runcmds:  \"{CMD}\" if playlist contains any \"!SHELL_CMD\" lines
+      file:     the absolute path to the song file
 
       non-empty values for playlist, ended, and percent
       are wrapped in |s unless CSV output is on
