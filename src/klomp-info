@@ -10,7 +10,7 @@ my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
 my @attColNames = qw(title artist album number);
-my @calcColNames = qw(pos len percent index running paused playlist ended runcmds);
+my @calcColNames = qw(pos len percent index running paused playlist ended count runcmds);
 my @extraColNames = qw(file);
 my %colSynonyms = (
   "position" => "pos",
@@ -46,6 +46,7 @@ my $usage = "Usage:
     [$validColNames]
       playlist: \"PLAYLIST_NAME\" unless playlist is main
       ended:    \"ended\" if klomp cur file is missing
+      count:    number of songs in current playlist, not counting the current song
       pos:      current position in M:SS or H:MM:SS {or S.ss if -s}
       len:      length in M:SS or H:MM:SS {or S.ss if -s}
       percent:  integer between 0 and 100 for pos/len
@@ -93,7 +94,7 @@ my $usage = "Usage:
              Rinse The Raindrops
 ";
 
-sub parseInfo($$$$$$$);
+sub parseInfo($$$$$$$$);
 sub readKlompInfo($$);
 sub readSongLines($$);
 sub selectKlompInfo($$$$);
@@ -101,6 +102,7 @@ sub formatHMS($);
 sub formatSep($$);
 sub parseIndex($);
 sub parseIndexRange($$);
+sub fileLineCount($);
 
 sub main(@){
   my (@cols, @indices);
@@ -160,10 +162,12 @@ sub main(@){
   my $playlist = grep(/playlist/, @cols) ? `klomp-playlist --get` : "";
   chomp $playlist;
 
+  my $count = fileLineCount($KLOMP_LIST);
+
   for my $index(@indices){
     my $klompInfo = selectKlompInfo $index, $curInfo, $histInfo, $listInfo;
     if(defined $klompInfo){
-      my $info = parseInfo $klompInfo, $index, $playlist, \@cols, $csv, $seconds, $format;
+      my $info = parseInfo $klompInfo, $index, $playlist, $count, \@cols, $csv, $seconds, $format;
       print $info;
       print "\n" if $newline;
     }else{
@@ -175,8 +179,8 @@ sub main(@){
   }
 }
 
-sub parseInfo($$$$$$$){
-  my ($klompInfo, $index, $playlist, $cols, $csv, $seconds, $format) = @_;
+sub parseInfo($$$$$$$$){
+  my ($klompInfo, $index, $playlist, $count, $cols, $csv, $seconds, $format) = @_;
   my %info;
   my $okLibs = join "|", Klomp::Lib::getAllLibNames();
   for my $line(split /\n/, $klompInfo){
@@ -201,6 +205,8 @@ sub parseInfo($$$$$$$){
     }elsif($col eq 'ended'){
       my $ended = -e $KLOMP_CUR ? "" : formatSep "ended", $csv;
       push @info, $ended;
+    }elsif($col eq 'count'){
+      push @info, $count;
     }elsif($col =~ /^(pos|len|percent)$/){
       my $pos;
       $pos = $info{pos} if not defined $pos or $pos == 0;
@@ -371,6 +377,17 @@ sub parseIndexRange($$){
   die "invalid index range: $lower - $upper\n" if $lower > $upper;
 
   return ($lower .. $upper);
+}
+
+sub fileLineCount($){
+  my $count = 0;
+  my $out = `wc -l '$_[0]' 2>/dev/null`;
+  chomp $out;
+  if($out =~ /^(\d+)\s(.+)$/){
+    return $1;
+  }else{
+    return 0;
+  }
 }
 
 &main(@ARGV);
