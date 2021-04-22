@@ -12,13 +12,33 @@ sub execCommands($@);
 sub nowMillis();
 
 my $usage = "Usage:
-  $0 [[USER\@]HOST:]SRC_DIR [[USER\@]HOST:]DEST_DIR
-    SRC and DEST can be remote or local.
-    Script will compare DEST to SRC, find files that are similar in DEST
-    but in a different relative location, and move them to match. It will
-    create subdirs in DEST as necessary to move the files, but will never
-    replace existing files or rm files or directories.
-    e.g.:
+  $EXEC [[SRC_USER\@]SRC_HOST:]SRC_DIR [[DEST_USER\@]DEST_HOST:]DEST_DIR
+    move files on DEST to match SRC
+      -never overwrite any existing files
+      -never delete any files or directories
+      -never update any file mtimes
+      -SRC and DEST can be local or remote (run `CMD` or `ssh user\@host CMD`)
+
+      -recursively list all relative paths of files under SRC_DIR and DEST_DIR
+        -do not obtain mtime/fsize info, just relative paths, and ignore dirs
+        -find MISSING files - relative path present on SRC, not present on DEST
+        -find ADDED files - relative path present on DEST, not present on SRC
+        -ignore all STABLE files - relative path is present on SRC and DEST
+
+      -for every ADDED file, generate stat command to find MTIME and FSIZE
+        -open a bash shell on DEST, write the commands to it, read the output
+      -for every MISSING file, generate stat command to find MTIME and FSIZE
+        -open a bash shell on SRC, write the commands to it, read the output
+
+      -compare each ADDED file on DEST to each MISSING file on SRC
+        -if ADDED and MISSING have the same MTIME and FSIZE:
+          -append to MOVE_COMMANDS mkdir similar to:
+            mkdir -p `dirname '\$DEST_DIR'/'\$MISSING'`
+          -append to MOVE_COMMANDS mv similar to:
+            mv --no-clobber '\$DEST_DIR'/'\$ADDED' '\$DEST_DIR'/'\$MISSING'
+      -open a bash shell on DEST, and write MOVE_COMMANDS to it
+
+    e.g.:  (assume files with the same basename have the same mtime+fsize)
     presync src/ dest/
       src/one/a           =>    src/one/a
       src/one/b           =>    src/one/b
