@@ -1,8 +1,15 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use File::Basename qw(dirname basename);
+use Time::HiRes qw(time);
 
-my $PRESYNC = 'presync';
+my $EXEC = basename $0;
+
+sub getFileInfo($@);
+sub getRelFiles($$);
+sub execCommands($@);
+sub nowMillis();
 
 my $usage = "Usage:
   $0 [[USER\@]HOST:]SRC_DIR [[USER\@]HOST:]DEST_DIR
@@ -29,184 +36,154 @@ my $usage = "Usage:
                           =>    dest/bananacake/
 ";
 
-sub getPaths($);
-sub diffPaths($$);
-sub getInfo($\@);
-sub findMoved(\@\@);
-sub execCommands($\@);
-sub writeTempFile($);
-sub dieUsage();
-
 sub main(@){
-  my $src = shift;
-  my $dest = shift;
+  die $usage if @_ != 2;
+  my ($src, $dest) = @_;
 
-  die $usage if @_ > 0 or not defined $src or not defined $dest;
-  die "$src must be a local or remote dir\n" if not -d $src and $src !~ /:/;
-  die "$dest must be a local or remote dir\n" if not -d $dest and $dest !~ /:/;
-
-  $src =~ s/\/$//;
-  $dest =~ s/\/$//;
-
-  $src =~ s/'/'\\''/g;
-  $dest =~ s/'/'\\''/g;
-
-  my $diff = diffPaths $src, $dest;
-  my @missing = @{$$diff[0]};
-  my @added = @{$$diff[1]};
-  my @missingInfo = getInfo($src, @missing);
-  my @addedInfo = getInfo($dest, @added);
-  my @movedCmds = @{findMoved @missingInfo, @addedInfo};
-  if(@movedCmds > 0){
-    print execCommands $dest, @movedCmds;
-  }
-}
-
-sub parseInfo($){
-  my $line = shift;
-  if($line =~ /^([^ ]+)  (.*)$/){
-    my $info = $1;
-    my $name = $2;
-    $name =~ s/\n$//;
-    my $basename = $name;
-    $basename =~ s/^.*\///;
-    return [$name, $basename, $info];
-  }
-}
-
-sub findMoved(\@\@){
-  my @missing = @{shift()};
-  my @added = @{shift()};
-  my @missingInfo;
-  for my $m(@missing){
-    push @missingInfo, parseInfo $m;
-  }
-  my @addedInfo;
-  for my $a(@added){
-    push @addedInfo, parseInfo $a;
+  my ($srcHost, $srcDir);
+  if(-d $src){
+    ($srcHost, $srcDir) = (undef, $src);
+  }elsif($src =~ /^((?:.+@)?.+):(.*)$/){
+    ($srcHost, $srcDir) = ($1, $2);
+  }else{
+    die "$src must be a local or remote dir\n";
   }
 
-  my %mkdirCmds;
-  my @moveCmds;
-  for my $mArr(@missingInfo){
-    my $destDir = $$mArr[0];
-    $destDir =~ s/\/[^\/]*$//;
-    for my $aArr(@addedInfo){
-      if($$mArr[1] eq $$aArr[1] && $$mArr[2] eq $$aArr[2]){
-        $destDir =~ s/'/'\\''/g;
-        $mkdirCmds{"mkdir -p '$destDir'\n"} = 1;
-        my $src = $$aArr[0];
-        my $dest = $$mArr[0];
-        $src =~ s/'/'\\''/g;
-        $dest =~ s/'/'\\''/g;
-        my $cmd = "if [ ! -e '$dest' ]; then mv '$src' '$dest'; fi";
-        push @moveCmds, "$cmd\n";
+  my ($destHost, $destDir);
+  if(-d $dest){
+    ($destHost, $destDir) = (undef, $dest);
+  }elsif($dest =~ /^((?:.+@)?.+):(.*)$/){
+    ($destHost, $destDir) = ($1, $2);
+  }else{
+    die "$dest must be a local or remote dir\n";
+  }
+
+  $srcDir =~ s/\/+$//;
+  $destDir =~ s/\/+$//;
+
+  my %srcRelFiles = map {$_ => 1} getRelFiles($srcHost, $srcDir);
+  my %destRelFiles = map {$_ => 1} getRelFiles($destHost, $destDir);
+
+  my @added = grep {not defined $srcRelFiles{$_}} sort keys %destRelFiles;
+  my @missing = grep {not defined $destRelFiles{$_}} sort keys %srcRelFiles;
+
+  my $addedInfo = getFileInfo($destHost, $destDir, @added);
+  my $missingInfo = getFileInfo($srcHost, $srcDir, @missing);
+
+  my %fileMoves;
+  for my $destRelFile(@added){
+    my $destInfo = $$addedInfo{$destRelFile};
+    if(not defined $destInfo){
+      die "ERROR: stat did not find $destRelFile on dest\n";
+    }
+    for my $srcRelFile(@missing){
+      my $srcInfo = $$missingInfo{$srcRelFile};
+      if(not defined $srcInfo){
+        die "ERROR: stat did not find $srcRelFile on src\n";
+      }
+      if($$srcInfo{fsize} == $$destInfo{fsize} and $$srcInfo{mtime} == $$destInfo{mtime}){
+        $fileMoves{$destRelFile} = $srcRelFile;
         last;
       }
     }
   }
-  my @cmds = (keys %mkdirCmds, @moveCmds);
-  return \@cmds;
+
+
+  my @mvCommands;
+  for my $destRelFile(sort keys %fileMoves){
+    my $srcRelFile = $fileMoves{$destRelFile};
+
+    my $dir = $destDir;
+    $dir =~ s/'/'\\''/g;
+
+    my $relDirname = dirname $srcRelFile;
+    $relDirname =~ s/'/'\\''/g;
+    push @mvCommands, "mkdir -p '$dir/$relDirname'";
+
+    $destRelFile =~ s/'/'\\''/g;
+    $srcRelFile =~ s/'/'\\''/g;
+    push @mvCommands, "mv --no-clobber '$dir/$destRelFile' '$dir/$srcRelFile'";
+  }
+
+  print "RUNNING:\n";
+  print "$_\n" foreach @mvCommands;
+
+  print execCommands $destHost, @mvCommands;
 }
-sub getInfo($\@){
-  my $dir = shift;
-  my @files = @{shift()};
+
+sub getFileInfo($@){
+  my ($host, $dir, @relFiles) = @_;
   my @cmds;
+  for my $relFile(@relFiles){
+    my $file = "$dir/$relFile";
+    $file =~ s/'/'\\''/g;
+    push @cmds, "stat -c '%s_%Y_%n' '$file'";
+  }
+  my @statLines = split /\n/, execCommands($host, @cmds);
+  my $info = {};
+  for my $line(@statLines){
+    if($line =~ /^(\d+)_(\d+)_(.+)$/){
+      my ($fsize, $mtime, $file) = ($1, $2, $3);
+      my $relFile;
+      if($file =~ /^$dir\/(.+)$/){
+        $relFile = $1;
+      }else{
+        die "ERROR: malformed output from stat command: $line\n";
+      }
+      $$info{$relFile} = {fsize => $fsize, mtime => $mtime};
+    }else{
+      die "ERROR: malformed output from stat command: $line\n";
+    }
+  }
+  return $info;
+}
+
+sub getRelFiles($$){
+  my ($host, $dir) = @_;
+
+  $dir =~ s/'/'\\''/g;
+
+  my $cmd = "find '$dir/' -type f";
+  $cmd = "ssh $host $cmd" if defined $host;
+
+  my @files = `$cmd`;
+
+  my @relFiles;
   for my $file(@files){
-    chomp $file;
-    my $cmd;
-    #$cmd = "md5sum $file";
-    $cmd = "stat -c '%s_%Y  %n' '$file'";
-    #$cmd = "stat -c '%s  %n' \$f";
-    push @cmds, $cmd;
-  }
-  my @info = execCommands($dir, @cmds);
-  return @info;
-}
-
-sub getPaths($){
-  my $src = shift;
-  my $findCmd;
-  if($src =~ /^((?:.+@)?.+):(.*)$/){
-    my ($host, $dir) = ($1, $2);
-    $findCmd = "ssh '$host' '".
-      "if [ -d '$dir' ]; then " .
-        "cd '$dir'; " .
-        "find -type f; " .
-      "else " .
-        "exit 1; " .
-      "fi'";
-  }else{
-    $findCmd = "cd '$src'; find -type f";
-  }
-  my @paths = `$findCmd`;
-  die "Could not find file $src\nCommand run:\n$findCmd\n" if $?;
-  for my $path(@paths){
-    $path =~ s/^\.\///;
-    $path =~ s/'/'\\''/g;
-  }
-  return \@paths;
-}
-sub diffPaths($$){
-  my $src = shift;
-  my $dest = shift;
-  my @srcPaths = @{getPaths $src};
-  my @destPaths = @{getPaths $dest};
-  my %srcHash;
-  my %destHash;
-  for my $srcPath(@srcPaths){
-    $srcHash{$srcPath} = 1;
-  }
-  for my $destPath(@destPaths){
-    $destHash{$destPath} = 1;
-  }
-  my @missing;
-  my @added;
-  for my $srcKey(keys %srcHash){
-    push @missing, $srcKey if not defined $destHash{$srcKey};
-  }
-  for my $destKey(keys %destHash){
-    push @added, $destKey if not defined $srcHash{$destKey};
-  }
-  return [\@missing, \@added];
-}
-
-sub execCommands($\@){
-  my $dir = shift;
-  my @commands = @{shift()};
-  my $host = undef;
-  if($dir =~ /^((?:.+@)?.+):(.*)$/){
-    $host = $1;
-    $dir = $2;
+    if($file =~ /^$dir\/(.+)$/){
+      push @relFiles, $1;
+    }else{
+      die "ERROR: malformed find output $file\n";
+    }
   }
 
-  my $tmp = writeTempFile join "\n", @commands;
-  my $cmd =
-    "COMMANDS=`cat $tmp`; " .
-    "rm $tmp; " .
-    "cd '$dir'; " .
-    "IFS=\$'\n'; " .
-    "for command in \$COMMANDS; do " .
-      "bash -c \$command; " .
-    "done";
+  return @relFiles;
+}
+
+sub execCommands($@){
+  my ($host, @commands) = @_;
+
+  my $tmpOutFile = "/tmp/$EXEC-out-" . nowMillis();
+
   if(defined $host){
-    system "scp $tmp $host:$tmp";
-    system "rm $tmp";
-    $cmd =~ s/'/'\\''/g;
-    return `ssh $host '$cmd'`;
+    open CMD, "|-", "ssh $host bash >$tmpOutFile 2>&1";
   }else{
-    return `$cmd`;
+    open CMD, "|-", "bash >$tmpOutFile 2>&1";
   }
+  for my $cmd(@commands){
+    print CMD "$cmd\n";
+  }
+  print CMD "exit;\n";
+  close CMD;
+
+  my $out = `cat $tmpOutFile`;
+  system "rm", $tmpOutFile;
+
+  return $out;
 }
 
-our $count = 0;
-sub writeTempFile($){
-  my $content = shift;
-  my $fname = '.presync_tmp_' . time . '_' . $count++;
-  open FH, "> $fname" or die "Could not open $fname for writing";
-  print FH $content;
-  close FH;
-  return $fname;
+sub nowMillis(){
+  return int(time * 1000.0 + 0.5);
 }
 
 &main(@ARGV);
