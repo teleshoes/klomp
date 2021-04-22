@@ -137,6 +137,11 @@ sub main(@){
     }
   }
 
+  my $count = 0;
+  my $total = 0 + (keys %fileMoves);
+  my $chunk = int($total / 20 + 0.5);
+  $chunk = 10 if $chunk < 10;
+  $chunk = 1 if $chunk <= 0;
 
   my @mvCommands;
   for my $destRelFile(sort keys %fileMoves){
@@ -152,6 +157,11 @@ sub main(@){
     $destRelFile =~ s/'/'\\''/g;
     $srcRelFile =~ s/'/'\\''/g;
     push @mvCommands, "mv --no-clobber '$dir/$destRelFile' '$dir/$srcRelFile'";
+
+    $count++;
+    if($count % $chunk == 0 or $count == $total){
+      push @mvCommands, "echo $count/$total";
+    }
   }
 
   if($simulate){
