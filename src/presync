@@ -12,7 +12,10 @@ sub execCommands($@);
 sub nowMillis();
 
 my $usage = "Usage:
-  $EXEC [[SRC_USER\@]SRC_HOST:]SRC_DIR [[DEST_USER\@]DEST_HOST:]DEST_DIR
+  $EXEC -h|-help
+    show this message
+
+  $EXEC [OPTS] [[SRC_USER\@]SRC_HOST:]SRC_DIR [[DEST_USER\@]DEST_HOST:]DEST_DIR
     move files on DEST to match SRC
       -never overwrite any existing files
       -never delete any files or directories
@@ -38,6 +41,8 @@ my $usage = "Usage:
             mv --no-clobber '\$DEST_DIR'/'\$ADDED' '\$DEST_DIR'/'\$MISSING'
       -open a bash shell on DEST, and write MOVE_COMMANDS to it
 
+    OPTS
+
     e.g.:  (assume files with the same basename have the same mtime+fsize)
     presync src/ dest/
       src/one/a           =>    src/one/a
@@ -57,26 +62,37 @@ my $usage = "Usage:
 ";
 
 sub main(@){
-  die $usage if @_ != 2;
-  my ($src, $dest) = @_;
-
   my ($srcHost, $srcDir);
-  if(-d $src){
-    ($srcHost, $srcDir) = (undef, $src);
-  }elsif($src =~ /^((?:.+@)?.+):(.*)$/){
-    ($srcHost, $srcDir) = ($1, $2);
-  }else{
-    die "$src must be a local or remote dir\n";
+  my ($destHost, $destDir);
+  while(@_ > 0){
+    my $arg = shift @_;
+    if($arg =~ /^(-h|--help)$/){
+      print $usage;
+      exit 0;
+    }elsif(-d $arg){
+      if(not defined $srcDir){
+        ($srcHost, $srcDir) = (undef, $arg);
+      }elsif(not defined $destDir){
+        ($destHost, $destDir) = (undef, $arg);
+      }else{
+        die "$usage\nERROR: too many DIRs given\n";
+      }
+    }elsif($arg =~ /^((?:.+@)?.+):(.*)$/){
+      my ($host, $dir) = ($1, $2);
+      if(not defined $srcDir){
+        ($srcHost, $srcDir) = ($host, $dir);
+      }elsif(not defined $destDir){
+        ($destHost, $destDir) = ($host, $dir);
+      }else{
+        die "$usage\nERROR: too many DIRs given\n";
+      }
+    }else{
+      die "$usage\nERROR: unknown arg $arg\n";
+    }
   }
 
-  my ($destHost, $destDir);
-  if(-d $dest){
-    ($destHost, $destDir) = (undef, $dest);
-  }elsif($dest =~ /^((?:.+@)?.+):(.*)$/){
-    ($destHost, $destDir) = ($1, $2);
-  }else{
-    die "$dest must be a local or remote dir\n";
-  }
+  die "$usage\nERROR: missing SRC\n" if not defined $srcDir;
+  die "$usage\nERROR: missing DEST\n" if not defined $destDir;
 
   $srcDir =~ s/\/+$//;
   $destDir =~ s/\/+$//;
