@@ -110,9 +110,15 @@ sub main(@){
   my @added = grep {not defined $srcRelFiles{$_}} sort keys %destRelFiles;
   my @missing = grep {not defined $destRelFiles{$_}} sort keys %srcRelFiles;
 
+  print "added files on DEST: " . (0+@added) . "\n";
+  print "missing files on DEST: " . (0+@missing) . "\n";
+
+  print "running stat on DEST for added files\n";
   my $addedInfo = getFileInfo($destHost, $destDir, @added);
+  print "running stat on SRC for missing files\n";
   my $missingInfo = getFileInfo($srcHost, $srcDir, @missing);
 
+  print "matching up added/missing by mtime+fsize\n";
   my %fileMoves;
   for my $destRelFile(@added){
     my $destInfo = $$addedInfo{$destRelFile};
@@ -151,7 +157,8 @@ sub main(@){
   if($simulate){
     print "#$_\n" foreach @mvCommands;
   }else{
-    print "RUNNING:\n";
+    my $target = defined $destHost ? "$destHost" : "LOCAL";
+    print "RUNNING ON $target:\n";
     print "$_\n" foreach @mvCommands;
     print execCommands $destHost, @mvCommands;
   }
@@ -211,6 +218,7 @@ sub execCommands($@){
 
   my $tmpOutFile = "/tmp/$EXEC-out-" . nowMillis();
 
+  print "  writing " . (0+@commands) . " cmds to bash (output = $tmpOutFile)\n";
   if(defined $host){
     open CMD, "|-", "ssh $host bash >$tmpOutFile 2>&1";
   }else{
