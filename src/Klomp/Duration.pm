@@ -14,7 +14,7 @@ sub formatTimeHMS($);
 
 sub selectExec(@){
   for my $cmd(@_){
-    my $path = `which $cmd`;
+    my $path = `sh -c 'command -v $cmd'`;
     chomp $path;
     return $path if $? == 0;
   }
