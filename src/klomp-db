@@ -514,7 +514,7 @@ sub getSubQuerySql($$){
   my $negate = $q =~ s/^!//;
 
   my $colStr;
-  if($q =~ s/^@([tlagpnd]+)//){
+  if($q =~ s/^@([tlagpcnd]+)//){
     $colStr = $1;
   }else{
     $colStr = "tla";
