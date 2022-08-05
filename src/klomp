@@ -617,6 +617,8 @@ class KlompLibs():
         attM = regexMatchRE(self.attRe, att)
         if attM:
           song[attM.group(1)] = attM.group(2)
+        else:
+          song[att] = ""
       return song
     else:
       return None
