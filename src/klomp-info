@@ -9,7 +9,7 @@ my $KLOMP_CUR = Klomp::Files::klompFile("cur");
 my $KLOMP_HIST = Klomp::Files::klompFile("hist");
 my $KLOMP_LIST = Klomp::Files::klompFile("list");
 
-my @attColNames = qw(title artist album number);
+my @attColNames = qw(title artist album number date);
 my @calcColNames = qw(pos len percent index running paused playlist ended count runcmds);
 my @extraColNames = qw(file);
 my %colSynonyms = (
