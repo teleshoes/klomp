@@ -589,7 +589,7 @@ class KlompLibs():
     self.sep = "///\\\\\\"
     reSep = self.sep.replace('\\', '\\\\')
     self.songRe = re.compile('([^@]*)@(.*)')
-    self.attCols = ["title", "artist", "album", "number", "disc", "duration", "query"]
+    self.attCols = ["title", "artist", "album", "number", "date", "disc", "duration", "query"]
     attColsRe = "|".join(self.attCols)
     self.attRe = re.compile("(" + attColsRe + ")=(.*)")
   def toString(self, song):
@@ -599,6 +599,7 @@ class KlompLibs():
         self.sep + "artist=" + toStr(song['artist']) +
         self.sep + "album=" + toStr(song['album']) +
         self.sep + "number=" + toStr(song['number']) +
+        self.sep + "date=" + toStr(song['date']) +
         self.sep + "disc=" + toStr(song['disc']) +
         self.sep + "duration=" + toStr(song['duration']) +
         self.sep + "query=" + toStr(song['query']) + "\n")
@@ -894,7 +895,7 @@ class PlayListDisplay(LinePrinter, OffsetListDisplay):
 
 class KlompQuery():
   def __init__(self):
-    self.cols = ['artist', 'albumartist', 'album', 'disc', 'number', 'title',
+    self.cols = ['artist', 'albumartist', 'album', 'disc', 'number', 'date', 'title',
       'duration', 'relpath', 'library']
     self.query = None
     self.dbQuery = None
