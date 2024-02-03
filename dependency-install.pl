@@ -19,7 +19,7 @@ sub main(@){
     'atomicparsley'      => "mp4, m4a, m4p, m4v, m4b",
   );
 
-  my @essential = qw(perl python mplayer sqlite3);
+  my @essential = qw(perl python3 mplayer sqlite3);
   my @tagging = sort keys %tagReaders;
   my @translit = qw(libtext-unidecode-perl);
   my @flacmirror = qw(dir2ogg);
