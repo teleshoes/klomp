@@ -807,7 +807,7 @@ class ReadKey:
         keys.append(self.keyBytes[firstByte])
       elif firstByte == self.seqByte:
         for keyName in self.seqsLongestFirst:
-          byteSeq = bytearray(self.seqs[keyName])
+          byteSeq = bytearray([ord(seq) for seq in self.seqs[keyName]])
           if self.isArrPrefix(keyBytes, byteSeq):
             keys.append(keyName)
             for byte in byteSeq:
