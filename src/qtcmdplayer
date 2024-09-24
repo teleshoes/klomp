@@ -211,13 +211,13 @@ class Command():
     self.seekSign = None
     self.seekPosMillis = None
     r = Regex()
-    if r.m("^\s*(quit)\s*$", cmdStr):
+    if r.m(r"^\s*(quit)\s*$", cmdStr):
       self.cmdType = Command.QUIT
-    elif r.m("^\s*(background)\s*$", cmdStr):
+    elif r.m(r"^\s*(background)\s*$", cmdStr):
       self.cmdType = Command.BACKGROUND
-    elif r.m("^\s*(play|pause)\s*$", cmdStr):
+    elif r.m(r"^\s*(play|pause)\s*$", cmdStr):
       self.cmdType = Command.PAUSE
-    elif r.m("^\s*(seek)\s*(\+|-)?(\d+)\s*$", cmdStr):
+    elif r.m(r"^\s*(seek)\s*(\+|-)?(\d+)\s*$", cmdStr):
       self.cmdType = Command.SEEK
       self.seekSign = r.g(2)
       self.seekPosMillis = int(r.g(3))
