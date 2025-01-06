@@ -4,7 +4,7 @@ use warnings;
 
 my $limit = 50;
 
-my $okSuffixes = join "|", qw(mp3 flac ogg m4a wma wav);
+my $okSuffixes = join "|", qw(mp3 flac ogg m4a m4b wma wav);
 
 sub main(@){
   my $history = `klomp-lib -p history`;

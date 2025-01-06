@@ -22,7 +22,7 @@ my $ALL_LIBS_REGEX = join "|", Klomp::Lib::getAllLibNames;
 
 my $FLAC_EXT = "flac";
 my $OGG_EXT = "ogg";
-my @OTHER_SYNC_EXTS = qw(wav mp3 m4a wma);
+my @OTHER_SYNC_EXTS = qw(wav mp3 m4a m4b wma);
 
 my $FLAC_SYNC_MODE_MIRROR = "mirror";
 my $FLAC_SYNC_MODE_ALWAYS = "always";
