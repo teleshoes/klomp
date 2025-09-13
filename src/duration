@@ -19,8 +19,9 @@ my $usage = "Usage:
   -n, --nofilename
      Do not print the filename after the duration.
   --trunc
-     Truncate fractional seconds {instead of rounding in 'M:SS'}
-     e.g.: 159.6 [2:40] => 159.0 [2:39]
+     Truncate fractional seconds instead of rounding half-up
+     Print seconds as an integer with --seconds
+     e.g.: 159.61 [2:40]  => 159 [2:39]
 ";
 
 sub main(@){
@@ -49,15 +50,25 @@ sub main(@){
       next;
     }
     $lenTotal += $len;
-    $len = int($len) if $trunc;
-    my $fmt = $seconds ? formatTimeS $len : formatTimeHMS $len;
+    my $fmt;
+    if($seconds){
+      $fmt = $trunc ? int($len) : formatTimeS($len);
+    }else{
+      $fmt = $trunc ? formatTimeHMS(int($len)) : formatTimeHMS($len);
+    }
     $fmt .= " $file" unless $nofilename;
     $fmt .= "\n";
     print $fmt unless $total;
   }
-  $lenTotal = int($lenTotal) if $trunc;
-  my $fmtTotal = $seconds ? formatTimeS $lenTotal : formatTimeHMS $lenTotal;
-  print "$fmtTotal\n" if $total;
+  if($total){
+    my $fmtTotal;
+    if($seconds){
+      $fmtTotal = $trunc ? int($lenTotal) : formatTimeS($lenTotal);
+    }else{
+      $fmtTotal = $trunc ? formatTimeHMS(int($lenTotal)) : formatTimeHMS($lenTotal);
+    }
+    print "$fmtTotal\n" if $total;
+  }
 }
 
 &main(@ARGV);
