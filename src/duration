@@ -13,7 +13,7 @@ my $usage = "Usage:
     Print this message
 
   -s, --seconds
-     Print durations in 'S.SS' instead of 'M:SS' or 'H:MM:SS'
+     Print durations in 'S.FFFFFF' instead of 'M:SS' or 'H:MM:SS'
   -t, --total
      Print total of all files instead of individually.
   -n, --nofilename
@@ -50,11 +50,14 @@ sub main(@){
       next;
     }
     $lenTotal += $len;
+
+    $len = int($len) if $trunc;
+
     my $fmt;
     if($seconds){
-      $fmt = $trunc ? int($len) : formatTimeS($len);
+      $fmt = $len;
     }else{
-      $fmt = $trunc ? formatTimeHMS(int($len)) : formatTimeHMS($len);
+      $fmt = formatTimeHMS($len);
     }
     $fmt .= " $file" unless $nofilename;
     $fmt .= "\n";

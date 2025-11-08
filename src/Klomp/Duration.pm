@@ -50,9 +50,6 @@ sub cmdExists(){
   return defined $exec;
 }
 
-sub formatTimeS($){
-  return sprintf "%.2f", $_[0];
-}
 sub formatTimeHMS($){
   my $time = shift;
   $time = int(0.5 + $time);
