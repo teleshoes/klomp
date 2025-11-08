@@ -4,7 +4,7 @@ use Exporter 'import';
 use strict;
 use warnings;
 
-my @cmds = ("ffmpeg", "avconv");
+my $FFPROBE_EXEC = "ffprobe";
 
 sub selectExec(@);
 sub getDuration($);
@@ -22,20 +22,31 @@ sub selectExec(@){
 
 sub getDuration($){
   my $file = shift;
-  my $exec = selectExec @cmds;
-  return undef if not -f $file or not defined $exec;
+  my $ffprobeExec = selectExec "ffprobe";
+  die "ERROR: could not find `$FFPROBE_EXEC`\n" if not defined $ffprobeExec;
 
-  $file =~ s/"/\\"/g;
-  $file =~ s/`/\\`/g;
-  my $info = `$exec -i "$file" 2>&1`;
-  if($info =~ /Duration: (\d+):(\d+):(\d+(?:\.\d+))/){
-    return $3 + ($2*60) + ($1*60*60);
+  return undef if not -f $file;
+
+  my @cmd = ($ffprobeExec,
+    "-v", "error",
+    "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1",
+    $file,
+  );
+
+  open my $cmdH, "-|", @cmd or die "ERROR: could not run @cmd\n$!\n";
+  my $out = join '', <$cmdH>;
+  close $cmdH;
+
+  if($out =~ /^(\d+|\d*\.\d+)$/){
+    return $1;
   }
+
   return undef;
 }
 
 sub cmdExists(){
-  my $exec = selectExec @cmds;
+  my $exec = selectExec $FFPROBE_EXEC;
   return defined $exec;
 }
 
