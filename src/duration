@@ -64,11 +64,12 @@ sub main(@){
     print $fmt unless $total;
   }
   if($total){
+    $lenTotal = int($lenTotal) if $trunc;
     my $fmtTotal;
     if($seconds){
-      $fmtTotal = $trunc ? int($lenTotal) : formatTimeS($lenTotal);
+      $fmtTotal = $lenTotal;
     }else{
-      $fmtTotal = $trunc ? formatTimeHMS(int($lenTotal)) : formatTimeHMS($lenTotal);
+      $fmtTotal = formatTimeHMS($lenTotal);
     }
     print "$fmtTotal\n" if $total;
   }
