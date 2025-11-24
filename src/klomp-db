@@ -5,7 +5,7 @@ use threads;
 use threads::shared;
 use lib "/opt/klomp/lib";
 use Klomp::Files;
-use Klomp::Duration qw(getDuration cmdExists formatTimeS);
+use Klomp::Duration qw(getDuration cmdExists);
 use Klomp::Lib;
 use Klomp::Tag;
 
@@ -50,6 +50,7 @@ sub create($);
 sub update($$$);
 sub missing($$$);
 sub add($$$$);
+sub formatDurationForKlompDb($);
 sub search($$$$$$);
 sub fixQuery($);
 sub validateQuery($);
@@ -232,6 +233,10 @@ sub add($$$$){
   my @songRelPaths;
   push @songRelPaths, $songRelPath;
   addSongs($db, $lib, $quick, \@songRelPaths);
+}
+
+sub formatDurationSeconds($){
+  return sprintf "%.2f", $_[0];
 }
 
 sub quoteTokenize($){
@@ -914,7 +919,7 @@ sub getSongRow($$$$$){
   my $duration;
   if($durationCmdExists){
     $duration = getDuration "$libpath/$songRelPath";
-    $duration = formatTimeS $duration if defined $duration;
+    $duration = formatDurationSeconds($duration) if defined $duration;
   }
   $duration = '' if not defined $duration;
 
