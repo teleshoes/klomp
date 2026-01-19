@@ -216,7 +216,8 @@ sub getRelFiles($$){
     if($file =~ /^$dir\/(.+)$/){
       push @relFiles, $1;
     }else{
-      die "ERROR: malformed find output $file\n";
+      my $hostDir = defined $host ? "$host:$dir" : $dir;
+      die "ERROR: malformed find output for $hostDir\n$file\n";
     }
   }
 
