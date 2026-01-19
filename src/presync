@@ -204,12 +204,21 @@ sub getFileInfo($@){
 sub getRelFiles($$){
   my ($host, $dir) = @_;
 
-  $dir =~ s/'/'\\''/g;
 
-  my $cmd = "find '$dir/' -type f";
-  $cmd = "ssh $host $cmd" if defined $host;
+  my @cmd;
+  if(defined $host){
+    my $dirFmt = $dir;
+    $dirFmt =~ s/'/'\\''/g;
+    @cmd = ("ssh", $host, "find '$dir/' -type f");
+  }else{
+    @cmd = ("find", "$dir/", "-type", "f");
+  }
 
-  my @files = `$cmd`;
+  open my $cmdH, "-|", @cmd or die "ERROR: failed to run @cmd\n$!\n";
+  my @files = <$cmdH>;
+  close $cmdH;
+
+  chomp foreach @files;
 
   my @relFiles;
   for my $file(@files){
